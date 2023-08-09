@@ -26,6 +26,8 @@ import { SimpleWorkflowExecutorAdaptor } from "./call-executors-and-factories/si
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedWorkflowCallExecutor } from "./call-executors-and-factories/unsupported.js";
 import { ChildWorkflowCallWorkflowExecutor } from "./call-executors-and-factories/child-workflow-call.js";
+import { QueueClient } from "../clients/queue-client.js";
+import { createQueueCallWorkflowCallExecutor } from "./call-executors-and-factories/queue-call.js";
 
 interface WorkflowCallExecutorDependencies {
   bucketStore: BucketStore;
@@ -33,6 +35,7 @@ interface WorkflowCallExecutorDependencies {
   eventClient: EventClient;
   openSearchClient: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
+  queueClient: QueueClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
   transactionClient: TransactionClient;
@@ -68,7 +71,10 @@ export function createDefaultWorkflowCallExecutor(
       deps.transactionClient,
       deps.executionQueueClient
     ),
-    SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
+    QueueCall: createQueueCallWorkflowCallExecutor(
+      deps.queueClient,
+      deps.executionQueueClient
+    ),
     SearchCall: createSearchWorkflowQueueExecutor(
       deps.openSearchClient,
       deps.executionQueueClient
@@ -76,6 +82,7 @@ export function createDefaultWorkflowCallExecutor(
     SendSignalCall: new SendSignalWorkflowCallExecutor(
       deps.executionQueueClient
     ),
+    SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
     TaskCall: new TaskCallWorkflowExecutor(deps.taskClient),
     TaskRequestCall: unsupportedExecutor, // TODO: add support for task heartbeat, success, and failure to the workflow
     ChildWorkflowCall: workflowClientExecutor,

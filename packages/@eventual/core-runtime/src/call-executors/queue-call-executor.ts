@@ -5,6 +5,10 @@ import { QueueClient } from "../clients/queue-client.js";
 export class QueueCallExecutor implements CallExecutor<QueueCall> {
   constructor(private queueClient: QueueClient) {}
   public execute(call: QueueCall): Promise<void> {
-    return this.queueClient[call.operation](call.queueName, ...call.params);
+    return this.queueClient[call.operation](
+      call.queueName,
+      // @ts-ignore
+      ...call.params
+    );
   }
 }

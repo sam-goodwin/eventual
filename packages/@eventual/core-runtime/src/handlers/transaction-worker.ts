@@ -38,6 +38,7 @@ export function createTransactionWorker(
   const propertyRetriever = new AllPropertyRetriever({
     BucketPhysicalName: unsupportedPropertyRetriever,
     OpenSearchClient: unsupportedPropertyRetriever,
+    QueuePhysicalName: unsupportedPropertyRetriever,
     ServiceClient: unsupportedPropertyRetriever,
     ServiceName: props.serviceName,
     ServiceSpec: unsupportedPropertyRetriever,

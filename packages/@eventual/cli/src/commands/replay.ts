@@ -89,12 +89,13 @@ export const replay = (yargs: Argv) =>
         const executor = new WorkflowExecutor<any, any, any>(
           workflow,
           events,
-          // TODO: these properties should come from the history
+          // TODO: these properties should come from the history https://github.com/functionless/eventual/issues/416
           new AllPropertyRetriever({
             ServiceClient: serviceClient,
             ServiceName: serviceName ?? unsupportedPropertyRetriever,
             OpenSearchClient: unsupportedPropertyRetriever,
             BucketPhysicalName: unsupportedPropertyRetriever,
+            QueuePhysicalName: unsupportedPropertyRetriever,
             ServiceSpec: unsupportedPropertyRetriever,
             ServiceType: ServiceType.OrchestratorWorker,
             ServiceUrl: serviceData.apiEndpoint ?? unsupportedPropertyRetriever,

@@ -19,6 +19,7 @@ import { TaskCallEventualFactory } from "./call-executors-and-factories/task-cal
 import { TransactionCallEventualFactory } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedEventualFactory } from "./call-executors-and-factories/unsupported.js";
 import type { EventualDefinition } from "./eventual-definition.js";
+import { QueueCallEventualFactory } from "./call-executors-and-factories/queue-call.js";
 
 export interface ResolveEventualFunction {
   (seq: number, result: Result): void;
@@ -75,9 +76,10 @@ export function createDefaultEventualFactory(): AllWorkflowEventualFactory {
     ExpectSignalCall: new ExpectSignalFactory(),
     GetExecutionCall: unsupportedFactory,
     InvokeTransactionCall: new TransactionCallEventualFactory(),
-    SignalHandlerCall: new RegisterSignalHandlerCallFactory(),
+    QueueCall: new QueueCallEventualFactory(),
     SearchCall: new SearchCallEventualFactory(),
     SendSignalCall: new SendSignalEventualFactory(),
+    SignalHandlerCall: new RegisterSignalHandlerCallFactory(),
     StartWorkflowCall: unsupportedFactory,
     TaskCall: new TaskCallEventualFactory(),
     TaskRequestCall: unsupportedFactory, // TODO: support task requests (succeed, fail, heartbeat)
