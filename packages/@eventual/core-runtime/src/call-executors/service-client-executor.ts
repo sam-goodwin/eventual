@@ -34,9 +34,7 @@ export class ServiceClientExecutor
 {
   constructor(private serviceClient: EventualServiceClient) {}
 
-  public async execute<C extends SupportEventualCall>(
-    call: C
-  ): Promise<CallOutput<C>> {
+  public async execute<C extends SupportEventualCall>(call: C) {
     if (isSendSignalCall(call)) {
       if (call.target.type === SignalTargetType.ChildExecution) {
         throw new Error("Signal Target Child Workflow unsupported");

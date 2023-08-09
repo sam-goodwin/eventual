@@ -7,7 +7,9 @@ import {
 } from "@eventual/core/internal";
 
 export interface CallExecutor<E extends Call = Call> {
-  execute(call: E): EventualPromise<CallOutput<E>> | Promise<CallOutput<E>>;
+  execute(
+    call: E
+  ): EventualPromise<Awaited<CallOutput<E>>> | Promise<Awaited<CallOutput<E>>>;
 }
 
 export type AllCallExecutors = {

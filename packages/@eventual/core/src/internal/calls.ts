@@ -11,7 +11,6 @@ import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
-import type { SendTaskHeartbeatResponse } from "./eventual-service.js";
 import type { SignalTarget } from "./signal.js";
 
 export type Call =
@@ -112,10 +111,19 @@ export function isEntityCall(a: any): a is EntityCall {
   return isCallOfKind(CallKind.EntityCall, a);
 }
 
+export type EntityCallOutput<
+  Op extends EntityOperation["operation"] = EntityOperation["operation"]
+> = Op extends EntityMethod
+  ? ReturnType<Entity[Op]>
+  : Op extends "transact"
+  ? void
+  : Op extends "queryIndex"
+  ? ReturnType<EntityIndex["query"]>
+  : ReturnType<EntityIndex["scan"]>;
+
 export type EntityCall<
   Op extends EntityOperation["operation"] = EntityOperation["operation"]
-  // TODO: not any
-> = CallBase<CallKind.EntityCall, any> & {
+> = CallBase<CallKind.EntityCall, EntityCallOutput<Op>> & {
   operation: EntityOperation & { operation: Op };
 };
 
@@ -193,11 +201,12 @@ export function isBucketCall(a: any): a is BucketCall {
   return isCallOfKind(CallKind.BucketCall, a);
 }
 
-export type BucketCall<Op extends BucketMethod = BucketMethod> =
-  // todo: not any
-  CallBase<CallKind.BucketCall, any> & {
-    operation: BucketOperation<Op>;
-  };
+export type BucketCall<Op extends BucketMethod = BucketMethod> = CallBase<
+  CallKind.BucketCall,
+  ReturnType<Bucket[Op]>
+> & {
+  operation: BucketOperation<Op>;
+};
 
 export type BucketOperation<Op extends BucketMethod = BucketMethod> = {
   operation: Op;
@@ -269,13 +278,14 @@ export type SearchOperation = Exclude<
   undefined
 >;
 
-export type SearchCall<Op extends SearchOperation = SearchOperation> =
-  // TODO: not any
-  CallBase<CallKind.SearchCall, any> & {
-    operation: Op;
-    request: SearchCallRequest<Op>;
-    indexName: string;
-  };
+export type SearchCall<Op extends SearchOperation = SearchOperation> = CallBase<
+  CallKind.SearchCall,
+  ReturnType<SearchIndex[Op]>
+> & {
+  operation: Op;
+  request: SearchCallRequest<Op>;
+  indexName: string;
+};
 
 export function isTaskRequestCall(a: any): a is TaskRequestCall {
   return isCallOfKind(CallKind.TaskRequestCall, a);
@@ -296,8 +306,7 @@ export type TaskMethods = Exclude<
 >;
 
 export interface TaskRequestCall<Op extends TaskMethods = TaskMethods>
-  // TODO: make output conditional
-  extends CallBase<CallKind.TaskRequestCall, SendTaskHeartbeatResponse | void> {
+  extends CallBase<CallKind.TaskRequestCall, ReturnType<Task[Op]>> {
   operation: Op;
   params: Parameters<Task[Op]>;
 }

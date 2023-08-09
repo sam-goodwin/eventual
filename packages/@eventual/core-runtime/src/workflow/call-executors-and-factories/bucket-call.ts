@@ -87,7 +87,7 @@ export function createBucketWorkflowQueueExecutor(
 export class BucketCallEventualFactory implements EventualFactory<BucketCall> {
   public initializeEventual(
     call: BucketCall
-  ): EventualDefinition<CallOutput<BucketCall>> {
+  ): EventualDefinition<Awaited<CallOutput<BucketCall>>> {
     return {
       triggers: [
         Trigger.onWorkflowEvent(

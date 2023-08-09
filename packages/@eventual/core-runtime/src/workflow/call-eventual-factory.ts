@@ -34,7 +34,7 @@ export interface EventualFactory<C extends Call = Call> {
      * Call this function to resolve another eventual with a value.
      */
     resolveEventual: ResolveEventualFunction
-  ): EventualDefinition<CallOutput<C>>;
+  ): EventualDefinition<Awaited<CallOutput<C>>>;
 }
 
 export type AllWorkflowEventualFactories = {

@@ -175,8 +175,8 @@ export interface Task<Name extends string = string, Input = any, Output = any>
 export interface TaskHandler<Input = any, Output = any> {
   (input: Input, context: TaskContext):
     | Promise<Awaited<Output>>
-    | Output
-    | AsyncResult<Output>
+    | Awaited<Output>
+    | AsyncResult<Awaited<Output>>
     | Promise<AsyncResult<Awaited<Output>>>;
 }
 
@@ -189,7 +189,7 @@ export type TaskOutput<A extends Task<any, any>> = A extends Task<
   any,
   infer Output
 >
-  ? UnwrapAsync<Output>
+  ? UnwrapAsync<Awaited<Output>>
   : never;
 
 /**

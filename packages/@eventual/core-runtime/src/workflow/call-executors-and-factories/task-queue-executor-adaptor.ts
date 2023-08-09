@@ -27,7 +27,7 @@ export class WorkflowTaskQueueExecutorAdaptor<
     private executionQueueClient: ExecutionQueueClient,
     private onSuccess: (
       call: E,
-      result: CallOutput<E>,
+      result: Awaited<CallOutput<E>>,
       props: WorkflowCallExecutorProps
     ) => WorkflowInputEvent | Promise<WorkflowInputEvent>,
     private onFailure: (

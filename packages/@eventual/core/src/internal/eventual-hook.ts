@@ -37,7 +37,7 @@ export interface EventualHook {
    */
   executeEventualCall<E extends Call = Call>(
     eventual: E
-  ): EventualPromise<CallOutput<E>>;
+  ): EventualPromise<Awaited<CallOutput<E>>>;
   /**
    * Retrieve constant properties.
    */
