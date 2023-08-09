@@ -1,21 +1,27 @@
-import type { DurationSchedule, SendOptions } from "@eventual/core";
+import type { DurationSchedule, FifoQueue } from "@eventual/core";
 import { Queue } from "@eventual/core";
-import { QueueMethod } from "@eventual/core/internal";
+import {
+  QueueMethod,
+  QueueSendMessageOperation,
+} from "@eventual/core/internal";
 import type { QueueProvider } from "../providers/queue-provider.js";
 
 type QueueClientBase = {
-  [K in keyof Pick<Queue, QueueMethod>]: (
+  [K in keyof Pick<Queue, Exclude<QueueMethod, "sendMessage">>]: (
     queueName: string,
     ...args: Parameters<Queue[K]>
   ) => ReturnType<Queue[K]>;
+} & {
+  sendMessage: (
+    operation: QueueSendMessageOperation
+  ) => ReturnType<FifoQueue["sendMessage"]>;
 };
 
 export abstract class QueueClient implements QueueClientBase {
   constructor(private queueProvider: QueueProvider) {}
+
   public abstract sendMessage(
-    queueName: string,
-    message: any,
-    options?: SendOptions | undefined
+    operation: QueueSendMessageOperation
   ): Promise<void>;
 
   public abstract changeMessageVisibility(

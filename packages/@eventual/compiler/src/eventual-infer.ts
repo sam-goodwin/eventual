@@ -6,10 +6,12 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
-  BucketNotificationHandlerSpec,
-  CommandSpec,
-  ServiceSpec,
   getEventualResources,
+  type BucketNotificationHandlerSpec,
+  type CommandSpec,
+  type QueueHandlerSpec,
+  type QueueSpec,
+  type ServiceSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
@@ -31,6 +33,7 @@ import {
   isCommandCall,
   isEntityStreamMemberCall,
   isOnEventCall,
+  isQueueHandlerForEachMemberCall,
   isSubscriptionCall,
   isTaskCall,
 } from "./ast-util.js";
@@ -168,6 +171,25 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
         })
       ),
     },
+    queues: Array.from(getEventualResources("Queue").values()).map(
+      (q) =>
+        ({
+          name: q.name,
+          handlers: q.handlers.map(
+            (h) =>
+              ({
+                name: h.name,
+                queueName: q.name,
+                options: h.options,
+                batch: h.batch,
+                fifo: h.fifo,
+                sourceLocation: h.sourceLocation,
+              } satisfies QueueHandlerSpec)
+          ),
+          message: q.message ? generateSchema(q.message) : undefined,
+          fifo: q.fifo,
+        } satisfies QueueSpec)
+    ),
   };
 }
 
@@ -253,6 +275,7 @@ export class InferVisitor extends Visitor {
         isTaskCall,
         isEntityStreamMemberCall,
         isBucketHandlerMemberCall,
+        isQueueHandlerForEachMemberCall,
       ].some((op) => op(call))
     ) {
       this.didMutate = true;

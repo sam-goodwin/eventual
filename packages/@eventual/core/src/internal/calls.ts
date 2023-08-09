@@ -7,6 +7,7 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { Execution, ExecutionHandle } from "../execution.js";
+import { FifoContentBasedDeduplication, FifoQueue } from "../queue/fifo.js";
 import type { Queue } from "../queue/queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
@@ -235,22 +236,41 @@ export type QueueMethod = Exclude<
   "forEach" | "forEachBatch" | undefined
 >;
 
-export type QueueCall<Op extends QueueMethod = QueueMethod> = CallBase<
-  CallKind.QueueCall,
-  ReturnType<Queue[Op]>
-> &
-  QueueOperation<Op>;
+export interface QueueCall<Op extends QueueMethod = QueueMethod>
+  extends CallBase<CallKind.QueueCall, ReturnType<FifoQueue[Op]>> {
+  operation: QueueOperation<Op>;
+}
 
-export type QueueOperation<Op extends QueueMethod = QueueMethod> = {
-  operation: Op;
+interface QueueOperationBase<Op extends QueueMethod> {
   queueName: string;
-  params: Parameters<Queue[Op]>;
-};
+  operation: Op;
+}
 
-export function isQueueCallType<Op extends QueueMethod>(
+export type QueueSendMessageOperation = QueueOperationBase<"sendMessage"> & {
+  delay?: DurationSchedule;
+  message: any;
+} & (
+    | {
+        fifo: true;
+        messageGroupId: string;
+        messageDeduplicationId: string | FifoContentBasedDeduplication;
+      }
+    | {
+        fifo: false;
+      }
+  );
+
+export type QueueOperation<Op extends QueueMethod = QueueMethod> =
+  Op extends "sendMessage"
+    ? QueueSendMessageOperation
+    : QueueOperationBase<Op> & {
+        params: Parameters<FifoQueue[Op]>;
+      };
+
+export function isQueueOperationOfType<Op extends QueueMethod>(
   op: Op,
-  operation: QueueCall<any>
-): operation is QueueCall<Op> {
+  operation: QueueOperation<any>
+): operation is QueueOperation<Op> {
   return operation.operation === op;
 }
 

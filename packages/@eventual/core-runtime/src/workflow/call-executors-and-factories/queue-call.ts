@@ -26,10 +26,10 @@ export function createQueueCallWorkflowCallExecutor(
       return createEvent<QueueRequestSucceeded>(
         {
           type: WorkflowEventType.QueueRequestSucceeded,
-          operation: call.operation,
+          operation: call.operation.operation,
           result: result as any,
           seq,
-          name: call.queueName,
+          name: call.operation.queueName,
         },
         executionTime
       );
@@ -38,7 +38,7 @@ export function createQueueCallWorkflowCallExecutor(
       return createEvent<QueueRequestFailed>(
         {
           type: WorkflowEventType.QueueRequestFailed,
-          operation: call.operation,
+          operation: call.operation.operation,
           seq,
           ...normalizeError(err),
         },
@@ -63,11 +63,7 @@ export class QueueCallEventualFactory implements EventualFactory<QueueCall> {
       createCallEvent: (seq) => ({
         type: WorkflowCallHistoryType.QueueRequest,
         seq,
-        operation: {
-          operation: call.operation,
-          params: call.params,
-          queueName: call.queueName,
-        },
+        operation: call.operation,
       }),
     };
   }

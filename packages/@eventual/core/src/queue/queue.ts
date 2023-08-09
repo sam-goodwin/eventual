@@ -40,21 +40,27 @@ export interface QueueHandlerMessageItem<Message = any> {
   receiveCount: number;
 }
 
-export interface QueueHandlerFunction<Message = any> {
+export interface QueueHandlerFunction<
+  Message = any,
+  MessageItem extends QueueHandlerMessageItem<Message> = QueueHandlerMessageItem<Message>
+> {
   /**
    * Provides the keys, new value
    */
-  (item: QueueHandlerMessageItem<Message>, context: QueueHandlerContext):
+  (item: MessageItem, context: QueueHandlerContext):
     | Promise<void | false>
     | void
     | false;
 }
 
-export interface QueueBatchHandlerFunction<Message = any> {
+export interface QueueBatchHandlerFunction<
+  Message = any,
+  MessageItem extends QueueHandlerMessageItem<Message> = QueueHandlerMessageItem<Message>
+> {
   /**
    * Provides the keys, new value
    */
-  (items: QueueHandlerMessageItem<Message>[], context: QueueHandlerContext):
+  (items: MessageItem[], context: QueueHandlerContext):
     | Promise<void | { failedMessageIds?: string[] }>
     | void
     | { failedMessageIds?: string[] };
@@ -65,6 +71,8 @@ export interface QueueHandler<Name extends string = string, Message = any>
   kind: "QueueHandler";
   handler: QueueHandlerFunction<Message>;
   sourceLocation?: SourceLocation;
+  fifo: false;
+  batch: false;
 }
 
 export interface QueueBatchHandler<Name extends string = string, Message = any>
@@ -72,9 +80,11 @@ export interface QueueBatchHandler<Name extends string = string, Message = any>
   kind: "QueueBatchHandler";
   handler: QueueBatchHandlerFunction<Message>;
   sourceLocation?: SourceLocation;
+  fifo: false;
+  batch: true;
 }
 
-export interface SendOptions {
+export interface QueueSendMessageOptions {
   delay?: DurationSchedule;
 }
 
@@ -86,7 +96,10 @@ export interface Queue<Name extends string = string, Message = any>
   kind: "Queue";
   handlers: (QueueHandler<any, Message> | QueueBatchHandler<any, Message>)[];
   message?: z.Schema<Message>;
-  sendMessage(message: Message, options?: SendOptions): Promise<void>;
+  sendMessage(
+    message: Message,
+    options?: QueueSendMessageOptions
+  ): Promise<void>;
   changeMessageVisibility(
     receiptHandle: string,
     timeout: DurationSchedule
@@ -129,31 +142,40 @@ export function queue<Name extends string = string, Message = any>(
     kind: "Queue",
     handlers,
     name,
+    fifo: false,
     message: options?.message,
-    sendMessage(...args) {
+    sendMessage(message, options) {
       return getEventualHook().executeEventualCall(
         createCall<QueueCall>(CallKind.QueueCall, {
-          queueName: name,
-          operation: "sendMessage",
-          params: args,
+          operation: {
+            queueName: name,
+            operation: "sendMessage",
+            fifo: false,
+            message,
+            delay: options?.delay,
+          },
         })
       );
     },
     changeMessageVisibility(...args) {
       return getEventualHook().executeEventualCall(
         createCall<QueueCall>(CallKind.QueueCall, {
-          queueName: name,
-          operation: "changeMessageVisibility",
-          params: args,
+          operation: {
+            queueName: name,
+            operation: "changeMessageVisibility",
+            params: args,
+          },
         })
       );
     },
     deleteMessage(...args) {
       return getEventualHook().executeEventualCall(
         createCall<QueueCall>(CallKind.QueueCall, {
-          queueName: name,
-          operation: "deleteMessage",
-          params: args,
+          operation: {
+            queueName: name,
+            operation: "deleteMessage",
+            params: args,
+          },
         })
       );
     },
@@ -205,6 +227,8 @@ export function queue<Name extends string = string, Message = any>(
         name: handlerName,
         sourceLocation,
         options,
+        batch: false,
+        fifo: false,
         queueName: name,
       };
 
@@ -260,6 +284,8 @@ export function queue<Name extends string = string, Message = any>(
         name: handlerName,
         sourceLocation,
         options,
+        batch: true,
+        fifo: false,
         queueName: name,
       };
 

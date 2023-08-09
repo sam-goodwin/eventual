@@ -74,8 +74,28 @@ export function isBucketHandlerMemberCall(call: CallExpression): boolean {
   if (c.type === "MemberExpression") {
     if (isId(c.property, "on")) {
       // bucket.stream(events, "handlerName", async () => { })
-      // bucket.stream(events, ""handlerName", options, async () => { })
+      // bucket.stream(events, "handlerName", options, async () => { })
       return call.arguments.length === 3 || call.arguments.length === 4;
+    }
+  }
+  return false;
+}
+
+/**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `on` handler.
+ *
+ * 1. must be a call to a MemberExpression matching to `<expression>.on(events, name, impl | props, impl)`.
+ * 2. must have 3 or 4 arguments.
+ */
+export function isQueueHandlerForEachMemberCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (c.type === "MemberExpression") {
+    if (isId(c.property, "forEach") || isId(c.property, "forEachBatch")) {
+      // queue.forEach("handlerName", async () => { })
+      // queue.forEach("handlerName", options, async () => { })
+      // queue.forEachBatch("handlerName", async () => { })
+      // queue.forEachBatch("handlerName", options, async () => { })
+      return call.arguments.length === 2 || call.arguments.length === 3;
     }
   }
   return false;

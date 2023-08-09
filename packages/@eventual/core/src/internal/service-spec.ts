@@ -295,9 +295,12 @@ export interface TransactionSpec<Name extends string = string> {
  */
 export interface QueueHandlerOptions extends FunctionRuntimeProps {
   /**
-   * Max batch size. Between 1 and 1000.
+   * Max batch size.
    *
-   * @default: 100
+   * Queue - Between 1 and 10000.
+   * Fifo Queue - Between 1 and 10
+   *
+   * @default: 100 (Queue) 10 (Fifo Queue).
    */
   batchSize?: number;
   /**
@@ -311,13 +314,15 @@ export interface QueueHandlerOptions extends FunctionRuntimeProps {
 export interface QueueHandlerSpec<Name extends string = string> {
   name: Name;
   queueName: string;
-  options?: EntityStreamOptions;
+  options?: QueueHandlerOptions;
+  batch: boolean;
+  fifo: boolean;
   sourceLocation?: SourceLocation;
 }
 
 export interface QueueSpec<Name extends string = string> {
   name: Name;
   handlers: QueueHandlerSpec[];
+  fifo: boolean;
   message?: openapi.SchemaObject;
-  attributes?: openapi.SchemaObject;
 }
