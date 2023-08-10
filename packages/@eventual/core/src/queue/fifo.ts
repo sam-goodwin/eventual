@@ -65,6 +65,10 @@ export interface FifoQueueSendOptions extends QueueSendMessageOptions {
   messageDeduplicationId?: string;
 }
 
+export function isFifoQueue(queue: Queue | FifoQueue): queue is FifoQueue {
+  return queue.fifo;
+}
+
 /**
  * TODO: support send and delete batch
  */

@@ -1,7 +1,7 @@
 import type { EntityStreamContext, EntityStreamItem } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { normalizeCompositeKey } from "../stores/entity-store.js";
-import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
+import { getLazy, groupedPromiseAllSettled } from "../utils.js";
 import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
 export interface EntityStreamWorker {
@@ -42,34 +42,25 @@ export function createEntityStreamWorker(
 
         return { failedItemIds: result?.failedItemIds ?? [] };
       } else {
-        const itemsByKey: Record<string, EntityStreamItem<any>[]> = {};
-        items.forEach((item) => {
-          const normalizedKey = normalizeCompositeKey(entity, item.key);
-          const serializedKey = JSON.stringify(normalizedKey);
-          (itemsByKey[serializedKey] ??= []).push(item);
-        });
-
-        const results = await promiseAllSettledPartitioned(
-          Object.entries(itemsByKey),
-          async ([, itemGroup]) => {
-            for (const i in itemGroup) {
-              const item = itemGroup[i]!;
-              try {
-                const result = await streamHandler.handler(item, context);
-                // if the handler doesn't fail and doesn't return false, continue
-                if (result !== false) {
-                  continue;
-                }
-              } catch {}
-              // if the handler fails or returns false, return the rest of the items
-              return itemGroup.slice(Number(i)).map((i) => i.id);
+        const groupResults = await groupedPromiseAllSettled(
+          items,
+          (item) => {
+            const normalizedKey = normalizeCompositeKey(entity, item.key);
+            return JSON.stringify(normalizedKey);
+          },
+          async (item) => {
+            const result = streamHandler.handler(item, context);
+            if (result === false) {
+              throw new Error("Handler failed");
             }
-            return [];
+            return result;
           }
         );
 
         return {
-          failedItemIds: results.fulfilled.flatMap((s) => s[1]),
+          failedItemIds: Object.values(groupResults).flatMap((g) =>
+            g.rejected.map(([item]) => item.id)
+          ),
         };
       }
     }

@@ -1,11 +1,12 @@
 import { PropertyKind, createEventualProperty } from "./properties.js";
 
 export enum ServiceType {
-  CommandWorker = "CommandWorker",
-  Subscription = "Subscription",
-  OrchestratorWorker = "OrchestratorWorker",
-  EntityStreamWorker = "EntityStreamWorker",
   BucketNotificationHandlerWorker = "BucketNotificationHandlerWorker",
+  CommandWorker = "CommandWorker",
+  EntityStreamWorker = "EntityStreamWorker",
+  OrchestratorWorker = "OrchestratorWorker",
+  QueueHandlerWorker = "QueueHandlerWorker",
+  Subscription = "Subscription",
   TaskWorker = "TaskWorker",
   TransactionWorker = "TransactionWorker",
 }
