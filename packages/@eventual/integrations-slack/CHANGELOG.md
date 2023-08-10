@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.48.2 (2023-08-10)
+
+### Bug Fixes
+
+- stream order ([#411](https://github.com/functionless/eventual/issues/411)) ([8fbf275](https://github.com/functionless/eventual/commit/8fbf275ebe09f25b23c3da465f510d0eed60fc11))
+
 ## 0.48.1 (2023-08-03)
 
 **Note:** Version bump only for package @eventual/integrations-slack
