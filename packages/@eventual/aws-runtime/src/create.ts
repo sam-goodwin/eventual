@@ -12,6 +12,7 @@ import {
   ExecutionQueueClient,
   ExecutionStore,
   GlobalEntityProvider,
+  GlobalQueueProvider,
   GlobalTaskProvider,
   GlobalWorkflowProvider,
   LogAgent,
@@ -37,6 +38,7 @@ import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
 import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { AWSQueueClient } from "./clients/queue-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -209,6 +211,17 @@ export const createTaskClient = /* @__PURE__ */ memoize(
       serviceName: env.serviceName,
     })
 );
+
+export const createQueueClient = memoize(() => {
+  return new AWSQueueClient({
+    sqs: sqs(),
+    awsAccount: env.awsAccount,
+    serviceName: env.serviceName,
+    awsRegion: env.awsRegion,
+    queueOverrides: env.queueOverrides,
+    queueProvider: new GlobalQueueProvider(),
+  });
+});
 
 export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
   ({ executionHistoryBucket }: { executionHistoryBucket?: string } = {}) =>

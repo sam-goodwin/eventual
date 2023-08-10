@@ -2,6 +2,7 @@ export * from "./bucket-handler-worker.js";
 export * from "./command-worker.js";
 export * from "./entity-stream-worker.js";
 export * from "./orchestrator.js";
+export * from "./queue-handler-worker.js";
 export * from "./schedule-forwarder.js";
 export * from "./subscription-worker.js";
 export * from "./task-fallback-handler.js";
