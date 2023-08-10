@@ -12,6 +12,7 @@ import {
   createBucketStore,
   createEntityStore,
   createOpenSearchClient,
+  createQueueClient,
   createServiceClient,
 } from "../create.js";
 import {
@@ -26,6 +27,7 @@ const worker = createBucketNotificationHandlerWorker({
   entityStore: createEntityStore(),
   openSearchClient: await createOpenSearchClient(),
   serviceClient: createServiceClient({}),
+  queueClient: createQueueClient(),
   serviceName,
   serviceSpec,
   serviceUrl,

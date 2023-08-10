@@ -35,7 +35,6 @@ export interface WorkerIntrinsicDeps {
   serviceName: string | LazyValue<string>;
   serviceSpec: ServiceSpec | undefined;
   serviceUrl: string | LazyValue<string>;
-  serviceUrls?: (string | LazyValue<string>)[];
 }
 
 type AllExecutorOverrides<Input extends any[]> = {

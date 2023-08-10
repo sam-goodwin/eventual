@@ -17,6 +17,7 @@ import {
   createExecutionStore,
   createLogAgent,
   createOpenSearchClient,
+  createQueueClient,
   createServiceClient,
   createTaskClient,
   createTaskStore,
@@ -31,6 +32,7 @@ const worker = createTaskWorker({
   eventClient: createEventClient(),
   openSearchClient: await createOpenSearchClient(),
   executionQueueClient: createExecutionQueueClient(),
+  queueClient: createQueueClient(),
   logAgent: createLogAgent(),
   metricsClient: AWSMetricsClient,
   // partially uses the runtime clients and partially uses the http client

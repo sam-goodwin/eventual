@@ -47,6 +47,7 @@ export function createApiGCommandWorker({
       bucketStore: deps.bucketStore,
       entityStore: deps.entityStore,
       openSearchClient: deps.openSearchClient,
+      queueClient: deps.queueClient,
       serviceClient,
       serviceSpec,
       serviceName,
