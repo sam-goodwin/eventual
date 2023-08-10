@@ -35,7 +35,7 @@ export abstract class QueueClient implements QueueClientBase {
     receiptHandle: string
   ): Promise<void>;
 
-  public abstract physicalName: (queueName: string) => string;
+  public abstract physicalName(queueName: string): string;
 
   protected getQueue(queueName: string) {
     const entity = this.queueProvider.getQueue(queueName);

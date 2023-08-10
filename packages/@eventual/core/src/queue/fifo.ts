@@ -32,6 +32,12 @@ export interface FifoContentBasedDeduplication {
   contentBasedDeduplication: true;
 }
 
+export function isFifoContentBasedDeduplication(
+  value: any
+): value is FifoContentBasedDeduplication {
+  return value && typeof value === "object" && value.contentBasedDeduplication;
+}
+
 export type FifoQueueHandlerFunction<Message = any> = QueueHandlerFunction<
   Message,
   FifoQueueHandlerMessageItem<Message>
@@ -189,8 +195,7 @@ export function fifoQueue<Name extends string = string, Message = any>(
         !messageDeduplicationId ||
         !(
           typeof messageDeduplicationId === "string" ||
-          (typeof messageDeduplicationId === "object" &&
-            "contentBasedDeduplication" in messageDeduplicationId)
+          isFifoContentBasedDeduplication(messageDeduplicationId)
         )
       ) {
         throw new Error(

@@ -258,6 +258,10 @@ export function bucketServiceBucketSuffix(bucketName: string) {
   return `bucket-${bucketName}`;
 }
 
+export function queueServiceQueueSuffix(queueName: string) {
+  return `queue-${queueName}`;
+}
+
 export function taskServiceFunctionName(
   serviceName: string,
   taskId: string
@@ -280,6 +284,16 @@ export function bucketServiceBucketName(
   bucketName: string
 ): string {
   return serviceBucketName(serviceName, bucketServiceBucketSuffix(bucketName));
+}
+
+/**
+ * Note: a queue's name can be overridden by the user.
+ */
+export function queueServiceQueueName(
+  serviceName: string,
+  queueName: string
+): string {
+  return serviceFunctionName(serviceName, queueServiceQueueSuffix(queueName));
 }
 
 /**
