@@ -46,15 +46,6 @@ var CallKind;
   CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
 })(CallKind || (CallKind = {}));
 
-globalThis._eventual ??= { resources: {} };
-function registerEventualResource(resourceKind, resource) {
-  if (globalThis._eventual.resources[resourceKind]?.has(resource.name)) {
-    throw new Error(\`\${resourceKind} with name '\${resource.name}' already exists\`);
-  }
-  (globalThis._eventual.resources[resourceKind] ??= /* @__PURE__ */ new Map()).set(resource.name, resource);
-  return resource;
-}
-
 var PropertyKind;
 (function(PropertyKind2) {
   PropertyKind2[PropertyKind2["BucketPhysicalName"] = 0] = "BucketPhysicalName";
@@ -66,6 +57,15 @@ var PropertyKind;
   PropertyKind2[PropertyKind2["ServiceUrl"] = 6] = "ServiceUrl";
   PropertyKind2[PropertyKind2["TaskToken"] = 7] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
+
+globalThis._eventual ??= { resources: {} };
+function registerEventualResource(resourceKind, resource) {
+  if (globalThis._eventual.resources[resourceKind]?.has(resource.name)) {
+    throw new Error(\`\${resourceKind} with name '\${resource.name}' already exists\`);
+  }
+  (globalThis._eventual.resources[resourceKind] ??= /* @__PURE__ */ new Map()).set(resource.name, resource);
+  return resource;
+}
 
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
