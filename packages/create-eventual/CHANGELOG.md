@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.49.0 (2023-08-11)
+
+### Features
+
+- refactor call exec ([#415](https://github.com/functionless/eventual/issues/415)) ([3121cdf](https://github.com/functionless/eventual/commit/3121cdfe4d138469a8797a7120832025dc87c2c5))
+
+## 0.48.2 (2023-08-10)
+
+### Bug Fixes
+
+- stream order ([#411](https://github.com/functionless/eventual/issues/411)) ([8fbf275](https://github.com/functionless/eventual/commit/8fbf275ebe09f25b23c3da465f510d0eed60fc11))
+
 ## 0.48.1 (2023-08-03)
 
 **Note:** Version bump only for package create-eventual
