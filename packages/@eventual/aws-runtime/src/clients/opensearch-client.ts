@@ -1,3 +1,4 @@
+import { OpenSearchClient } from "@eventual/core-runtime";
 import {
   Client,
   Connection,
@@ -5,7 +6,7 @@ import {
 } from "@opensearch-project/opensearch";
 import aws4 from "aws4";
 
-export class AWSOpenSearchClient {
+export class AWSOpenSearchClient implements OpenSearchClient {
   public readonly client: Client;
   constructor({
     node,

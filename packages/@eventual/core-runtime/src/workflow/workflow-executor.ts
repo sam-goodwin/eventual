@@ -1,42 +1,55 @@
 import {
   DeterminismError,
-  Signal,
   SystemError,
-  Workflow,
-  WorkflowContext,
   WorkflowTimeout,
+  type Workflow,
+  type WorkflowContext,
 } from "@eventual/core";
 import {
-  CompletionEvent,
-  EventualCall,
-  EventualCallHook,
-  EventualPromise,
   EventualPromiseSymbol,
-  HistoryEvent,
-  HistoryStateEvent,
-  Result,
-  ScheduledEvent,
-  SignalReceived,
-  WorkflowEvent,
-  WorkflowInputEvent,
-  WorkflowRunStarted,
-  WorkflowTimedOut,
-  _Iterator,
-  extendsSystemError,
+  isCallEvent,
   isCompletionEvent,
-  isScheduledEvent,
   isSignalReceived,
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowTimedOut,
-  iterator,
+  type Call,
+  type CallEvent,
+  type CompletionEvent,
+  type EventualHook,
+  type EventualPromise,
+  type HistoryEvent,
+  type HistoryStateEvent,
+  type WorkflowCallHistoryEvent,
+  type WorkflowInputEvent,
+  type WorkflowRunStarted,
+  type WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
-import { createEventualFromCall } from "./eventual-factory.js";
-import { enterEventualCallHookScope } from "./eventual-hook.js";
+import { CallExecutor } from "../call-executor.js";
+import { enterEventualCallHookScope } from "../eventual-hook.js";
+import { _Iterator, iterator } from "../iterator.js";
+import { PropertyRetriever } from "../property-retriever.js";
+import { Result, isFailed, isResolved, isResult } from "../result.js";
+import { deepEqual, extendsSystemError } from "../utils.js";
+import {
+  EventualFactory,
+  createDefaultEventualFactory,
+} from "./call-eventual-factory.js";
+import { filterEvents } from "./events.js";
+import {
+  isAfterEveryEventTrigger,
+  isEventTrigger,
+  isPromiseTrigger,
+  isResolvedEventualDefinition,
+  isSignalTrigger,
+  type AfterEveryEventTrigger,
+  type EventTrigger,
+  type SignalTrigger,
+  type TriggerHandler,
+  type UnresolvedEventualDefinition,
+} from "./eventual-definition.js";
 import { formatExecutionId } from "./execution.js";
-import { isFailed, isResolved, isResult } from "./result.js";
-import { filterEvents } from "./workflow-events.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -130,7 +143,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   /**
    * Iterator containing the in order events we expected to see in a deterministic workflow.
    */
-  private expected: _Iterator<HistoryEvent, ScheduledEvent>;
+  private expected: _Iterator<HistoryEvent, CallEvent>;
   /**
    * Iterator containing events to apply.
    */
@@ -179,8 +192,8 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      * This call will be ignored.
      */
     historicalEventMatched?: (
-      event: WorkflowEvent,
-      call: EventualCall,
+      event: CallEvent,
+      call: Call,
       context?: Context
     ) => void;
 
@@ -195,10 +208,13 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
 
   constructor(
     private workflow: Workflow<any, Input, Output>,
-    public history: HistoryStateEvent[]
+    public history: HistoryStateEvent[],
+    // TODO: properties used in the workflow should be encoded in the history to keep them constant between runs
+    private propertyRetriever: PropertyRetriever,
+    private eventualFactory: EventualFactory = createDefaultEventualFactory()
   ) {
     this.nextSeq = 0;
-    this.expected = iterator(history, isScheduledEvent);
+    this.expected = iterator(history, isCallEvent);
     this.events = iterator(history, isCompletionEvent);
   }
 
@@ -431,30 +447,43 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   }
 
   /**
-   * Provides a scope where the {@link EventualCallHook} is available to the {@link Call}s.
+   * Provides a scope where the {@link EventualHook} is available to the {@link Call}s.
    */
   private async enterEventualCallHookScope<Res>(
     callback: (...args: any) => Res
   ): Promise<Awaited<Res>> {
     const self = this;
-    const workflowHook: EventualCallHook = {
-      registerEventualCall(call?: EventualCall) {
+    const callExecutor: CallExecutor = {
+      execute(call?: Call) {
         if (!call) {
           throw new Error("Operation is not supported within a workflow.");
         }
 
         try {
-          const eventual = createEventualFromCall(call);
+          const eventual = self.eventualFactory.initializeEventual(
+            call,
+            // resolve eventual call, can be used by call factories to resolve another eventual with a value at any time
+            // currently used signalHandler.dispose to remove the signal handler
+            (seq, result) => {
+              self.tryResolveEventual(seq, result);
+            }
+          );
           const seq = self.nextSeq++;
 
-          /**
-           * Check if there is a matching event for the call.
-           * If the call does not have a corresponding event, bypass this step.
-           */
-          if (checkExpectedCallAndAdvance(seq, call, eventual)) {
-            self.currentRun?.callsToEmit.push(
-              ...normalizeToArray({ call, seq })
-            );
+          // not all calls generate events, these calls will not emit calls and thus will not cause determinism errors.
+          const event = eventual.createCallEvent?.(seq);
+          if (event) {
+            const hasExpectedEvents = self.expected.hasNext();
+            // if there are events to compare against, check if the event matches
+            if (hasExpectedEvents) {
+              /**
+               * Check if there is a matching event for the call.
+               */
+              assertEventIsExpected(event, call);
+            } else {
+              // if there are no more expected events, start to emit the new calls
+              self.currentRun?.callsToEmit.push({ call, seq, event });
+            }
           }
 
           /**
@@ -470,51 +499,44 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           throw err;
         }
       },
-      resolveEventual(seq, result) {
-        self.tryResolveEventual(seq, result);
-      },
     };
-    return await enterEventualCallHookScope(workflowHook, callback);
+    return await enterEventualCallHookScope(
+      callExecutor,
+      this.propertyRetriever,
+      callback
+    );
 
     /**
      * Checks the call against the expected events.
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
-    function checkExpectedCallAndAdvance(
-      seq: number,
-      call: EventualCall,
-      definition: EventualDefinition<any>
-    ) {
-      // if there is no isCorresponding method, we will not take off of the expected queue.
-      if (definition.isCorresponding) {
-        if (self.expected.hasNext()) {
-          const expected = self.expected.next()!;
+    function assertEventIsExpected(
+      event: WorkflowCallHistoryEvent,
+      call: Call
+    ): void {
+      if (self.expected.hasNext()) {
+        const expected = self.expected.next()!;
 
-          self.hooks?.historicalEventMatched?.(
-            expected,
-            call,
-            self._executionContext
-          );
+        self.hooks?.historicalEventMatched?.(
+          expected,
+          call,
+          self._executionContext
+        );
 
-          if (!definition.isCorresponding(expected, seq)) {
-            self.resolveWorkflow(
-              Result.failed(
-                new DeterminismError(
-                  `Workflow returned ${JSON.stringify(
-                    call
-                  )}, but ${JSON.stringify(expected)} was expected at ${seq}`
-                )
+        if (!deepEqual(expected.event, event)) {
+          self.resolveWorkflow(
+            Result.failed(
+              new DeterminismError(
+                `Workflow returned ${JSON.stringify(
+                  event
+                )}, but ${JSON.stringify(expected.event)} was expected at ${
+                  event.seq
+                }`
               )
-            );
-          }
-          return false;
-        } else {
-          // no more expected events, emit this call
-          return true;
+            )
+          );
         }
       }
-      // don't emit calls that don't have isCorresponding checks
-      return false;
     }
   }
 
@@ -775,140 +797,6 @@ export interface WorkflowResult<T = any> {
   calls: WorkflowCall[];
 }
 
-export type Trigger<Output> =
-  | PromiseTrigger<Output>
-  | EventTrigger<Output>
-  | AfterEveryEventTrigger<Output>
-  | SignalTrigger<Output>;
-
-export const Trigger = {
-  onPromiseResolution: <Output = any, Input = any>(
-    promise: Promise<Input>,
-    handler: PromiseTrigger<Output, Input>["handler"]
-  ): PromiseTrigger<Output, Input> => {
-    return {
-      promise,
-      handler,
-    };
-  },
-  afterEveryEvent: <Output = any>(
-    handler: AfterEveryEventTrigger<Output>["afterEvery"]
-  ): AfterEveryEventTrigger<Output> => {
-    return {
-      afterEvery: handler,
-    };
-  },
-  onWorkflowEvent: <Output = any, T extends CompletionEvent["type"] = any>(
-    eventType: T,
-    handler: EventTrigger<Output, CompletionEvent & { type: T }>["handler"]
-  ): EventTrigger<Output, CompletionEvent & { type: T }> => {
-    return {
-      eventType,
-      handler,
-    };
-  },
-  onSignal: <Output = any, Payload = any>(
-    signalId: Signal<Payload>["id"],
-    handler: SignalTrigger<Output, Payload>["handler"]
-  ): SignalTrigger<Output, Payload> => {
-    return {
-      signalId,
-      handler,
-    };
-  },
-};
-
-type TriggerHandler<Args extends any[], Output> =
-  | {
-      (...args: Args): void | undefined | Result<Output>;
-    }
-  | Result<Output>;
-
-export interface PromiseTrigger<Output, Input = any> {
-  promise: Promise<Input>;
-  handler: TriggerHandler<[val: Result<Input>], Output>;
-}
-
-export interface AfterEveryEventTrigger<Output> {
-  afterEvery: TriggerHandler<[], Output>;
-}
-
-export interface EventTrigger<
-  out Output = any,
-  E extends CompletionEvent = any
-> {
-  eventType: E["type"];
-  handler: TriggerHandler<[event: E], Output>;
-}
-
-export interface SignalTrigger<Output, Payload = any> {
-  signalId: Signal["id"];
-  handler: TriggerHandler<[event: SignalReceived<Payload>], Output>;
-}
-
-export function isPromiseTrigger<Output, R>(
-  t: Trigger<Output>
-): t is PromiseTrigger<Output, R> {
-  return "promise" in t;
-}
-
-export function isAfterEveryEventTrigger<Output>(
-  t: Trigger<Output>
-): t is AfterEveryEventTrigger<Output> {
-  return "afterEvery" in t;
-}
-
-export function isEventTrigger<Output, E extends CompletionEvent>(
-  t: Trigger<Output>
-): t is EventTrigger<Output, E> {
-  return "eventType" in t;
-}
-
-export function isSignalTrigger<Output, Payload = any>(
-  t: Trigger<Output>
-): t is SignalTrigger<Output, Payload> {
-  return "signalId" in t;
-}
-
-interface EventualDefinitionBase {
-  /**
-   * Function which determines if an event matches the call when the workflow is re-run with history.
-   *
-   * If undefined, the call will not be emitted by the workflow.
-   * If false, the workflow will throw a {@link DeterminismError}
-   */
-  isCorresponding?: (event: ScheduledEvent, seq: number) => boolean;
-}
-
-export interface ResolvedEventualDefinition<R> extends EventualDefinitionBase {
-  /**
-   * When provided, immediately resolves an EventualPromise with a value or error back to the workflow.
-   *
-   * Commands can still be emitted, but the eventual cannot be triggered.
-   */
-  result: Result<R>;
-}
-
-export interface UnresolvedEventualDefinition<R>
-  extends EventualDefinitionBase {
-  /**
-   * Triggers give the Eventual an opportunity to resolve themselves.
-   *
-   * Triggers are only called when an eventual is considered to be active.
-   */
-  triggers: Trigger<R> | (Trigger<R> | undefined)[];
-}
-
-export type EventualDefinition<R> =
-  | ResolvedEventualDefinition<R>
-  | UnresolvedEventualDefinition<R>;
-
-export function isResolvedEventualDefinition<R>(
-  eventualDefinition: EventualDefinition<R>
-): eventualDefinition is ResolvedEventualDefinition<R> {
-  return "result" in eventualDefinition;
-}
-
 interface TriggerHandlerRef<Args extends any[]> {
   seq: number | string;
   handler: TriggerHandler<Args, any>;
@@ -922,7 +810,8 @@ type EventTriggerLookup = Record<
 type SignalTriggerLookup = Record<string, Record<number, SignalTrigger<any>>>;
 type AfterEveryEventTriggerLookup = Record<number, AfterEveryEventTrigger<any>>;
 
-export interface WorkflowCall<E extends EventualCall = EventualCall> {
+export interface WorkflowCall<E extends Call = Call> {
   seq: number;
   call: E;
+  event?: WorkflowCallHistoryEvent;
 }

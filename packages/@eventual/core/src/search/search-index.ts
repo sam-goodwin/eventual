@@ -10,20 +10,22 @@ import type {
   opensearchtypes,
 } from "@opensearch-project/opensearch";
 import {
-  EventualCallKind,
+  CallKind,
   SearchCall,
   SearchCallRequest,
   SearchOperation,
-  createEventualCall,
+  createCall,
 } from "../internal/calls.js";
-import { getOpenSearchHook } from "../internal/search-hook.js";
-import { assertApiResponseOK } from "./assert-api-response.js";
 import type { MappingToDocument } from "./mapping.js";
 import type { CountRequest, SearchRequest } from "./query/search-query.js";
 import type { SearchResponse } from "./search-response.js";
 
 import t from "type-fest";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
+import {
+  PropertyKind,
+  createEventualProperty,
+} from "../internal/properties.js";
 
 export type SearchIndexProperties = {
   [propertyName: string]: estypes.MappingProperty;
@@ -155,7 +157,10 @@ export function index<
     search: (request) => search("search", request as any),
   };
   Object.defineProperty(index, "client", {
-    get: () => getOpenSearchHook().client.client satisfies Client,
+    get: () =>
+      getEventualHook().getEventualProperty(
+        createEventualProperty(PropertyKind.OpenSearchClient, {})
+      ),
   });
   return registerEventualResource("SearchIndex", index as any);
 
@@ -163,23 +168,12 @@ export function index<
     operation: Op,
     request: SearchCallRequest<Op>
   ): Promise<Response> {
-    return getEventualCallHook().registerEventualCall(
-      createEventualCall<SearchCall>(EventualCallKind.SearchCall, {
+    return getEventualHook().executeEventualCall(
+      createCall<SearchCall>(CallKind.SearchCall, {
         operation,
         request,
-      }),
-      async (): Promise<Response> => {
-        const response = await (index.client as any)[operation]({
-          ...(operation === "index"
-            ? request
-            : {
-                body: request,
-              }),
-          index: indexName,
-        });
-        assertApiResponseOK(response);
-        return response.body as Response;
-      }
+        indexName,
+      })
     );
   }
 }

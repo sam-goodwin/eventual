@@ -9,13 +9,14 @@ import {
   type Workflow,
 } from "@eventual/core";
 import {
-  Result,
   ServiceType,
   WorkflowEventType,
+  isCallEvent,
   isTimerCompleted,
   isTimerScheduled,
   isWorkflowRunStarted,
   isWorkflowStarted,
+  type CallEvent,
   type CompletionEvent,
   type HistoryStateEvent,
   type TimerCompleted,
@@ -33,7 +34,6 @@ import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
-import { isExecutionId, parseWorkflowName } from "../execution.js";
 import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
@@ -42,16 +42,29 @@ import {
 import type { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
+import {
+  AllPropertyRetriever,
+  UnsupportedPropertyRetriever,
+} from "../property-retriever.js";
+import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
-import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
-import { serviceTypeScope } from "../service-type.js";
+import {
+  Result,
+  isFailed,
+  normalizeError,
+  normalizeFailedResult,
+  resultToString,
+} from "../result.js";
+import { computeScheduleDate } from "../schedule.js";
+import type { BucketStore } from "../stores/bucket-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
-import type { WorkflowCallExecutor } from "../workflow-call-executor.js";
-import { createEvent } from "../workflow-events.js";
-import { WorkflowExecutor } from "../workflow-executor.js";
+import { WorkflowCallExecutor } from "../workflow/call-executor.js";
+import { createEvent } from "../workflow/events.js";
+import { isExecutionId, parseWorkflowName } from "../workflow/execution.js";
+import { WorkflowExecutor } from "../workflow/workflow-executor.js";
 
 export interface OrchestratorResult {
   /**
@@ -72,34 +85,53 @@ export interface ExecutorRunContext {
 }
 
 export function createOrchestrator(
-  deps: OrchestrateDependencies
+  deps: OrchestratorDependencies
 ): Orchestrator {
-  return (workflowTasks, baseTime = () => new Date()) => {
-    return serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-      const result = await runExecutions(
-        workflowTasks,
-        (workflowName, executionId, events) => {
-          return orchestrateExecution(
-            workflowName,
-            executionId,
-            events,
-            baseTime(),
-            deps
-          );
-        }
-      );
+  const unsupportedProperty = new UnsupportedPropertyRetriever(
+    "Workflow Orchestrator"
+  );
+  const propertyRetriever = new AllPropertyRetriever({
+    BucketPhysicalName: new BucketPhysicalNamePropertyRetriever(
+      deps.bucketStore
+    ),
+    OpenSearchClient: unsupportedProperty,
+    ServiceClient: unsupportedProperty,
+    ServiceName: deps.serviceName,
+    ServiceSpec: unsupportedProperty,
+    ServiceType: ServiceType.OrchestratorWorker,
+    ServiceUrl: unsupportedProperty,
+    TaskToken: unsupportedProperty,
+  });
 
-      // ensure all of the logs have been sent.
-      await deps.logAgent?.flush();
+  return async (workflowTasks, baseTime = () => new Date()) => {
+    const result = await runExecutions(
+      workflowTasks,
+      (workflowName, executionId, events) => {
+        return orchestrateExecution(
+          workflowName,
+          executionId,
+          events,
+          baseTime(),
+          deps,
+          propertyRetriever
+        );
+      }
+    );
 
-      return {
-        failedExecutionIds: Object.keys(result.failedExecutions),
-      };
-    });
+    // ensure all of the logs have been sent.
+    await deps.logAgent?.flush();
+
+    return {
+      failedExecutionIds: Object.keys(result.failedExecutions),
+    };
   };
 }
 
-interface OrchestrateDependencies {
+interface OrchestratorDependencies {
+  /**
+   * Supports retrieval of the bucket physical name from within the workflow.
+   */
+  bucketStore: BucketStore;
   callExecutor: WorkflowCallExecutor;
   executionHistoryStore: ExecutionHistoryStore;
   executorProvider: ExecutorProvider<ExecutorRunContext>;
@@ -120,7 +152,8 @@ export async function orchestrateExecution(
   executionId: ExecutionID,
   events: WorkflowInputEvent[],
   executionTime: Date,
-  deps: OrchestrateDependencies
+  deps: OrchestratorDependencies,
+  propertyRetriever: AllPropertyRetriever
 ) {
   const metrics = initializeMetrics(
     deps.serviceName,
@@ -185,6 +218,7 @@ export async function orchestrateExecution(
         const executor = await getExecutor(
           workflow,
           executionId,
+          propertyRetriever,
           deps.logAgent
         );
 
@@ -215,7 +249,7 @@ export async function orchestrateExecution(
           LogLevel.DEBUG,
           () => [
             result
-              ? "Workflow returned a result with: " + JSON.stringify(result)
+              ? "Workflow returned a result with: " + resultToString(result)
               : "Workflow did not return a result.",
           ]
         );
@@ -226,26 +260,34 @@ export async function orchestrateExecution(
         );
 
         // try to execute all calls
-        const callEvents = (
-          await timed(metrics, OrchestratorMetrics.InvokeCallsDuration, () =>
-            Promise.all(
-              calls.map((call) =>
-                deps.callExecutor.executeCall(
-                  workflow,
-                  executionId,
-                  call,
-                  executionTime
-                )
-              )
+        await timed(metrics, OrchestratorMetrics.InvokeCallsDuration, () =>
+          Promise.all(
+            calls.map((call) =>
+              deps.callExecutor.executeForWorkflow(call.call, {
+                executionId,
+                executionTime,
+                seq: call.seq,
+                workflow,
+              })
             )
           )
-        ).filter((e): e is HistoryStateEvent => !!e);
+        );
 
         metrics?.putMetric(
           OrchestratorMetrics.CallsInvoked,
           calls.length,
           Unit.Count
         );
+
+        // the orchestrator generates events for each call, add them to the history.
+        const callEvents = calls
+          .flatMap((c) => c.event ?? [])
+          .map((event) =>
+            createEvent<CallEvent>(
+              { event, type: WorkflowEventType.CallEvent },
+              executionTime
+            )
+          );
 
         // register call events
         emitEvent(callEvents);
@@ -309,6 +351,7 @@ export async function orchestrateExecution(
   async function getExecutor(
     workflow: Workflow,
     executionId: string,
+    propertyRetriever: AllPropertyRetriever,
     logAgent?: LogAgent
   ): Promise<WorkflowExecutor<any, any, ExecutorRunContext>> {
     logAgent?.logWithContext({ executionId }, LogLevel.DEBUG, [
@@ -330,7 +373,8 @@ export async function orchestrateExecution(
 
         return new WorkflowExecutor<any, any, ExecutorRunContext>(
           workflow,
-          history
+          history,
+          propertyRetriever
         );
       })
     );
@@ -786,14 +830,18 @@ function generateSyntheticTimerEvents(
   }
   const events = executor.history;
   const activeCompleteTimerEvents = events.filter(
-    (event): event is TimerScheduled =>
-      isTimerScheduled(event) &&
-      executor.isEventualActive(event.seq) &&
-      new Date(event.untilTime).getTime() <= executionTime.getTime()
+    (event): event is CallEvent<TimerScheduled> =>
+      isCallEvent(event) &&
+      isTimerScheduled(event.event) &&
+      executor.isEventualActive(event.event.seq) &&
+      computeScheduleDate(
+        event.event.schedule,
+        new Date(event.timestamp)
+      ).getTime() <= executionTime.getTime()
   );
   return activeCompleteTimerEvents.map((event) =>
     createEvent<TimerCompleted>(
-      { type: WorkflowEventType.TimerCompleted, seq: event.seq },
+      { type: WorkflowEventType.TimerCompleted, seq: event.event.seq },
       executionTime
     )
   );

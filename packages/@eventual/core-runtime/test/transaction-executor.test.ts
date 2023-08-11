@@ -6,18 +6,16 @@ import {
   entity as _entity,
   event,
 } from "@eventual/core";
-import {
-  Result,
-  getEventualResource,
-  registerEntityHook,
-} from "@eventual/core/internal";
+import { getEventualResource } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { NoOpLocalEnvConnector } from "../src/local/local-container.js";
 import { LocalEntityStore } from "../src/local/stores/entity-store.js";
+import { UnsupportedPropertyRetriever } from "../src/property-retriever.js";
 import { GlobalEntityProvider } from "../src/providers/entity-provider.js";
+import { Result } from "../src/result.js";
 import { EntityStore } from "../src/stores/entity-store.js";
 import {
   TransactionExecutor,
@@ -53,6 +51,8 @@ let executor: TransactionExecutor;
 const entityProvider = new GlobalEntityProvider();
 const event1 = event("event1");
 
+const propertyRetriever = new UnsupportedPropertyRetriever("Transaction Test");
+
 beforeEach(() => {
   jest.resetAllMocks();
 
@@ -61,13 +61,12 @@ beforeEach(() => {
     entityProvider,
   });
 
-  registerEntityHook(store);
-
   executor = createTransactionExecutor(
     store,
     entityProvider,
     mockExecutionQueueClient,
-    mockEventClient
+    mockEventClient,
+    propertyRetriever
   );
 });
 

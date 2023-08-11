@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
 import { CommandSpec, isSourceLocation } from "../internal/service-spec.js";
 import type { ServiceContext } from "../service.js";
 import type { Middleware } from "./middleware.js";

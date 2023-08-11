@@ -1,29 +1,29 @@
 import {
-  EventualServiceClient,
-  ExecuteTransactionRequest,
-  ExecuteTransactionResponse,
-  Execution,
   ExecutionHandle,
-  ExecutionHistoryResponse,
-  ListExecutionEventsRequest,
-  ListExecutionEventsResponse,
-  ListExecutionsRequest,
-  ListExecutionsResponse,
-  ListWorkflowsResponse,
-  EmitEventsRequest,
-  SendTaskFailureRequest,
-  SendTaskHeartbeatResponse,
-  SendTaskSuccessRequest,
-  SendSignalRequest,
-  StartExecutionRequest,
-  Transaction,
-  Workflow,
+  type EmitEventsRequest,
+  type EventualServiceClient,
+  type ExecuteTransactionRequest,
+  type ExecuteTransactionResponse,
+  type Execution,
+  type ExecutionHistoryResponse,
+  type ListExecutionEventsRequest,
+  type ListExecutionEventsResponse,
+  type ListExecutionsRequest,
+  type ListExecutionsResponse,
+  type ListWorkflowsResponse,
+  type SendSignalRequest,
+  type SendTaskFailureRequest,
+  type SendTaskHeartbeatResponse,
+  type SendTaskSuccessRequest,
+  type StartExecutionRequest,
+  type Transaction,
+  type Workflow,
 } from "@eventual/core";
 import type {
   EventualService,
   SendTaskHeartbeatRequest,
 } from "@eventual/core/internal";
-import { HttpServiceClientProps } from "./base-http-client.js";
+import type { HttpServiceClientProps } from "./base-http-client.js";
 import { ServiceClient } from "./service-client.js";
 
 /**

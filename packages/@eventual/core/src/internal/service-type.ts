@@ -1,3 +1,5 @@
+import { PropertyKind, createEventualProperty } from "./properties.js";
+
 export enum ServiceType {
   CommandWorker = "CommandWorker",
   Subscription = "Subscription",
@@ -8,19 +10,12 @@ export enum ServiceType {
   TransactionWorker = "TransactionWorker",
 }
 
-// the hook is set by core-runtime. use the is[serviceType] functions to access this system.
-declare global {
-  // eslint-disable-next-line no-var
-  var serviceTypeHook: ServiceTypeHook;
-}
-
-export interface ServiceTypeHook {
-  default: boolean;
-  getServiceType(): ServiceType | undefined;
-}
-
 export function isServiceType(serviceType: ServiceType) {
-  return globalThis.serviceTypeHook?.getServiceType?.() === serviceType;
+  return (
+    tryGetEventualHook()?.getEventualProperty(
+      createEventualProperty(PropertyKind.ServiceType, {})
+    ) === serviceType
+  );
 }
 
 export function isTaskWorker() {

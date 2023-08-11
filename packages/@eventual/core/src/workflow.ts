@@ -3,26 +3,20 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import { EventualCallKind, createEventualCall } from "./internal/calls.js";
+import { CallKind, createCall } from "./internal/calls.js";
 import {
   EventualPromise,
   EventualPromiseSymbol,
 } from "./internal/eventual-hook.js";
+import { registerEventualResource } from "./internal/resources.js";
 import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+  PropertyKind,
+  createEventualProperty,
+  type ServiceClientProperty,
+} from "./internal/properties.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
-import {
-  HistoryStateEvent,
-  TimerCompleted,
-  TimerScheduled,
-  WorkflowEventType,
-  isTimerCompleted,
-  isTimerScheduled,
-} from "./internal/workflow-events.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
@@ -180,10 +174,10 @@ export function workflow<
     input?: any,
     options?: ChildWorkflowOptions
   ) => {
-    const hook = getEventualCallHook();
+    const hook = getEventualHook();
     const timeout = options?.timeout ?? opts?.timeout;
-    const eventual = hook.registerEventualCall(
-      createEventualCall(EventualCallKind.WorkflowCall, {
+    const eventual = hook.executeEventualCall(
+      createCall(CallKind.ChildWorkflowCall, {
         input,
         name,
         // if the timeout is a time or a duration, from any source, send the timeout to the child execution
@@ -198,20 +192,15 @@ export function workflow<
         // promise resolution.
         // TODO: support reporting cancellation to children when the parent times out?
         timeout: timeout && "then" in timeout ? timeout : undefined,
-      }),
-      () => {
-        throw new Error(
-          "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
-        );
-      }
+      })
     ) as EventualPromise<Output> & ChildExecution;
 
     // create a reference to the child workflow started at a sequence in this execution.
     // this reference will be resolved by the runtime.
     eventual.sendSignal = function (signal, payload?) {
       const signalId = typeof signal === "string" ? signal : signal.id;
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall(EventualCallKind.SendSignalCall, {
+      return getEventualHook().executeEventualCall(
+        createCall(CallKind.SendSignalCall, {
           payload,
           signalId,
           target: {
@@ -219,12 +208,7 @@ export function workflow<
             seq: eventual[EventualPromiseSymbol]!,
             workflowName: name,
           },
-        }),
-        () => {
-          throw new Error(
-            "Send Signal on a child workflow is only supported in a workflow."
-          );
-        }
+        })
       );
     };
 
@@ -234,7 +218,10 @@ export function workflow<
   Object.defineProperty(workflow, "name", { value: name, writable: false });
 
   workflow.startExecution = async function (input) {
-    const serviceClient = getServiceClient();
+    const serviceClient =
+      getEventualHook().getEventualProperty<ServiceClientProperty>(
+        createEventualProperty(PropertyKind.ServiceClient, {})
+      );
     return await serviceClient.startExecution<Workflow<Name, Input, Output>>({
       workflow: name,
       executionName: input.executionName,
@@ -249,46 +236,6 @@ export function workflow<
   workflow.kind = "Workflow";
 
   return registerEventualResource("Workflow", workflow);
-}
-
-/**
- * Generates synthetic events, for example, {@link TimerCompleted} events when the time has passed, but a real completed event has not come in yet.
- */
-export function generateSyntheticEvents(
-  events: HistoryStateEvent[],
-  baseTime: Date
-): TimerCompleted[] {
-  const unresolvedTimers: Record<number, TimerScheduled> = {};
-
-  const timerEvents = events.filter(
-    (event): event is TimerScheduled | TimerCompleted =>
-      isTimerScheduled(event) || isTimerCompleted(event)
-  );
-
-  for (const event of timerEvents) {
-    if (isTimerScheduled(event)) {
-      unresolvedTimers[event.seq] = event;
-    } else {
-      delete unresolvedTimers[event.seq];
-    }
-  }
-
-  const syntheticTimerComplete: TimerCompleted[] = Object.values(
-    unresolvedTimers
-  )
-    .filter(
-      (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
-    )
-    .map(
-      (e) =>
-        ({
-          type: WorkflowEventType.TimerCompleted,
-          seq: e.seq,
-          timestamp: baseTime.toISOString(),
-        } satisfies TimerCompleted)
-    );
-
-  return syntheticTimerComplete;
 }
 
 /**

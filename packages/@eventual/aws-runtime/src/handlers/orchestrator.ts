@@ -1,10 +1,10 @@
 import "@eventual/injected/entry";
 
 import {
+  createDefaultWorkflowCallExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
   RemoteExecutorProvider,
-  WorkflowCallExecutor,
 } from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
@@ -30,13 +30,14 @@ import { serviceName } from "../env.js";
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
 const orchestrate = createOrchestrator({
+  bucketStore: createBucketStore(),
   executionHistoryStore: createExecutionHistoryStore(),
   executorProvider: new RemoteExecutorProvider({
     executionHistoryStateStore: createExecutionHistoryStateStore(),
   }),
   logAgent: createLogAgent(),
   metricsClient: AWSMetricsClient,
-  callExecutor: new WorkflowCallExecutor({
+  callExecutor: createDefaultWorkflowCallExecutor({
     bucketStore: createBucketStore(),
     entityStore: createEntityStore(),
     eventClient: createEventClient(),

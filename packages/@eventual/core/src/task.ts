@@ -1,16 +1,19 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { EventualCallKind, createEventualCall } from "./internal/calls.js";
+import { sendTaskHeartbeat } from "./heartbeat.js";
+import { CallKind, createCall } from "./internal/calls.js";
 import type {
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
 import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+  PropertyKind,
+  createEventualProperty,
+  type TaskTokenProperty,
+} from "./internal/properties.js";
+import { registerEventualResource } from "./internal/resources.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
 import { isTaskWorker } from "./internal/service-type.js";
@@ -21,6 +24,13 @@ import type {
   SendTaskHeartbeatResponse,
 } from "./service-client.js";
 import { ServiceContext } from "./service.js";
+
+/**
+ * Heartbeat token request which has an optional task token.
+ */
+export interface SendTaskHeartbeatInternalRequest {
+  taskToken?: string;
+}
 
 export type TaskRuntimeProps = FunctionRuntimeProps;
 
@@ -158,15 +168,15 @@ export interface Task<Name extends string = string, Input = any, Output = any>
    * ```
    */
   sendTaskHeartbeat(
-    request: Omit<SendTaskHeartbeatRequest, "type">
+    request: SendTaskHeartbeatInternalRequest
   ): Promise<SendTaskHeartbeatResponse>;
 }
 
 export interface TaskHandler<Input = any, Output = any> {
   (input: Input, context: TaskContext):
     | Promise<Awaited<Output>>
-    | Output
-    | AsyncResult<Output>
+    | Awaited<Output>
+    | AsyncResult<Awaited<Output>>
     | Promise<AsyncResult<Awaited<Output>>>;
 }
 
@@ -179,7 +189,7 @@ export type TaskOutput<A extends Task<any, any>> = A extends Task<
   any,
   infer Output
 >
-  ? UnwrapAsync<Output>
+  ? UnwrapAsync<Awaited<Output>>
   : never;
 
 /**
@@ -217,13 +227,10 @@ export async function asyncResult<Output = any>(
   if (!isTaskWorker()) {
     throw new Error("asyncResult can only be called from within a task.");
   }
-  const taskContext = getEventualTaskRuntimeContext();
-  if (!taskContext) {
-    throw new Error(
-      "Task context has not been set yet, asyncResult can only be used from within a task."
-    );
-  }
-  await tokenContext(taskContext.invocation.token);
+  const taskToken = getEventualHook().getEventualProperty(
+    createEventualProperty<TaskTokenProperty>(PropertyKind.TaskToken, {})
+  );
+  await tokenContext(taskToken);
   return {
     [AsyncTokenSymbol]: AsyncTokenSymbol as typeof AsyncTokenSymbol & Output,
   };
@@ -275,10 +282,10 @@ export function task<Name extends string, Input = any, Output = any>(
   // register the handler to be looked up during execution.
   const func = (async (input, options) => {
     const timeout = options?.timeout ?? opts?.timeout;
-    const hook = getEventualCallHook();
+    const hook = getEventualHook();
 
-    return hook.registerEventualCall(
-      createEventualCall(EventualCallKind.TaskCall, {
+    return hook.executeEventualCall(
+      createCall(CallKind.TaskCall, {
         name,
         input,
         timeout: timeout
@@ -289,32 +296,29 @@ export function task<Name extends string, Input = any, Output = any>(
             : timeout
           : undefined,
         heartbeat: options?.heartbeatTimeout ?? opts?.heartbeatTimeout,
-      }),
-      async () => {
-        const runtimeContext = getEventualTaskRuntimeContext();
-        const context: TaskContext = {
-          task: {
-            name,
-          },
-          execution: runtimeContext.execution,
-          invocation: runtimeContext.invocation,
-          service: runtimeContext.service,
-        };
-        // calling the task from outside the orchestrator just calls the handler
-        return handler(input as Input, context);
-      }
+      })
     );
   }) as Task<Name, Input, Output>;
 
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendTaskSuccess = async function (request) {
-    return getServiceClient().sendTaskSuccess(request);
+    return getEventualHook().executeEventualCall(
+      createCall(CallKind.TaskRequestCall, {
+        operation: "sendTaskSuccess",
+        params: [request],
+      })
+    );
   };
   func.sendTaskFailure = async function (request) {
-    return getServiceClient().sendTaskFailure(request);
+    return getEventualHook().executeEventualCall(
+      createCall(CallKind.TaskRequestCall, {
+        operation: "sendTaskFailure",
+        params: [request],
+      })
+    );
   };
   func.sendTaskHeartbeat = async function (request) {
-    return getServiceClient().sendTaskHeartbeat(request);
+    return sendTaskHeartbeat(request.taskToken);
   };
   func.sourceLocation = sourceLocation;
 

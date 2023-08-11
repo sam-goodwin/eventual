@@ -14,7 +14,7 @@ import {
 } from "../clients/timer-client.js";
 import type { LogAgent } from "../log-agent.js";
 import type { TaskStore } from "../stores/task-store.js";
-import { createEvent } from "../workflow-events.js";
+import { createEvent } from "../workflow/events.js";
 
 interface TimerHandlerProps {
   timerClient: TimerClient;

@@ -1,5 +1,5 @@
-import type { EventualCall } from "./calls.js";
-import type { Result } from "./result.js";
+import type { Call, CallOutput } from "./calls.js";
+import type { Property, PropertyType } from "./properties.js";
 
 /**
  * Globals that may be overridden by the core-runtime. See matching core-runtime file to understand
@@ -10,28 +10,9 @@ import type { Result } from "./result.js";
  * will be overridden to return that hook (based on async scope.)
  */
 declare global {
-  export function getEventualCallHook(): EventualCallHook;
+  export function getEventualHook(): EventualHook;
+  export function tryGetEventualHook(): EventualHook | undefined;
 }
-
-export class PassThroughEventualHook implements EventualCallHook {
-  public registerEventualCall<
-    R,
-    E extends EventualCall | undefined = EventualCall | undefined
-  >(eventual: E, passThrough: (eventualCall: E) => Promise<R>) {
-    return passThrough(eventual) as unknown as EventualPromise<R>;
-  }
-
-  public resolveEventual(_seq: number, _result: Result<any>): void {
-    throw new Error("Cannot resolve an eventual in passthrough mode");
-  }
-}
-
-export const DEFAULT_HOOK = new PassThroughEventualHook();
-
-// default implementation of getEventualCallHook that does nothing.
-// to be overridden by the core-runtime as needed.
-// only set if it was not set before.
-globalThis.getEventualCallHook ??= () => DEFAULT_HOOK;
 
 export const EventualPromiseSymbol =
   /* @__PURE__ */ Symbol.for("Eventual:Promise");
@@ -43,13 +24,24 @@ export interface EventualPromise<R> extends Promise<R> {
   [EventualPromiseSymbol]: number;
 }
 
-export interface EventualCallHook {
-  registerEventualCall<
-    R,
-    E extends EventualCall | undefined = EventualCall | undefined
-  >(
-    eventual: E,
-    passThrough: (eventualCall: E) => Promise<R>
-  ): EventualPromise<R>;
-  resolveEventual(seq: number, result: Result<any>): void;
+globalThis.getEventualHook ??= () => {
+  throw new Error("Eventual Hook is not yet registered");
+};
+globalThis.tryGetEventualHook ??= () => {
+  return undefined;
+};
+
+export interface EventualHook {
+  /**
+   * Execute async operation.
+   */
+  executeEventualCall<E extends Call = Call>(
+    eventual: E
+  ): EventualPromise<Awaited<CallOutput<E>>>;
+  /**
+   * Retrieve constant properties.
+   */
+  getEventualProperty<P extends Property = Property>(
+    property: P
+  ): PropertyType<P>;
 }

@@ -1,17 +1,17 @@
 import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
   Entity,
-  entity,
   EventPayloadType,
   EventualError,
   Execution,
   ExecutionStatus,
   SubscriptionHandler,
-  task as _task,
   TaskHandler,
   Timeout,
-  workflow as _workflow,
   WorkflowHandler,
+  task as _task,
+  workflow as _workflow,
+  entity,
 } from "@eventual/core";
 import { getEventualResource } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
@@ -1004,7 +1004,7 @@ describe("long running tasks", () => {
       throw new Error("Expected task token to be set");
     }
 
-    await longRunningTask.sendTaskSuccess({
+    await env.sendTaskSuccess({
       taskToken,
       result: { value: "hi" },
     });

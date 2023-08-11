@@ -2,10 +2,9 @@ import { AnyCommand, api, command, HttpResponse } from "@eventual/core";
 import {
   assertNever,
   emitEventsRequestSchema,
-  EventualService,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+  EventualService,
   executeTransactionRequestSchema,
-  extendsError,
   isSendTaskFailureRequest,
   isSendTaskHeartbeatRequest,
   isSendTaskSuccessRequest,
@@ -26,6 +25,7 @@ import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
 import type { ExecutionStore } from "./stores/execution-store.js";
+import { extendsError } from "./utils.js";
 
 const withErrorHandling = api.use(async ({ next, context }) => {
   try {

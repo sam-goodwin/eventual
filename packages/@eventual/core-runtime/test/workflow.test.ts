@@ -1,13 +1,13 @@
 import {
-  TaskScheduled,
   TaskSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowStarted,
 } from "@eventual/core/internal";
-import { filterEvents } from "../src/workflow-events.js";
+import { filterEvents } from "../src/workflow/events.js";
 
 import "../src/workflow";
+import { taskScheduled } from "./call-util.js";
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,
@@ -18,19 +18,9 @@ const started1: WorkflowStarted = {
   context: { name: "" },
 };
 
-const scheduled2: TaskScheduled = {
-  type: WorkflowEventType.TaskScheduled,
-  name: "my-task",
-  seq: 0,
-  timestamp: "",
-};
+const scheduled2 = taskScheduled("my-task", 0);
 
-const scheduled4: TaskScheduled = {
-  type: WorkflowEventType.TaskScheduled,
-  name: "my-task",
-  seq: 1,
-  timestamp: "",
-};
+const scheduled4 = taskScheduled("my-task", 1);
 
 const completed3: TaskSucceeded = {
   type: WorkflowEventType.TaskSucceeded,

@@ -113,8 +113,6 @@ export class WorkflowService {
       "WorkflowService"
     );
 
-    // TODO: move in the table
-
     this.logGroup =
       props.overrides?.logGroup ??
       new LogGroup(props.serviceScope, "WorkflowExecutionLogs", {

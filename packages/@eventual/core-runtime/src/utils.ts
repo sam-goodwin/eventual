@@ -1,10 +1,11 @@
-import type {
+import {
   Attributes,
   BucketNotificationEvent,
   Entity,
   EntityCompositeKeyPart,
   EntityStreamItem,
   KeyTuple,
+  SystemError,
 } from "@eventual/core";
 import type {
   BucketNotificationHandlerSpec,
@@ -158,4 +159,87 @@ export async function streamToBuffer(stream: Readable) {
   }
 
   return Buffer.concat(chunks);
+}
+
+/**
+ * Returns a hash code from a string
+ * @param  {String} str The string to hash.
+ * @return {Number}    A 32bit integer
+ * @see http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+ * @see https://stackoverflow.com/a/8831937/968011
+ */
+export function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0, len = str.length; i < len; i++) {
+    const chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+}
+
+export function extendsError(err: unknown): err is Error {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    (err instanceof Error ||
+      ("prototype" in err &&
+        !!err.prototype &&
+        Object.prototype.isPrototypeOf.call(err.prototype, Error)))
+  );
+}
+
+export function extendsSystemError(err: unknown): err is SystemError {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    (err instanceof SystemError ||
+      ("prototype" in err &&
+        !!err.prototype &&
+        Object.prototype.isPrototypeOf.call(err.prototype, SystemError)))
+  );
+}
+
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+
+  // Ensure both are objects and are not null
+  if (
+    typeof a !== "object" ||
+    a === null ||
+    typeof b !== "object" ||
+    b === null
+  ) {
+    return false;
+  }
+
+  if (Array.isArray(a) === Array.isArray(b)) {
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      return a.every((v, i) => deepEqual(v, b[i]));
+    }
+  } else {
+    return false;
+  }
+
+  const keysA = Object.entries(a)
+    .filter(([, value]) => value !== undefined)
+    .map(([name]) => name);
+  const keysB = Object.entries(b)
+    .filter(([, value]) => value !== undefined)
+    .map(([name]) => name);
+
+  // Ensure both objects have the same number of properties
+  if (keysA.length !== keysB.length) return false;
+
+  // Check if every key-value pair in 'a' matches that in 'b'
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
 }

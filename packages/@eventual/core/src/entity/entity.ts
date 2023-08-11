@@ -1,12 +1,7 @@
 import { z } from "zod";
-import {
-  createEventualCall,
-  EntityCall,
-  EventualCallKind,
-} from "../internal/calls.js";
-import { getEntityHook } from "../internal/entity-hook.js";
+import { createCall, EntityCall, CallKind } from "../internal/calls.js";
 import { computeKeyDefinition, KeyDefinition } from "../internal/entity.js";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
 import {
   EntityIndexSpec,
   EntitySpec,
@@ -184,14 +179,18 @@ export interface Entity<
 
 export const Entity = {
   transactWrite: (items: EntityTransactItem[]): Promise<void> => {
-    return getEventualCallHook().registerEventualCall(
-      createEventualCall<EntityCall<"transact">>(EventualCallKind.EntityCall, {
-        operation: "transact",
-        items,
-      }),
-      async () => {
-        return getEntityHook().transactWrite(items);
-      }
+    return getEventualHook().executeEventualCall(
+      createCall<EntityCall<"transact">>(CallKind.EntityCall, {
+        operation: {
+          operation: "transact",
+          items: items.map((i) => {
+            return {
+              ...i,
+              entity: typeof i.entity === "string" ? i.entity : i.entity.name,
+            };
+          }),
+        },
+      })
     );
   },
 };
@@ -313,78 +312,49 @@ export function entity<
     indices,
     streams,
     get: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"get">>(EventualCallKind.EntityCall, {
-          operation: "get",
-          entityName: name,
-          params: args,
-        }),
-        async () => {
-          return getEntityHook().get(name, ...args) as Promise<Attr>;
-        }
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"get">>(CallKind.EntityCall, {
+          operation: { operation: "get", entityName: name, params: args },
+        })
       );
     },
     getWithMetadata: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"getWithMetadata">>(
-          EventualCallKind.EntityCall,
-          {
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"getWithMetadata">>(CallKind.EntityCall, {
+          operation: {
             operation: "getWithMetadata",
             entityName: name,
             params: args,
-          }
-        ),
-        async () => {
-          return getEntityHook().getWithMetadata(name, ...args);
-        }
+          },
+        })
       );
     },
     put: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"put">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "put",
-          params: args,
-        }),
-        async () => {
-          return getEntityHook().put(name, ...args);
-        }
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"put">>(CallKind.EntityCall, {
+          operation: { entityName: name, operation: "put", params: args },
+        })
       );
     },
     delete: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"delete">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "delete",
-          params: args,
-        }),
-        async () => {
-          return getEntityHook().delete(name, ...args);
-        }
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"delete">>(CallKind.EntityCall, {
+          operation: { entityName: name, operation: "delete", params: args },
+        })
       );
     },
     query: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"query">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "query",
-          params: args,
-        }),
-        async () => {
-          return getEntityHook().query(name, ...args);
-        }
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"query">>(CallKind.EntityCall, {
+          operation: { entityName: name, operation: "query", params: args },
+        })
       );
     },
     scan: (...args) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"scan">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "scan",
-          params: args,
-        }),
-        async () => {
-          return getEntityHook().scan(name, ...args);
-        }
+      return getEventualHook().executeEventualCall(
+        createCall<EntityCall<"scan">>(CallKind.EntityCall, {
+          operation: { entityName: name, operation: "scan", params: args },
+        })
       );
     },
     index: (...args) => {
@@ -408,41 +378,27 @@ export function entity<
         sort: indexOptions.sort,
         entityName: name,
         query: (...args) => {
-          return getEventualCallHook().registerEventualCall(
-            createEventualCall<EntityCall<"queryIndex">>(
-              EventualCallKind.EntityCall,
-              {
+          return getEventualHook().executeEventualCall(
+            createCall<EntityCall<"queryIndex">>(CallKind.EntityCall, {
+              operation: {
                 entityName: name,
                 indexName,
                 operation: "queryIndex",
                 params: args,
-              }
-            ),
-            () =>
-              getEntityHook().queryIndex(
-                name,
-                indexName,
-                ...(args as [any])
-              ) as any
+              },
+            })
           );
         },
         scan: (...args) => {
-          return getEventualCallHook().registerEventualCall(
-            createEventualCall<EntityCall<"scanIndex">>(
-              EventualCallKind.EntityCall,
-              {
+          return getEventualHook().executeEventualCall(
+            createCall<EntityCall<"scanIndex">>(CallKind.EntityCall, {
+              operation: {
                 entityName: name,
                 indexName,
                 operation: "scanIndex",
                 params: args,
-              }
-            ),
-            () =>
-              getEntityHook().scanIndex(
-                name,
-                indexName,
-                ...(args as [any])
-              ) as any
+              },
+            })
           );
         },
       };

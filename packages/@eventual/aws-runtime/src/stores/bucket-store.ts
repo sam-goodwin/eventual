@@ -8,7 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import {
+import type {
   Bucket,
   BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
@@ -24,10 +24,11 @@ import {
   PutBucketOptions,
 } from "@eventual/core";
 import {
-  BucketStore,
-  LazyValue,
   computeDurationSeconds,
   getLazy,
+  type BucketStore,
+  type LazyValue,
+  streamToBuffer,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -48,6 +49,7 @@ export interface AWSBucketStoreProps {
 
 export class AWSBucketStore implements BucketStore {
   constructor(private props: AWSBucketStoreProps) {}
+
   public async get(
     bucketName: string,
     key: string,
@@ -117,7 +119,8 @@ export class AWSBucketStore implements BucketStore {
       new PutObjectCommand({
         Bucket: this.physicalName(bucketName),
         Key: key,
-        Body: data,
+        // S3 requires the content length when given a stream, we'll just give them a buffer instead
+        Body: data instanceof Readable ? await streamToBuffer(data) : data,
         CacheControl: options?.cacheControl,
         ContentEncoding: options?.contentEncoding,
         ContentMD5: options?.contentMD5,

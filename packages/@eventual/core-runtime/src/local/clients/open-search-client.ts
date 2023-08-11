@@ -1,5 +1,5 @@
-import type { OpenSearchClient } from "@eventual/core";
 import { Client } from "@opensearch-project/opensearch";
+import { OpenSearchClient } from "../../clients/open-search-client.js";
 
 export class LocalOpenSearchClient implements OpenSearchClient {
   public get client(): Client {

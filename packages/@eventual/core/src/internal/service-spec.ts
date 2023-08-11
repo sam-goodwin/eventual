@@ -1,6 +1,7 @@
 import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
-import { Attributes } from "../entity/entity.js";
+import type { BucketOptions } from "../bucket.js";
+import type { Attributes } from "../entity/entity.js";
 import type {
   CompositeKeyPart,
   EntityCompositeKeyPart,
@@ -14,9 +15,8 @@ import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
-import { KeyDefinition } from "./entity.js";
+import type { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
-import { BucketOptions } from "../bucket.js";
 
 /**
  * Specification for an Eventual application
@@ -287,10 +287,4 @@ export interface EntityIndexSpec<Name extends string = string> {
 
 export interface TransactionSpec<Name extends string = string> {
   name: Name;
-}
-
-export interface EnvironmentManifest {
-  serviceName: string;
-  serviceSpec: ServiceSpec;
-  serviceUrl: string;
 }

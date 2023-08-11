@@ -1,4 +1,4 @@
-import {
+import type {
   Bucket,
   BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
@@ -15,9 +15,9 @@ import {
 } from "@eventual/core";
 import crypto from "crypto";
 import { Readable } from "stream";
-import { BucketStore } from "../../stores/bucket-store.js";
+import type { BucketStore } from "../../stores/bucket-store.js";
 import { streamToBuffer } from "../../utils.js";
-import { LocalEnvConnector } from "../local-container.js";
+import type { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
 export interface LocalBucketStoreProps {
@@ -37,8 +37,8 @@ export class LocalBucketStore implements BucketStore {
     >
   > = {};
 
-  // TODO: publish events for the stream
   constructor(private props: LocalBucketStoreProps) {}
+
   public async get(
     bucketName: string,
     key: string,

@@ -1,8 +1,9 @@
-import { ulid } from "ulidx";
-import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import {
+  CallKind,
+  createCall,
+  type SignalHandlerCall,
+} from "./internal/calls.js";
 import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
-import { getServiceClient } from "./internal/global.js";
-import { Result } from "./internal/result.js";
 import { SignalTargetType } from "./internal/signal.js";
 
 /**
@@ -171,14 +172,11 @@ export function expectSignal<SignalPayload = any>(
   signal: Signal<SignalPayload> | string,
   opts?: ExpectSignalOptions
 ): Promise<SignalPayload> {
-  return getEventualCallHook().registerEventualCall(
-    createEventualCall(EventualCallKind.ExpectSignalCall, {
+  return getEventualHook().executeEventualCall(
+    createCall(CallKind.ExpectSignalCall, {
       timeout: opts?.timeout,
       signalId: typeof signal === "string" ? signal : signal.id,
-    }),
-    () => {
-      throw new Error("expectSignal is only valid in a workflow");
-    }
+    })
   );
 }
 
@@ -215,24 +213,27 @@ export function onSignal<Payload>(
   signal: Signal<Payload> | string,
   handler: SignalHandlerFunction<Payload>
 ): SignalsHandler {
-  const hook = getEventualCallHook();
-  const eventualPromise = hook.registerEventualCall(
-    createEventualCall(EventualCallKind.RegisterSignalHandlerCall, {
-      signalId: typeof signal === "string" ? signal : signal.id,
-      handler,
-    }),
-    () => {
-      throw new Error("onSignal is only valid in a workflow");
-    }
+  const eventualPromise = getEventualHook().executeEventualCall(
+    createCall<SignalHandlerCall>(CallKind.SignalHandlerCall, {
+      operation: {
+        operation: "register",
+        signalId: typeof signal === "string" ? signal : signal.id,
+        handler,
+      },
+    })
   );
 
   // the signal handler call should not block
   return {
     dispose: function () {
-      // resolving the signal handler eventual makes it unable to accept new events.
-      hook.resolveEventual(
-        eventualPromise[EventualPromiseSymbol],
-        Result.resolved(undefined)
+      // disposing the signal handler eventual makes it unable to accept new events.
+      getEventualHook().executeEventualCall(
+        createCall<SignalHandlerCall>(CallKind.SignalHandlerCall, {
+          operation: {
+            operation: "dispose",
+            seq: eventualPromise[EventualPromiseSymbol],
+          },
+        })
       );
     },
   };
@@ -263,19 +264,11 @@ export function sendSignal<Payload = any>(
   ...args: SendSignalProps<Payload>
 ): Promise<void> {
   const [payload] = args;
-  return getEventualCallHook().registerEventualCall(
-    createEventualCall(EventualCallKind.SendSignalCall, {
+  return getEventualHook().executeEventualCall(
+    createCall(CallKind.SendSignalCall, {
       payload,
       signalId: typeof signal === "string" ? signal : signal.id,
       target: { type: SignalTargetType.Execution, executionId },
-    }),
-    () => {
-      return getServiceClient().sendSignal({
-        execution: executionId,
-        signal,
-        id: ulid(),
-        payload,
-      });
-    }
+    })
   );
 }

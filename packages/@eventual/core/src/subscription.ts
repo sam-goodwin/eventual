@@ -1,6 +1,6 @@
 import type { Event, EventPayload } from "./event.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
 

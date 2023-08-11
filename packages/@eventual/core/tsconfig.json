@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "lib/esm"
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src", "src/package.json", "src/internal/result.ts"],
   "exclude": ["lib", "node_modules"],
   "references": []
 }

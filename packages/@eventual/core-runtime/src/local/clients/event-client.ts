@@ -1,11 +1,14 @@
 import { EventEnvelope } from "@eventual/core";
 import { EventClient } from "../../clients/event-client.js";
-import { SubscriptionWorker } from "../../handlers/subscription-worker.js";
+import { LocalEnvConnector } from "../local-container.js";
 
 export class LocalEventClient implements EventClient {
-  constructor(private eventHandlerWorker: SubscriptionWorker) {}
+  constructor(private localConnector: LocalEnvConnector) {}
 
   public async emitEvents(...event: EventEnvelope[]): Promise<void> {
-    return await this.eventHandlerWorker(event);
+    this.localConnector.pushWorkflowTask({
+      kind: "EmittedEvents",
+      events: event,
+    });
   }
 }

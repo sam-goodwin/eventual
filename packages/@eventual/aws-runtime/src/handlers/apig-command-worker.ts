@@ -1,11 +1,13 @@
-import { EventualServiceClient, HttpMethod, HttpRequest } from "@eventual/core";
 import {
+  HttpMethod,
+  HttpRequest,
+  type EventualServiceClient,
+} from "@eventual/core";
+import {
+  createCommandWorker,
   getLazy,
-  LazyValue,
-  registerWorkerIntrinsics,
-  type CommandWorker,
+  type ApiHandlerDependencies,
 } from "@eventual/core-runtime";
-import type { ServiceSpec } from "@eventual/core/internal";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -19,17 +21,17 @@ import { Buffer } from "buffer";
  * Each webhook registers routes on the central router that
  * then handles the request.
  */
-export function createApiGCommandAdaptor({
-  commandWorker,
+export function createApiGCommandWorker({
   serviceClientBuilder,
   serviceSpec,
   serviceName: _serviceName,
+  ...deps
 }: {
-  commandWorker: CommandWorker;
-  serviceName: LazyValue<string>;
-  serviceSpec?: ServiceSpec;
   serviceClientBuilder?: (serviceUrl: string) => EventualServiceClient;
-}): APIGatewayProxyHandlerV2 {
+} & Omit<
+  ApiHandlerDependencies,
+  "serviceClient" | "serviceUrl"
+>): APIGatewayProxyHandlerV2 {
   const serviceName = getLazy(_serviceName);
   return async function (
     event: APIGatewayProxyEventV2
@@ -40,15 +42,17 @@ export function createApiGCommandAdaptor({
     const serviceClient = serviceClientBuilder
       ? serviceClientBuilder(serviceUrl)
       : undefined;
-    registerWorkerIntrinsics({
-      openSearchClient: undefined,
-      bucketStore: undefined,
-      entityStore: undefined,
+
+    const commandWorker = createCommandWorker({
+      bucketStore: deps.bucketStore,
+      entityStore: deps.entityStore,
+      openSearchClient: deps.openSearchClient,
       serviceClient,
       serviceSpec,
+      serviceName,
       serviceUrl,
-      serviceName: getLazy(serviceName),
     });
+
     const requestBody = event.body
       ? event.isBase64Encoded
         ? Buffer.from(event.body, "base64")

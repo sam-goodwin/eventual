@@ -19,20 +19,20 @@ import {
   task,
   time,
 } from "@eventual/core";
+import { SignalTargetType, type HistoryEvent } from "@eventual/core/internal";
 import {
-  HistoryEvent,
-  Result,
-  SignalTargetType,
-} from "@eventual/core/internal";
-import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
+  WorkflowExecutor,
+  WorkflowResult,
+} from "../src/workflow/workflow-executor.js";
 import {
   awaitTimerCall,
   childWorkflowCall,
-  eventsEmitted,
   emitEventCall,
+  eventsEmitted,
   sendSignalCall,
   signalReceived,
   signalSent,
+  signalSentChildTarget,
   taskCall,
   taskFailed,
   taskHeartbeatTimedOut,
@@ -46,9 +46,12 @@ import {
   workflowTimedOut,
 } from "./call-util.js";
 
-import "../src/workflow.js";
+import { Result, UnsupportedPropertyRetriever } from "../src/index.js";
+import "../src/workflow/workflow.js";
 
 const eventName = "hello world";
+
+const testPropertyRetriever = new UnsupportedPropertyRetriever("Test");
 
 const context: WorkflowContext = {
   workflow: {
@@ -107,7 +110,11 @@ async function execute<W extends Workflow>(
   history: HistoryEvent[],
   input: WorkflowInput<W>
 ) {
-  const executor = new WorkflowExecutor(workflow, history);
+  const executor = new WorkflowExecutor(
+    workflow,
+    history,
+    testPropertyRetriever
+  );
   return executor.start(input, context);
 }
 
@@ -192,10 +199,15 @@ test("should catch error of timing out Task", async () => {
   await expect(
     execute(
       myWorkflow,
-      [timerScheduled(0), timerCompleted(0), taskScheduled(myTask.name, 1)],
+      [
+        timerScheduled(0, time(testTime)),
+        timerCompleted(0),
+        taskScheduled(myTask.name, 1),
+      ],
       eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
+    result: undefined,
     calls: [taskCall("handle-error", new Timeout("Task Timed Out"), 2)],
   });
 });
@@ -225,7 +237,7 @@ test("timeout multiple tasks at once", async () => {
     execute(
       myWorkflow,
       [
-        timerScheduled(0),
+        timerScheduled(0, time(testTime)),
         taskScheduled(myTask.name, 1),
         taskScheduled(myTask.name, 2),
         timerCompleted(0),
@@ -294,7 +306,7 @@ test("should return final result", async () => {
         taskScheduled(myTask.name, 0),
         taskSucceeded("result", 0),
         taskScheduled(myTask0.name, 1),
-        timerScheduled(2),
+        timerScheduled(2, time(testTime)),
         taskScheduled(myTask2.name, 3),
         taskSucceeded("result-0", 1),
         timerCompleted(2),
@@ -532,10 +544,11 @@ test("should fail the workflow on uncaught user error after await", async () => 
     return "done";
   });
 
-  const executor = new WorkflowExecutor(wf, [
-    signalSent("parent", "mySignal", 2, 1),
-    timerScheduled(3),
-  ]);
+  const executor = new WorkflowExecutor(
+    wf,
+    [signalSent("parent", "mySignal", 2, 1), timerScheduled(3)],
+    testPropertyRetriever
+  );
 
   await executor.start({ name: "child", parentId: "parent" }, context);
 
@@ -556,7 +569,11 @@ test.skip("dangling promise failure", async () => {
     return "done";
   });
 
-  const executor = new WorkflowExecutor(wf, [taskScheduled(myTask.name, 0)]);
+  const executor = new WorkflowExecutor(
+    wf,
+    [taskScheduled(myTask.name, 0)],
+    testPropertyRetriever
+  );
 
   await executor.start(undefined, context);
 
@@ -579,7 +596,11 @@ test.skip("dangling promise failure with then", async () => {
     return "done";
   });
 
-  const executor = new WorkflowExecutor(wf, [taskScheduled(myTask.name, 0)]);
+  const executor = new WorkflowExecutor(
+    wf,
+    [taskScheduled(myTask.name, 0)],
+    testPropertyRetriever
+  );
 
   await executor.start(undefined, context);
 
@@ -600,7 +621,11 @@ test("dangling promise success", async () => {
     return "done";
   });
 
-  const executor = new WorkflowExecutor(wf, [taskScheduled(myTask.name, 0)]);
+  const executor = new WorkflowExecutor(
+    wf,
+    [taskScheduled(myTask.name, 0)],
+    testPropertyRetriever
+  );
 
   await executor.start(undefined, context);
 
@@ -736,7 +761,7 @@ test("should complete time", async () => {
   });
 
   await expect(
-    execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
+    execute(wf, [timerScheduled(0, time(now)), timerCompleted(0)], undefined)
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
     calls: [],
@@ -844,7 +869,7 @@ describe("temple of doom", () => {
       execute(
         doomWf,
         [
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
           timerCompleted(0),
@@ -866,7 +891,7 @@ describe("temple of doom", () => {
         [
           timerCompleted(0),
           taskSucceeded("anything", 2),
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
         ],
@@ -884,7 +909,7 @@ describe("temple of doom", () => {
       execute(
         doomWf,
         [
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
           taskSucceeded("anything", 2),
@@ -903,7 +928,7 @@ describe("temple of doom", () => {
       execute(
         doomWf,
         [
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskSucceeded("anything", 2),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
@@ -923,7 +948,7 @@ describe("temple of doom", () => {
         doomWf,
         [
           taskSucceeded("anything", 2),
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
         ],
@@ -940,7 +965,7 @@ describe("temple of doom", () => {
       execute(
         doomWf,
         [
-          timerScheduled(0),
+          timerScheduled(0, time(testTime)),
           taskScheduled("jump", 1),
           taskScheduled("run", 2),
           taskSucceeded("anything", 2),
@@ -1793,6 +1818,7 @@ describe("signals", () => {
       await expect(
         execute(wf, [], undefined)
       ).resolves.toMatchObject<WorkflowResult>({
+        result: undefined,
         calls: [awaitTimerCall(Schedule.duration(100 * 1000), 0)],
       });
     });
@@ -1807,7 +1833,14 @@ describe("signals", () => {
 
     test("match signal", async () => {
       await expect(
-        execute(wf, [timerScheduled(0), signalReceived("MySignal")], undefined)
+        execute(
+          wf,
+          [
+            timerScheduled(0, Schedule.duration(100 * 1000)),
+            signalReceived("MySignal"),
+          ],
+          undefined
+        )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
         calls: [],
@@ -1818,7 +1851,10 @@ describe("signals", () => {
       await expect(
         execute(
           wf,
-          [timerScheduled(0), signalReceived("MySignal", { done: true })],
+          [
+            timerScheduled(0, Schedule.duration(100 * 1000)),
+            signalReceived("MySignal", { done: true }),
+          ],
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
@@ -1829,7 +1865,11 @@ describe("signals", () => {
 
     test("timed out", async () => {
       await expect(
-        execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
+        execute(
+          wf,
+          [timerScheduled(0, Schedule.duration(100 * 1000)), timerCompleted(0)],
+          undefined
+        )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed(new Timeout("Expect Signal Timed Out")),
         calls: [],
@@ -1841,7 +1881,7 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(0),
+            timerScheduled(0, Schedule.duration(100 * 1000)),
             timerCompleted(0),
             signalReceived("MySignal", { done: true }),
           ],
@@ -1857,7 +1897,11 @@ describe("signals", () => {
       await expect(
         execute(
           wf,
-          [timerScheduled(0), signalReceived("MySignal"), timerCompleted(0)],
+          [
+            timerScheduled(0, Schedule.duration(100 * 1000)),
+            signalReceived("MySignal"),
+            timerCompleted(0),
+          ],
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
@@ -1871,7 +1915,7 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(0),
+            timerScheduled(0, Schedule.duration(100 * 1000)),
             signalReceived("MySignal"),
             signalReceived("MySignal"),
           ],
@@ -1899,8 +1943,8 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(0),
-            timerScheduled(2),
+            timerScheduled(0, Schedule.duration(100 * 1000)),
+            timerScheduled(2, Schedule.duration(100 * 1000)),
             signalReceived("MySignal", "done!!!"),
           ],
           undefined
@@ -1922,7 +1966,11 @@ describe("signals", () => {
       });
 
       await expect(
-        execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
+        execute(
+          wf,
+          [timerScheduled(0, Schedule.duration(100 * 1000)), timerCompleted(0)],
+          undefined
+        )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed({ name: "Timeout" }),
         calls: [],
@@ -1943,7 +1991,7 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(0),
+            timerScheduled(0, Schedule.duration(100 * 1000)),
             signalReceived("SomethingElse"),
             timerCompleted(0),
           ],
@@ -2013,10 +2061,10 @@ describe("signals", () => {
           wf,
           [
             signalReceived("MySignal"),
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            timerScheduled(3),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2038,10 +2086,10 @@ describe("signals", () => {
             signalReceived("MySignal"),
             signalReceived("MySignal"),
             signalReceived("MySignal"),
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            timerScheduled(3),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2060,13 +2108,13 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
             signalReceived("MySignal"),
             signalReceived("MySignal"),
             signalReceived("MySignal"),
-            timerScheduled(3),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2116,11 +2164,11 @@ describe("signals", () => {
           wf,
           [
             signalReceived("MyOtherSignal", "hi"),
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
             taskScheduled(myTask.name, 3),
-            timerScheduled(4),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2140,12 +2188,12 @@ describe("signals", () => {
           wf,
           [
             signalReceived("MyOtherSignal", "hi"),
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             taskScheduled(myTask.name, 3),
             taskSucceeded("task1", 3),
             timerCompleted(2),
-            timerScheduled(4),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2165,12 +2213,12 @@ describe("signals", () => {
           wf,
           [
             signalReceived("MyOtherSignal", "hi"),
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
             taskScheduled(myTask.name, 3),
             taskSucceeded("task1", 3),
-            timerScheduled(4),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2189,11 +2237,11 @@ describe("signals", () => {
         execute(
           wf,
           [
-            timerScheduled(2),
+            timerScheduled(2, time(testTime)),
             timerCompleted(2),
             signalReceived("MyOtherSignal", "hi"),
-            timerScheduled(3),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2287,14 +2335,14 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalSent("someExec", "MySignal", 0),
+            signalSent("someExecution/", "MySignal", 0),
             workflowScheduled(cwf.name, 1),
-            signalSent("someExecution/", "MySignal", 2),
+            signalSentChildTarget(cwf.name, 1, "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
           undefined
         )
-      ).resolves.toMatchObject(<WorkflowResult>{
+      ).resolves.toEqual(<WorkflowResult>{
         result: Result.resolved("done"),
         calls: [],
       });
@@ -2318,9 +2366,9 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalSent("someExec", "MySignal", 0),
+            signalSent("someExecution/", "MySignal", 0),
             workflowScheduled(cwf.name, 1),
-            signalSent("someExecution/", "MySignal", 2),
+            signalSentChildTarget(cwf.name, 1, "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
           undefined
@@ -2349,9 +2397,9 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalSent("someExec", "MySignal", 0),
+            signalSent("someExecution/", "MySignal", 0),
             workflowScheduled(cwf.name, 1),
-            signalSent("someExecution/", "MySignal", 2),
+            signalSentChildTarget(cwf.name, 1, "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
           undefined
@@ -2428,7 +2476,7 @@ describe("condition", () => {
     await expect(
       execute(
         signalConditionFlow,
-        [timerScheduled(1), signalReceived("Yes")],
+        [timerScheduled(1, duration(100, "seconds")), signalReceived("Yes")],
         undefined
       )
     ).resolves.toMatchObject<WorkflowResult>({
@@ -2442,7 +2490,7 @@ describe("condition", () => {
       execute(
         signalConditionFlow,
         [
-          timerScheduled(1),
+          timerScheduled(1, duration(100, "seconds")),
           signalReceived("No"),
           signalReceived("No"),
           signalReceived("No"),
@@ -2481,7 +2529,7 @@ describe("condition", () => {
     await expect(
       execute(
         signalConditionFlow,
-        [timerScheduled(1), timerCompleted(1)],
+        [timerScheduled(1, duration(100, "seconds")), timerCompleted(1)],
         undefined
       )
     ).resolves.toMatchObject<WorkflowResult>({
@@ -2494,7 +2542,11 @@ describe("condition", () => {
     await expect(
       execute(
         signalConditionFlow,
-        [timerScheduled(1), signalReceived("Yes"), timerCompleted(1)],
+        [
+          timerScheduled(1, duration(100, "seconds")),
+          signalReceived("Yes"),
+          timerCompleted(1),
+        ],
         undefined
       )
     ).resolves.toMatchObject<WorkflowResult>({
@@ -2507,7 +2559,11 @@ describe("condition", () => {
     await expect(
       execute(
         signalConditionFlow,
-        [timerScheduled(1), timerCompleted(1), signalReceived("Yes")],
+        [
+          timerScheduled(1, duration(100, "seconds")),
+          timerCompleted(1),
+          signalReceived("Yes"),
+        ],
         undefined
       )
     ).resolves.toMatchObject<WorkflowResult>({
@@ -2579,7 +2635,7 @@ test("mixing closure types", async () => {
 
   await expect(
     execute(workflow4, [], undefined)
-  ).resolves.toEqual<WorkflowResult>({
+  ).resolves.toMatchObject<WorkflowResult>({
     calls: [
       taskCall("hello", ["sam"], 0),
       taskCall("hello", ["chris"], 1),
@@ -2638,7 +2694,7 @@ test("mixing closure types", async () => {
       ],
       undefined
     )
-  ).resolves.toEqual<WorkflowResult>({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved([
       [1, 2, 3],
       [8, 10, 12],
@@ -2655,7 +2711,7 @@ test("workflow with synchronous function", async () => {
 
   await expect(
     execute(workflow4, [], undefined)
-  ).resolves.toEqual<WorkflowResult>({
+  ).resolves.toMatchObject<WorkflowResult>({
     calls: [taskCall(myTask.name, undefined, 0)],
   });
 
@@ -2665,7 +2721,7 @@ test("workflow with synchronous function", async () => {
       [taskScheduled(myTask.name, 0), taskSucceeded("result", 0)],
       undefined
     )
-  ).resolves.toEqual<WorkflowResult>({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved("result"),
     calls: [],
   });
@@ -2691,7 +2747,9 @@ test("emit event", async () => {
     },
   ];
 
-  await expect(execute(wf, [], undefined)).resolves.toEqual<WorkflowResult>({
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
     calls: [emitEventCall(events, 0)],
@@ -2699,7 +2757,7 @@ test("emit event", async () => {
 
   await expect(
     execute(wf, [eventsEmitted(events, 0)], undefined)
-  ).resolves.toEqual<WorkflowResult>({
+  ).resolves.toMatchObject<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
     calls: [],
@@ -2720,7 +2778,8 @@ test("many events at once", async () => {
     [...Array(100).keys()].flatMap((i) => [
       taskScheduled(myTask.name, i),
       taskSucceeded(undefined, i),
-    ])
+    ]),
+    testPropertyRetriever
   );
 
   await expect(
@@ -2733,17 +2792,21 @@ test("many events at once", async () => {
 
 describe("continue", () => {
   test("start a workflow with no events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, []);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [],
+      testPropertyRetriever
+    );
     await expect(
       executor.start(eventName, context)
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, eventName, 0)],
       result: undefined,
     });
 
     await expect(
       executor.continue(taskSucceeded("result", 0))
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [
         taskCall(myTask0.name, eventName, 1),
         awaitTimerCall(Schedule.time(testTime), 2),
@@ -2754,13 +2817,14 @@ describe("continue", () => {
   });
 
   test("start a workflow with events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, [
-      taskScheduled(myTask.name, 0),
-      taskSucceeded("result", 0),
-    ]);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [taskScheduled(myTask.name, 0), taskSucceeded("result", 0)],
+      testPropertyRetriever
+    );
     await expect(
       executor.start(eventName, context)
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [
         taskCall(myTask0.name, eventName, 1),
         awaitTimerCall(Schedule.time(testTime), 2),
@@ -2786,7 +2850,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], testPropertyRetriever);
 
     await executor.start(undefined, context);
 
@@ -2811,7 +2875,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], testPropertyRetriever);
 
     await executor.start(undefined, context);
 
@@ -2819,7 +2883,7 @@ describe("continue", () => {
       executor.continue(
         [...Array(100).keys()].map((i) => taskSucceeded(undefined, i))
       )
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [...Array(99).keys()].map((i) =>
         // commands are still emitted because normally the command would precede the events.
         // the first command is emitted during start
@@ -2844,7 +2908,8 @@ describe("continue", () => {
        * We will provide expected events, but will not consume them all until all of the
        * succeeded events are supplied.
        */
-      [...Array(100).keys()].map((i) => taskScheduled(myTask.name, i))
+      [...Array(100).keys()].map((i) => taskScheduled(myTask.name, i)),
+      testPropertyRetriever
     );
 
     await executor.start(undefined, context);
@@ -2860,14 +2925,18 @@ describe("continue", () => {
   });
 
   test("throws if previous run not complete", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, []);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [],
+      testPropertyRetriever
+    );
     const startPromise = executor.start(eventName, context);
     await expect(
       executor.continue(taskSucceeded("result", 0))
     ).rejects.toThrowError(
       "Workflow is already running, await the promise returned by the last start or complete call."
     );
-    await expect(startPromise).resolves.toEqual<WorkflowResult>({
+    await expect(startPromise).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, eventName, 0)],
       result: undefined,
     });
@@ -2877,7 +2946,7 @@ describe("continue", () => {
     ).rejects.toThrowError(
       "Workflow is already running, await the promise returned by the last start or complete call."
     );
-    await expect(continuePromise).resolves.toEqual<WorkflowResult>({
+    await expect(continuePromise).resolves.toMatchObject<WorkflowResult>({
       calls: [
         taskCall(myTask0.name, eventName, 1),
         awaitTimerCall(Schedule.time(testTime), 2),
@@ -2888,10 +2957,11 @@ describe("continue", () => {
   });
 
   test("filters duplicate events", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, [
-      taskScheduled(myTask.name, 0),
-      taskSucceeded("result", 0),
-    ]);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [taskScheduled(myTask.name, 0), taskSucceeded("result", 0)],
+      testPropertyRetriever
+    );
     await executor.start([eventName], context);
     await expect(
       executor.continue(taskSucceeded("result", 0))
@@ -2911,7 +2981,7 @@ describe("running after result", () => {
       return "hello?";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], testPropertyRetriever);
 
     await expect(
       executor.start(undefined, context)
@@ -2922,7 +2992,7 @@ describe("running after result", () => {
 
     await expect(
       executor.continue(signalReceived("signal1"))
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, undefined, 1)],
       result: Result.resolved("hello?"),
     });
@@ -2936,7 +3006,7 @@ describe("running after result", () => {
       throw Error("AHHH");
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], testPropertyRetriever);
 
     await expect(
       executor.start(undefined, context)
@@ -2947,7 +3017,7 @@ describe("running after result", () => {
 
     await expect(
       executor.continue(signalReceived("signal1"))
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, undefined, 1)],
       result: Result.failed(new Error("AHHH")),
     });
@@ -2969,18 +3039,18 @@ describe("running after result", () => {
       return "hello?";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], testPropertyRetriever);
 
     await expect(
       executor.start(undefined, context)
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask0.name, undefined, 1)],
       result: Result.resolved("hello?"),
     });
 
     await expect(
       executor.continue(signalReceived("signal1"))
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [...Array(10).keys()].map((i) =>
         taskCall(myTask.name, undefined, 2 + i)
       ),
@@ -3029,7 +3099,7 @@ describe("failures", () => {
         ],
         undefined
       )
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, undefined, 4)],
       result: Result.failed(Error("AHH")),
     });
@@ -3042,7 +3112,7 @@ describe("failures", () => {
         [taskScheduled(myTask.name, 0), taskSucceeded(undefined, 0)],
         undefined
       )
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask.name, undefined, 1)],
       result: Result.failed(Error("AHH")),
     });
@@ -3059,7 +3129,7 @@ describe("failures", () => {
         ],
         undefined
       )
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask0.name, undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
@@ -3088,7 +3158,7 @@ describe("failures", () => {
         ],
         undefined
       )
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask0.name, undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
@@ -3157,22 +3227,26 @@ describe("failures", () => {
   });
 
   test("with continue", async () => {
-    const executor = new WorkflowExecutor(signalWf, [
-      taskScheduled(myTask.name, 0),
-      taskSucceeded(undefined, 0),
-      signalReceived("signal"),
-    ]);
+    const executor = new WorkflowExecutor(
+      signalWf,
+      [
+        taskScheduled(myTask.name, 0),
+        taskSucceeded(undefined, 0),
+        signalReceived("signal"),
+      ],
+      testPropertyRetriever
+    );
 
     await expect(
       executor.start(undefined, context)
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask0.name, undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
 
     await expect(
       executor.continue(signalReceived("signal"))
-    ).resolves.toEqual<WorkflowResult>({
+    ).resolves.toMatchObject<WorkflowResult>({
       calls: [taskCall(myTask0.name, undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
@@ -3234,7 +3308,7 @@ describe("using then, catch, finally", () => {
           [signalSent("something", "signal", 0)],
           undefined
         )
-      ).resolves.toEqual<WorkflowResult>({
+      ).resolves.toMatchObject<WorkflowResult>({
         calls: [taskCall(myTask.name, undefined, 1)],
         result: Result.resolved("hi"),
       });
@@ -3387,7 +3461,7 @@ describe("using then, catch, finally", () => {
           [signalSent("something", "signal", 0)],
           undefined
         )
-      ).resolves.toEqual<WorkflowResult>({
+      ).resolves.toMatchObject<WorkflowResult>({
         calls: [taskCall(myTask.name, undefined, 1)],
         result: Result.resolved("hi"),
       });
@@ -3472,10 +3546,10 @@ describe("using then, catch, finally", () => {
             signalSent("something", "signal", 0),
             taskScheduled(myTask.name, 1),
             signalSent("something", "signal2", 2),
-            workflowScheduled(cwf.name, 3),
-            timerScheduled(4),
-            timerScheduled(6),
-            timerScheduled(8),
+            workflowScheduled(cwf.name, 3, "workflow1"),
+            timerScheduled(4, time(testTime)),
+            timerScheduled(6, time(testTime)),
+            timerScheduled(8, time(testTime)),
             taskScheduled(myTask0.name, 10), // from signal sent
             taskFailed("hi", 1), // succeed first task
             taskScheduled(myTask0.name, 11), // after first task
@@ -3496,7 +3570,7 @@ describe("using then, catch, finally", () => {
           ],
           undefined
         )
-      ).resolves.toEqual<WorkflowResult>({
+      ).resolves.toMatchObject<WorkflowResult>({
         calls: [],
         result: Result.resolved(["a", "b", "c", "d", "e", "f"]),
       });

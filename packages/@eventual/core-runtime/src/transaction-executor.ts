@@ -16,8 +16,6 @@ import {
 import {
   EventualPromise,
   EventualPromiseSymbol,
-  Result,
-  ServiceType,
   SignalTargetType,
   assertNever,
   isEmitEventsCall,
@@ -26,20 +24,20 @@ import {
   isSendSignalCall,
   type EmitEventsCall,
   type EntityOperation,
-  type EventualCallHook,
   type SendSignalCall,
 } from "@eventual/core/internal";
+import { CallExecutor } from "./call-executor.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
+import { type PropertyRetriever } from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
-import { isResolved } from "./result.js";
-import { serviceTypeScope } from "./service-type.js";
+import { Result, isResolved } from "./result.js";
 import {
-  type EntityStore,
-  type NormalizedEntityCompositeKey,
   convertNormalizedEntityKeyToMap,
   normalizeCompositeKey,
+  type EntityStore,
+  type NormalizedEntityCompositeKey,
 } from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
@@ -107,7 +105,8 @@ export function createTransactionExecutor(
   entityStore: EntityStore,
   entityProvider: EntityProvider,
   executionQueueClient: ExecutionQueueClient,
-  eventClient: EventClient
+  eventClient: EventClient,
+  propertyRetriever: PropertyRetriever
 ): TransactionExecutor {
   return async function <Input, Output>(
     transactionFunction: TransactionFunction<Input, Output>,
@@ -150,19 +149,20 @@ export function createTransactionExecutor(
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<string, TransactionEntityState>();
 
-      const eventualCallHook: EventualCallHook = {
-        registerEventualCall: (eventual): any => {
+      const eventualCallExecutor: CallExecutor = {
+        execute: (eventual) => {
           if (isEntityCall(eventual)) {
+            const operation = eventual.operation;
             if (
-              isEntityOperationOfType("put", eventual) ||
-              isEntityOperationOfType("delete", eventual)
+              isEntityOperationOfType("put", operation) ||
+              isEntityOperationOfType("delete", operation)
             ) {
               return createEventualPromise<
                 Awaited<ReturnType<Entity["delete"] | Entity["put"]>>
               >(async () => {
-                const entity = getEntity(eventual.entityName);
+                const entity = getEntity(operation.entityName);
                 // should either by the key or the value object, which can be used as the key
-                const key = eventual.params[0];
+                const key = operation.params[0];
                 const normalizedKey = normalizeCompositeKey(entity, key);
                 const entityValue = await resolveEntity(
                   entity.name,
@@ -181,7 +181,7 @@ export function createTransactionExecutor(
                  * If a set or delete has already been performed, we'll replace that operation with this one
                  * so we always use the original version.
                  */
-                const expectedVersion = eventual.params[1]?.expectedVersion;
+                const expectedVersion = operation.params[1]?.expectedVersion;
                 if (
                   expectedVersion &&
                   entityValue.originalVersion !== expectedVersion
@@ -191,13 +191,13 @@ export function createTransactionExecutor(
                   );
                 }
 
-                entityCalls.set(serializedKey, eventual);
-                if (isEntityOperationOfType("put", eventual)) {
+                entityCalls.set(serializedKey, operation);
+                if (isEntityOperationOfType("put", operation)) {
                   const newVersion = entityValue.originalVersion + 1;
                   retrievedEntities.set(serializedKey, {
-                    entityName: eventual.entityName,
+                    entityName: operation.entityName,
                     key: normalizedKey,
-                    currentValue: eventual.params[0],
+                    currentValue: operation.params[0],
                     currentVersion: newVersion,
                     originalVersion: entityValue.originalVersion,
                   });
@@ -205,7 +205,7 @@ export function createTransactionExecutor(
                 } else {
                   // delete - current value is undefined and current version is 0
                   retrievedEntities.set(serializedKey, {
-                    entityName: eventual.entityName,
+                    entityName: operation.entityName,
                     key: normalizedKey,
                     currentValue: undefined,
                     currentVersion: 0,
@@ -215,22 +215,22 @@ export function createTransactionExecutor(
                 }
               });
             } else if (
-              isEntityOperationOfType("get", eventual) ||
-              isEntityOperationOfType("getWithMetadata", eventual)
+              isEntityOperationOfType("get", operation) ||
+              isEntityOperationOfType("getWithMetadata", operation)
             ) {
               return createEventualPromise(async () => {
-                const entity = getEntity(eventual.entityName);
-                const [key, options] = eventual.params;
+                const entity = getEntity(operation.entityName);
+                const [key, options] = operation.params;
                 const value = await resolveEntity(
                   entity.name,
                   normalizeCompositeKey(entity, key),
                   options
                 );
 
-                if (isEntityOperationOfType("get", eventual)) {
+                if (isEntityOperationOfType("get", operation)) {
                   return value.currentValue;
                 } else if (
-                  isEntityOperationOfType("getWithMetadata", eventual)
+                  isEntityOperationOfType("getWithMetadata", operation)
                 ) {
                   return value.currentValue !== undefined
                     ? ({
@@ -239,7 +239,7 @@ export function createTransactionExecutor(
                       } satisfies EntityWithMetadata)
                     : undefined;
                 }
-                return assertNever(eventual);
+                return assertNever(operation);
               });
             }
           } else if (isEmitEventsCall(eventual)) {
@@ -253,19 +253,12 @@ export function createTransactionExecutor(
             `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
           );
         },
-        /**
-         * Not used
-         */
-        resolveEventual: () => undefined,
       };
 
-      const output = await serviceTypeScope(
-        ServiceType.TransactionWorker,
-        async () =>
-          await enterEventualCallHookScope(
-            eventualCallHook,
-            async () => await transactionFunction(input, transactionContext)
-          )
+      const output = await enterEventualCallHookScope(
+        eventualCallExecutor,
+        propertyRetriever,
+        async () => await transactionFunction(input, transactionContext)
       );
 
       /**

@@ -1,12 +1,9 @@
 import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
-  EnvironmentManifest,
+  type ServiceSpec,
   getEventualResources,
-  registerEnvironmentManifest,
-  registerServiceClient,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
-import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
 import { isTaskSendEventRequest } from "../handlers/task-fallback-handler.js";
@@ -20,9 +17,16 @@ import {
   LocalContainer,
   LocalEnvConnector,
   LocalEvent,
+  isLocalEmittedEvents,
   isLocalEntityStreamEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
+
+export interface EnvironmentManifest {
+  serviceName: string;
+  serviceSpec: ServiceSpec;
+  serviceUrl: string;
+}
 
 export class LocalEnvironment {
   private timeController: TimeController<LocalEvent>;
@@ -55,22 +59,6 @@ export class LocalEnvironment {
       serviceName: environmentManifest.serviceName,
       serviceUrl: environmentManifest.serviceUrl,
     });
-
-    const serviceClient = new RuntimeServiceClient({
-      taskClient: this.localContainer.taskClient,
-      eventClient: this.localContainer.eventClient,
-      executionHistoryStateStore:
-        this.localContainer.executionHistoryStateStore,
-      executionHistoryStore: this.localContainer.executionHistoryStore,
-      executionQueueClient: this.localContainer.executionQueueClient,
-      executionStore: this.localContainer.executionStore,
-      workflowClient: this.localContainer.workflowClient,
-      workflowProvider: this.localContainer.workflowProvider,
-      transactionClient: this.localContainer.transactionClient,
-    });
-
-    registerServiceClient(serviceClient);
-    registerEnvironmentManifest(environmentManifest);
 
     this.start();
   }
@@ -132,6 +120,7 @@ export class LocalEnvironment {
       const taskWorkerRequests = events.filter(isTaskWorkerRequest);
       const entityStreamItems = events.filter(isLocalEntityStreamEvent);
       const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
+      const localEmittedEvents = events.filter(isLocalEmittedEvents);
 
       // run all task requests, don't wait for a result
       taskWorkerRequests.forEach(async (request) => {
@@ -182,6 +171,11 @@ export class LocalEnvironment {
             handlerName: streamName,
           });
         });
+      });
+
+      // send all of the events to the subscription worker
+      localEmittedEvents.forEach((e) => {
+        this.localContainer.subscriptionWorker(e.events);
       });
 
       // run the orchestrator, but wait for a result.

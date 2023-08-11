@@ -1,8 +1,9 @@
 import type { EntityTransactItem } from "@eventual/core";
 import {
-  BucketRequest,
-  EntityOperation,
+  WorkflowCallHistoryType,
+  WorkflowEventType,
   isBucketRequest,
+  isCallEvent,
   isChildWorkflowScheduled,
   isEntityOperationOfType,
   isEntityRequest,
@@ -10,8 +11,9 @@ import {
   isSignalSent,
   isTaskScheduled,
   isTransactionRequest,
-  WorkflowEvent,
-  WorkflowEventType,
+  type BucketRequest,
+  type EntityOperation,
+  type WorkflowEvent,
 } from "@eventual/core/internal";
 import chalk from "chalk";
 import { formatTime } from "./time.js";
@@ -19,24 +21,47 @@ import { formatTime } from "./time.js";
 export function displayEvent(event: WorkflowEvent) {
   const lines: string[] = [
     `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(
-      WorkflowEventType[event.type]
-    )}${"seq" in event ? `(${event.seq})` : ""}`,
-    ...(isChildWorkflowScheduled(event) || isTaskScheduled(event)
-      ? [`Task Name: ${JSON.stringify(event.name)}`]
+      `${WorkflowEventType[event.type]}${
+        isCallEvent(event)
+          ? `-${chalk.blueBright(WorkflowCallHistoryType[event.event.type])}`
+          : ""
+      }`
+    )}${
+      "seq" in event
+        ? `(${event.seq})`
+        : isCallEvent(event)
+        ? `(${event.event.seq})`
+        : ""
+    }`,
+    ...(isCallEvent(event)
+      ? [
+          ...(isChildWorkflowScheduled(event.event) ||
+          isTaskScheduled(event.event)
+            ? [`Task Name: ${JSON.stringify(event.event.name)}`]
+            : []),
+          ...(isTransactionRequest(event.event)
+            ? [`Transaction Name: ${event.event.transactionName}`]
+            : []),
+          ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
+          ...((isChildWorkflowScheduled(event.event) ||
+            isTransactionRequest(event.event)) &&
+          event.event.input
+            ? [`Payload: ${JSON.stringify(event.event.input)}`]
+            : []),
+          ...(isSignalSent(event.event) && event.event.payload
+            ? [`Payload: ${JSON.stringify(event.event.payload)}`]
+            : []),
+          ...(isEntityRequest(event.event)
+            ? displayEntityCommand(event.event.operation)
+            : []),
+          ...(isBucketRequest(event.event)
+            ? displayBucketRequest(event.event)
+            : []),
+        ]
       : []),
-    ...(isTransactionRequest(event)
-      ? [`Transaction Name: ${event.transactionName}`]
-      : []),
-    ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
-    ...((isChildWorkflowScheduled(event) || isTransactionRequest(event)) &&
-    event.input
-      ? [`Payload: ${JSON.stringify(event.input)}`]
-      : []),
-    ...((isSignalReceived(event) || isSignalSent(event)) && event.payload
+    ...(isSignalReceived(event) && event.payload
       ? [`Payload: ${JSON.stringify(event.payload)}`]
       : []),
-    ...(isEntityRequest(event) ? displayEntityCommand(event.operation) : []),
-    ...(isBucketRequest(event) ? displayBucketRequest(event) : []),
     ...("result" in event ? [`Result: ${JSON.stringify(event.result)}`] : []),
     ...("output" in event ? [`Output: ${JSON.stringify(event.output)}`] : []),
     ...("error" in event
@@ -54,7 +79,9 @@ function displayEntityCommand(operation: EntityOperation) {
     output.push(
       ...operation.items.flatMap((item, i) => [
         `${i}:`,
-        ...displayEntityTransactItem(item).map((v) => `\t${v}`),
+        ...displayEntityTransactItem(item as EntityTransactItem).map(
+          (v) => `\t${v}`
+        ),
       ])
     );
   } else {
@@ -126,11 +153,6 @@ function displayBucketRequest(request: BucketRequest) {
   output.push(`Bucket: ${request.operation.bucketName}`);
   if (request.operation.operation === "put") {
     output.push(`Key: ${request.operation.key}`);
-    output.push(
-      `Data (encoded: ${request.operation.isBase64Encoded}): ${JSON.stringify(
-        request.operation.data
-      )}`
-    );
   } else {
     const [key] = request.operation.params;
     output.push(`Key: ${key}`);

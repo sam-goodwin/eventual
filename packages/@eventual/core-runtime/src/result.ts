@@ -1,11 +1,38 @@
-import {
-  extendsError,
-  Failed,
-  Resolved,
-  Result,
-  ResultKind,
-  ResultSymbol,
-} from "@eventual/core/internal";
+import { extendsError } from "./utils.js";
+
+export const ResultSymbol = /* @__PURE__ */ Symbol.for("eventual:Result");
+
+export type Result<T = any> = Resolved<T> | Failed;
+
+export const Result = {
+  resolved<T>(value: T): Resolved<T> {
+    return {
+      [ResultSymbol]: ResultKind.Resolved,
+      value,
+    };
+  },
+  failed(error: any): Failed {
+    return {
+      [ResultSymbol]: ResultKind.Failed,
+      error,
+    };
+  },
+};
+
+export enum ResultKind {
+  Resolved = 0,
+  Failed = 1,
+}
+
+export interface Resolved<T = any> {
+  [ResultSymbol]: ResultKind.Resolved;
+  value: T;
+}
+
+export interface Failed {
+  [ResultSymbol]: ResultKind.Failed;
+  error: any;
+}
 
 export function isResult(a: any): a is Result {
   return a && typeof a === "object" && ResultSymbol in a;
