@@ -55,11 +55,16 @@ import {
 } from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
-import { LazyInterface, lazyInterface } from "./proxy-construct";
+import { lazyInterface } from "./proxy-construct";
+import { EventualResource } from "./resource";
 import { SchedulerService } from "./scheduler-service";
 import { SearchService, SearchServiceOverrides } from "./search/search-service";
 import { ServerfulSearchService } from "./search/serverful-search-service";
 import { ServerlessSearchService } from "./search/serverless-search-service";
+import {
+  ServiceConstructProps,
+  WorkerServiceConstructProps,
+} from "./service-common";
 import {
   Subscription,
   SubscriptionOverrides,
@@ -314,6 +319,8 @@ export class Service<S = any> extends Construct {
     const proxyService = lazyInterface<Service<S>>();
     const proxyCommandService = lazyInterface<CommandService<S>>();
     const proxyBucketService = lazyInterface<BucketService<S>>();
+    const proxyEntityService = lazyInterface<EntityService<S>>();
+    const proxySearchService = lazyInterface<SearchService<S>>();
 
     const serviceConstructProps: ServiceConstructProps = {
       build,
@@ -323,6 +330,14 @@ export class Service<S = any> extends Construct {
       serviceScope,
       systemScope,
       eventualServiceScope,
+    };
+
+    const workerConstructProps: WorkerServiceConstructProps = {
+      ...serviceConstructProps,
+      bucketService: proxyBucketService,
+      commandService: proxyCommandService,
+      entityService: proxyEntityService,
+      searchService: proxySearchService,
     };
 
     this.eventService = new EventService(serviceConstructProps);
@@ -354,56 +369,47 @@ export class Service<S = any> extends Construct {
         });
       }
     }
+    if (this.searchService) {
+      proxySearchService._bind(this.searchService);
+    }
 
     const entityService = new EntityService<S>({
-      bucketService: proxyBucketService,
-      commandService: proxyCommandService,
       entityStreamOverrides: props.entityStreams,
       entityServiceOverrides: props.system?.entityService,
       eventService: this.eventService,
       workflowService: proxyWorkflowService,
-      searchService: this.searchService,
-      ...serviceConstructProps,
+      ...workerConstructProps,
     });
     this.entities = entityService.entities;
     this.entityStreams = entityService.entityStreams;
+    proxyEntityService._bind(entityService);
 
     this.bucketService = new BucketService({
-      ...serviceConstructProps,
+      ...workerConstructProps,
       cors: props.cors,
-      commandService: proxyCommandService,
-      entityService,
       bucketOverrides: props.buckets,
       bucketHandlerOverrides: props.bucketNotificationHandlers,
-      searchService: this.searchService,
     });
     proxyBucketService._bind(this.bucketService);
     this.buckets = this.bucketService.buckets;
     this.bucketNotificationHandlers = this.bucketService.bucketHandlers;
 
     const taskService = new TaskService<S>({
-      ...serviceConstructProps,
-      bucketService: proxyBucketService,
+      ...workerConstructProps,
       schedulerService: proxySchedulerService,
       workflowService: proxyWorkflowService,
-      commandsService: proxyCommandService,
       overrides: props.tasks,
       local: this.local,
-      entityService,
-      searchService: this.searchService,
     });
     proxyTaskService._bind(taskService);
     this.tasks = taskService.tasks;
 
     const workflowService = new WorkflowService({
       taskService,
-      searchService: this.searchService,
-      bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
-      entityService,
-      ...serviceConstructProps,
+      ...workerConstructProps,
     });
     proxyWorkflowService._bind(workflowService);
     this.workflowLogGroup = workflowService.logGroup;
@@ -416,17 +422,14 @@ export class Service<S = any> extends Construct {
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
-      bucketService: proxyBucketService,
       taskService,
       overrides: props.commands,
       eventService: this.eventService,
       workflowService,
       cors: props.cors,
       local: this.local,
-      entityService,
       openApi,
-      searchService: this.searchService,
-      ...serviceConstructProps,
+      ...workerConstructProps,
     });
     proxyCommandService._bind(this.commandService);
     this.commands = this.commandService.serviceCommands;
@@ -434,14 +437,10 @@ export class Service<S = any> extends Construct {
     this.specification = this.commandService.specification;
 
     this.subscriptions = new Subscriptions({
-      bucketService: proxyBucketService,
-      commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
-      searchService: this.searchService,
       local: this.local,
-      entityService,
-      ...serviceConstructProps,
+      ...workerConstructProps,
     });
 
     this.commandService.grantInvokeHttpServiceApi(accessRole);
@@ -764,34 +763,4 @@ export function runtimeHandlersEntrypoint(name: string) {
 
 export function runtimeEntrypoint() {
   return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
-}
-
-export interface ServiceConstructProps {
-  /**
-   * The built service describing the event subscriptions within the Service.
-   */
-  readonly build: BuildOutput;
-  /**
-   * Optional environment variables to add to the {@link EventService.defaultHandler}.
-   *
-   * @default - no extra environment variables
-   */
-  readonly environment?: Record<string, string>;
-  readonly service: LazyInterface<Service<any>>;
-  readonly serviceName: string;
-  readonly serviceScope: Construct;
-  readonly systemScope: Construct;
-  readonly eventualServiceScope: Construct;
-}
-
-export class EventualResource implements IGrantable {
-  public grantPrincipal: IPrincipal;
-  constructor(public handler: Function, local?: ServiceLocal) {
-    this.grantPrincipal = local
-      ? new DeepCompositePrincipal(
-          handler.grantPrincipal,
-          local.environmentRole
-        )
-      : handler.grantPrincipal;
-  }
 }

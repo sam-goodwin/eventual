@@ -33,15 +33,16 @@ import {
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
-import { CommandService } from "./command-service";
 import { EventService } from "./event-service.js";
 import { LazyInterface } from "./proxy-construct";
-import { SearchService } from "./search/search-service";
-import { EventualResource, ServiceConstructProps } from "./service";
+import {
+  configureWorkerCalls,
+  WorkerServiceConstructProps,
+} from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
+import { EventualResource } from "./resource.js";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -70,10 +71,8 @@ export type EntityStreamHandlerProps = Omit<
   "code" | "handler" | "functionName" | "events"
 >;
 
-export interface EntityServiceProps<Service> extends ServiceConstructProps {
-  bucketService: LazyInterface<BucketService<Service>>;
-  commandService: LazyInterface<CommandService<Service>>;
-  searchService: SearchService<Service> | undefined;
+export interface EntityServiceProps<Service>
+  extends WorkerServiceConstructProps {
   eventService: LazyInterface<EventService>;
   workflowService: LazyInterface<WorkflowService>;
   entityStreamOverrides?: EntityStreamOverrides<Service>;
@@ -105,7 +104,6 @@ export class EntityService<Service> {
           entity: d,
           entityService: this,
           serviceProps: props,
-          searchService: props.searchService,
         }),
       ])
     ) as ServiceEntities<Service>;
@@ -203,7 +201,6 @@ export class EntityService<Service> {
 }
 
 interface EntityProps {
-  searchService: SearchService<any> | undefined;
   serviceProps: EntityServiceProps<any>;
   entityService: EntityService<any>;
   entity: EntityRuntime;
@@ -379,14 +376,7 @@ export class EntityStream extends Construct implements EventualResource {
       overrides: props.serviceProps.entityStreamOverrides?.[streamName],
     });
 
-    // let the handler worker use the service client.
-    props.serviceProps.commandService.configureInvokeHttpServiceApi(
-      this.handler
-    );
-
-    props.serviceProps.bucketService.configureReadWriteBuckets(this.handler);
-    props.entityService.configureReadWriteEntityTable(this.handler);
-    props.serviceProps.searchService?.configureSearch(this.handler);
+    configureWorkerCalls(props.serviceProps, this.handler);
 
     this.grantPrincipal = this.handler.grantPrincipal;
 

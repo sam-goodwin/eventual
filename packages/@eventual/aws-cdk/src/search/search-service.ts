@@ -1,7 +1,7 @@
 import type aws_iam from "aws-cdk-lib/aws-iam";
 import type aws_lambda from "aws-cdk-lib/aws-lambda";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import type { ServiceConstructProps } from "../service";
+import type { ServiceConstructProps } from "../service-common";
 import type { ServiceEntityProps } from "../utils";
 import type { AccessOptions } from "./data-access-policy";
 import type { SearchIndex } from "./search-index";

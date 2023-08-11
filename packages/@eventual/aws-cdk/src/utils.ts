@@ -113,3 +113,19 @@ export function serviceBucketArn(
 export function formatBucketArn(bucketName: string) {
   return `arn:aws:s3:::${bucketName}`;
 }
+
+export function serviceQueueArn(
+  serviceName: string,
+  nameSuffix: string,
+  sanitized = true
+) {
+  return formatQueueArn(
+    sanitized
+      ? serviceFunctionName(serviceName, nameSuffix)
+      : `${serviceName}-${nameSuffix}`
+  );
+}
+
+export function formatQueueArn(queueName: string) {
+  return `arn:aws:sqs:::${queueName}`;
+}

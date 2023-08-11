@@ -1,7 +1,6 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
-import { RemovalPolicy } from "aws-cdk-lib/core";
 import {
   AttributeType,
   BillingMode,
@@ -21,6 +20,7 @@ import {
   IQueue,
   Queue,
 } from "aws-cdk-lib/aws-sqs";
+import { RemovalPolicy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { BucketService } from "./bucket-service";
 import {
@@ -32,15 +32,15 @@ import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
-import type { ServiceConstructProps } from "./service";
+import type { SearchService } from "./search/search-service";
+import { ServiceConstructProps } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
-import type { SearchService } from "./search/search-service";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
-  entityService: EntityService<any>;
-  searchService: SearchService<any> | undefined;
+  entityService: LazyInterface<EntityService<any>>;
+  searchService: LazyInterface<SearchService<any>> | undefined;
   eventService: EventService;
   overrides?: WorkflowServiceOverrides;
   schedulerService: LazyInterface<SchedulerService>;
@@ -451,7 +451,7 @@ export class WorkflowService {
     // allows writing logs to the service log stream
     this.configurePutWorkflowExecutionLogs(this.orchestrator);
     /**
-     * Command Executor
+     * Call Executor
      */
     // start child executions
     this.configureStartExecution(this.orchestrator);
@@ -466,20 +466,20 @@ export class WorkflowService {
      * Both
      */
     // orchestrator - Schedule workflow timeout
-    // command executor - handler timer commands
+    // command executor - handler timer calls
     this.props.schedulerService.configureScheduleTimer(this.orchestrator);
     /**
      * Access to service name in the orchestrator for metric logging
      */
     this.props.service.configureServiceName(this.orchestrator);
     /**
-     * Entity Commands
+     * Entity Calls
      */
     this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
     // transactions
     this.props.entityService.configureInvokeTransactions(this.orchestrator);
     /**
-     * Bucket Commands
+     * Bucket Call
      */
     this.props.bucketService.configureReadWriteBuckets(this.orchestrator);
   }

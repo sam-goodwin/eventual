@@ -8,7 +8,7 @@ import { Lazy, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import { grant } from "./grant";
-import { ServiceConstructProps } from "./service";
+import { ServiceConstructProps } from "./service-common";
 
 export type EventsProps = ServiceConstructProps;
 
