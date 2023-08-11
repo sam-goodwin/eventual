@@ -13,11 +13,11 @@ import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
-import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
 import { serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
+import { ServiceConstructProps } from "./service-common";
 
 export interface SchedulerProps extends ServiceConstructProps {
   /**

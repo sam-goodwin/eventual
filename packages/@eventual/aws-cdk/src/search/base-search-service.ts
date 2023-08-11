@@ -4,7 +4,7 @@ import type { Function } from "aws-cdk-lib/aws-lambda";
 import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { Duration, Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { ServiceConstructProps } from "../service";
+import type { ServiceConstructProps } from "../service-common";
 import type { ServiceEntityProps } from "../utils";
 import { SearchIndex } from "./search-index";
 import type {

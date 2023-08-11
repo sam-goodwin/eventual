@@ -6,21 +6,17 @@ import aws_iam from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";
-import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
-import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
-import type { LazyInterface } from "./proxy-construct";
-import type {
-  EventualResource,
-  ServiceConstructProps,
-  ServiceLocal,
-} from "./service";
+import type { ServiceLocal } from "./service";
+import {
+  WorkerServiceConstructProps,
+  configureWorkerCalls,
+} from "./service-common";
 import { ServiceFunction } from "./service-function";
 import type { ServiceEntityProps } from "./utils";
-import { SearchService } from "./search/search-service";
+import { EventualResource } from "./resource";
 
 export type Subscriptions<Service> = ServiceEntityProps<
   Service,
@@ -37,15 +33,9 @@ export type SubscriptionHandlerProps = Omit<
   "code" | "handler" | "functionName"
 >;
 
-export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
-  readonly bucketService: LazyInterface<BucketService<S>>;
-  readonly commandService: LazyInterface<CommandService>;
-  /**
-   * The Service's {@link EventService} repository.
-   */
-  readonly entityService: EntityService<S>;
+export interface SubscriptionsProps<S = any>
+  extends WorkerServiceConstructProps {
   readonly eventService: EventService;
-  readonly searchService: SearchService<S> | undefined;
   readonly local: ServiceLocal | undefined;
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
@@ -89,25 +79,10 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
-      props.searchService?.configureSearch(handler);
-
+      configureWorkerCalls(props, handler);
+      // unlike the other workers which use the service client
+      // the subscription client directly calls the event clint
       props.eventService.configureEmit(handler);
-
-      // allows the access to all of the operations on the injected service client
-      props.service.configureForServiceClient(handler);
-
-      // allow http access to the service client
-      props.commandService.configureInvokeHttpServiceApi(handler);
-      /**
-       * Entity operations
-       */
-      props.entityService.configureReadWriteEntityTable(handler);
-      // transactions
-      props.entityService.configureInvokeTransactions(handler);
-      /**
-       * Bucket Operations
-       */
-      props.bucketService.configureReadWriteBuckets(handler);
     });
   }
 } as any;

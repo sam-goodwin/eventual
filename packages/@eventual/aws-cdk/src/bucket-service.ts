@@ -1,3 +1,4 @@
+import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import type { BucketRuntimeOverrides } from "@eventual/aws-runtime";
 import {
   bucketServiceBucketName,
@@ -8,20 +9,20 @@ import type {
   BucketNotificationHandlerFunction,
   BucketRuntime,
 } from "@eventual/core-runtime";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { CommandService, CorsOptions } from "./command-service";
-import type { EntityService } from "./entity-service";
-import type { LazyInterface } from "./proxy-construct";
-import type { EventualResource, ServiceConstructProps } from "./service";
+import type { CorsOptions } from "./command-service";
+import {
+  configureWorkerCalls,
+  WorkerServiceConstructProps,
+} from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
-import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
-import type { SearchService } from "./search/search-service";
+import { EventualResource } from "./resource";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<
@@ -56,13 +57,11 @@ export type BucketNotificationHandlerFunctionProps = Omit<
   "code" | "handler" | "functionName" | "events"
 >;
 
-export interface BucketServiceProps<Service> extends ServiceConstructProps {
+export interface BucketServiceProps<Service>
+  extends WorkerServiceConstructProps {
   bucketOverrides?: BucketOverrides<Service>;
   bucketHandlerOverrides?: BucketNotificationHandlerOverrides<Service>;
-  commandService: LazyInterface<CommandService<Service>>;
   cors?: CorsOptions;
-  entityService: LazyInterface<EntityService<Service>>;
-  searchService: LazyInterface<SearchService<Service>> | undefined;
 }
 
 export class BucketService<Service> {
@@ -167,7 +166,7 @@ export interface IBucket {
   handlers: Record<string, BucketNotificationHandler>;
 }
 
-class Bucket extends Construct {
+class Bucket extends Construct implements IBucket {
   public bucket: s3.Bucket;
   public handlers: Record<string, BucketNotificationHandler>;
 
@@ -295,15 +294,7 @@ export class BucketNotificationHandler
     });
 
     // let the handler worker use the service client.
-    props.serviceProps.commandService.configureInvokeHttpServiceApi(
-      this.handler
-    );
-    props.serviceProps.searchService?.configureSearch(this.handler);
-
-    props.bucketService.configureReadWriteBuckets(this.handler);
-    props.serviceProps.entityService.configureReadWriteEntityTable(
-      this.handler
-    );
+    configureWorkerCalls(props.serviceProps, this.handler);
 
     this.grantPrincipal = this.handler.grantPrincipal;
   }

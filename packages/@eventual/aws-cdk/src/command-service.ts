@@ -26,23 +26,20 @@ import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
-import { BucketService } from "./bucket-service.js";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi } from "./constructs/spec-http-api";
-import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
-import { LazyInterface } from "./proxy-construct.js";
+import { EventualResource } from "./resource.js";
+import { ServiceLocal } from "./service";
 import {
-  EventualResource,
-  ServiceConstructProps,
-  ServiceLocal,
-} from "./service";
+  WorkerServiceConstructProps,
+  configureWorkerCalls,
+} from "./service-common.js";
 import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
-import type { SearchService } from "./search/search-service.js";
 
 export type Commands<Service> = {
   default: EventualResource;
@@ -87,17 +84,15 @@ export interface CorsOptions {
   readonly maxAge?: Duration;
 }
 
-export interface CommandsProps<Service = any> extends ServiceConstructProps {
-  bucketService: LazyInterface<BucketService<Service>>;
+export interface CommandsProps<Service = any>
+  extends WorkerServiceConstructProps {
   cors?: CorsOptions;
-  entityService: EntityService<Service>;
   eventService: EventService;
   local: ServiceLocal | undefined;
   openApi: {
     info: openapi.InfoObject;
   };
   overrides?: CommandProps<Service>;
-  searchService?: SearchService<Service>;
   taskService: TaskService<Service>;
   workflowService: WorkflowService;
 }
@@ -399,19 +394,7 @@ export class CommandService<Service = any> {
   }
 
   private configureApiHandler(handler: Function) {
-    // The handlers are given an instance of the service client.
-    // Allow them to access any of the methods on the service client by default.
-    this.props.service.configureForServiceClient(handler);
-    this.grantInvokeHttpServiceApi(handler);
-    // Entity operations
-    this.props.entityService.configureReadWriteEntityTable(handler);
-    this.props.entityService.configureInvokeTransactions(
-      this.systemCommandsHandler
-    );
-    // Bucket Operations
-    this.props.bucketService.configureReadWriteBuckets(handler);
-    // Search operations
-    this.props.searchService?.configureSearch(handler);
+    configureWorkerCalls(this.props, handler);
   }
 
   private configureSystemCommandHandler() {

@@ -11,23 +11,20 @@ import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";
-import type { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
-import type { EntityService } from "./entity-service";
 import { grant } from "./grant";
 import type { LazyInterface } from "./proxy-construct";
 import type { SchedulerService } from "./scheduler-service";
-import type {
-  EventualResource,
-  ServiceConstructProps,
-  ServiceLocal,
-} from "./service";
+import type { ServiceLocal } from "./service";
+import {
+  WorkerServiceConstructProps,
+  configureWorkerCalls,
+} from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
-import type { SearchService } from "./search/search-service";
+import { EventualResource } from "./resource";
 
 export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 
@@ -35,11 +32,7 @@ export type TaskOverrides<Service> = {
   default?: TaskHandlerProps;
 } & Partial<ServiceEntityProps<Service, "Task", TaskHandlerProps>>;
 
-export interface TasksProps<Service> extends ServiceConstructProps {
-  readonly bucketService: LazyInterface<BucketService<Service>>;
-  readonly commandsService: LazyInterface<CommandService<Service>>;
-  readonly searchService: LazyInterface<SearchService<Service>> | undefined;
-  readonly entityService: EntityService<Service>;
+export interface TasksProps<Service> extends WorkerServiceConstructProps {
   readonly local: ServiceLocal | undefined;
   readonly overrides?: TaskOverrides<Service>;
   readonly schedulerService: LazyInterface<SchedulerService>;
@@ -218,31 +211,17 @@ export class TaskService<Service = any> {
   private configureTaskWorker(func: Function) {
     // claim tasks
     this.configureWriteTasks(func);
+    configureWorkerCalls(this.props, func);
     // report result back to the execution
     this.props.workflowService.configureSubmitExecutionEvents(func);
     // send logs to the execution log stream
     this.props.workflowService.configurePutWorkflowExecutionLogs(func);
     // start heartbeat monitor
     this.props.schedulerService.configureScheduleTimer(func);
-
-    // allows access to any of the injected service client operations.
+    // access the runtime service client
     this.props.service.configureForServiceClient(func);
-    this.props.commandsService.configureInvokeHttpServiceApi(func);
-    /**
-     * Access to service name in the task worker for metrics logging
-     */
+
     this.props.service.configureServiceName(func);
-    /**
-     * Entity operations
-     */
-    this.props.entityService.configureReadWriteEntityTable(func);
-    // transactions
-    this.props.entityService.configureInvokeTransactions(func);
-    /**
-     * Bucket operations
-     */
-    this.props.bucketService.configureReadWriteBuckets(func);
-    this.props.searchService?.configureSearch(func);
   }
 
   private configureTaskFallbackHandler() {
