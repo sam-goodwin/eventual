@@ -56,6 +56,13 @@ import {
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { lazyInterface } from "./proxy-construct";
+import {
+  IQueue,
+  QueueHandler,
+  QueueOverrides,
+  QueueService,
+  ServiceQueues,
+} from "./queue-service";
 import { EventualResource } from "./resource";
 import { SchedulerService } from "./scheduler-service";
 import { SearchService, SearchServiceOverrides } from "./search/search-service";
@@ -140,6 +147,10 @@ export interface ServiceProps<Service = any> {
    */
   buckets?: BucketOverrides<Service>;
   /**
+   * Override the properties of the queues within the service.
+   */
+  queues?: QueueOverrides<Service>;
+  /**
    * Override the properties of an bucket streams within the service.
    */
   bucketNotificationHandlers?: BucketNotificationHandlerOverrides<Service>;
@@ -219,6 +230,10 @@ export class Service<S = any> extends Construct {
    */
   public readonly buckets: ServiceBuckets<S>;
   /**
+   * Queues defined by the service.
+   */
+  public readonly queues: ServiceQueues<S>;
+  /**
    * Handlers of bucket notification events defined by the service.
    */
   public readonly bucketNotificationHandlers: ServiceBucketNotificationHandlers<S>;
@@ -253,6 +268,7 @@ export class Service<S = any> extends Construct {
   public subscriptionsPrincipal: IPrincipal;
   public entityStreamsPrincipal: IPrincipal;
   public bucketNotificationHandlersPrincipal: IPrincipal;
+  public queueHandlersPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
 
@@ -320,6 +336,7 @@ export class Service<S = any> extends Construct {
     const proxyCommandService = lazyInterface<CommandService<S>>();
     const proxyBucketService = lazyInterface<BucketService<S>>();
     const proxyEntityService = lazyInterface<EntityService<S>>();
+    const proxyQueueService = lazyInterface<QueueService<S>>();
     const proxySearchService = lazyInterface<SearchService<S>>();
 
     const serviceConstructProps: ServiceConstructProps = {
@@ -337,6 +354,7 @@ export class Service<S = any> extends Construct {
       bucketService: proxyBucketService,
       commandService: proxyCommandService,
       entityService: proxyEntityService,
+      queueService: proxyQueueService,
       searchService: proxySearchService,
     };
 
@@ -443,6 +461,13 @@ export class Service<S = any> extends Construct {
       ...workerConstructProps,
     });
 
+    const queueService = new QueueService({
+      ...workerConstructProps,
+      queueOverrides: props.queues,
+    });
+    proxyQueueService._bind(queueService);
+    this.queues = queueService.queues;
+
     this.commandService.grantInvokeHttpServiceApi(accessRole);
     workflowService.grantFilterLogEvents(accessRole);
 
@@ -496,6 +521,13 @@ export class Service<S = any> extends Construct {
             ...this.bucketNotificationHandlersList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
+    this.queueHandlersPrincipal =
+      this.queueHandlersList.length > 0 || this.local
+        ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.queueHandlersList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.tasksPrincipal,
@@ -536,6 +568,10 @@ export class Service<S = any> extends Construct {
 
   public get bucketNotificationHandlersList(): BucketNotificationHandler[] {
     return Object.values(this.bucketNotificationHandlers);
+  }
+
+  public get queueHandlersList(): QueueHandler[] {
+    return Object.values<IQueue>(this.queues).map((q) => q.handler);
   }
 
   public subscribe(

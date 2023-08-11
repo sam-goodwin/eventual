@@ -5,6 +5,7 @@ import { BuildOutput } from "./build";
 import { CommandService } from "./command-service";
 import { EntityService } from "./entity-service";
 import { LazyInterface } from "./proxy-construct";
+import { QueueService } from "./queue-service";
 import { SearchService } from "./search/search-service";
 import { Service } from "./service";
 
@@ -32,6 +33,7 @@ export interface ServiceConstructProps {
  * Should match the calls that are supported by the {@link createEventualWorker} function.
  */
 export interface WorkerServiceConstructProps extends ServiceConstructProps {
+  queueService: LazyInterface<QueueService<Service>>;
   commandService: LazyInterface<CommandService<Service>>;
   bucketService: LazyInterface<BucketService<Service>>;
   entityService: LazyInterface<EntityService<Service>>;
@@ -44,6 +46,7 @@ export function configureWorkerCalls(
 ) {
   serviceProps.commandService.configureInvokeHttpServiceApi(func);
   serviceProps.searchService?.configureSearch(func);
+  serviceProps.queueService.configureSendMessage(func);
   serviceProps.bucketService.configureReadWriteBuckets(func);
   serviceProps.entityService.configureReadWriteEntityTable(func);
   serviceProps.entityService.configureInvokeTransactions(func);
