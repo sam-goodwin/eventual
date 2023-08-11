@@ -187,29 +187,25 @@ export class LocalEnvironment {
       const queuesToPoll = Array.from(
         new Set(localQueuePollEvents.map((s) => s.queueName))
       );
-      queuesToPoll.forEach((queueName) => {
-        const queue = this.localContainer.queueProvider.getQueue(queueName);
+      queuesToPoll.forEach(async (queueName) => {
         const messages =
           this.localContainer.queueClient.receiveMessages(queueName);
-        queue?.handlers.forEach(async (h) => {
-          const result = await this.localContainer.queueHandlerWorker(
+        const result = await this.localContainer.queueHandlerWorker(
+          queueName,
+          messages
+        );
+
+        const messagesToDelete = result
+          ? messages.filter((m) => result.failedMessageIds.includes(m.id))
+          : messages;
+
+        // when a queue message is handled without error, delete it.
+        messagesToDelete.forEach((m) =>
+          this.localContainer.queueClient.deleteMessage(
             queueName,
-            h.name,
-            messages
-          );
-
-          const messagesToDelete = result
-            ? messages.filter((m) => result.failedMessageIds.includes(m.id))
-            : messages;
-
-          // when a queue message is handled without error, delete it.
-          messagesToDelete.forEach((m) =>
-            this.localContainer.queueClient.deleteMessage(
-              queueName,
-              m.receiptHandle
-            )
-          );
-        });
+            m.receiptHandle
+          )
+        );
       });
     }
   }

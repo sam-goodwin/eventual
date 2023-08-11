@@ -24,7 +24,6 @@ export const ENV_NAMES = {
   ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
   ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
   QUEUE_NAME: "EVENTUAL_QUEUE_NAME",
-  QUEUE_HANDLER_NAME: "EVENTUAL_QUEUE_HANDLER_NAME",
   BUCKET_NAME: "EVENTUAL_BUCKET_NAME",
   BUCKET_HANDLER_NAME: "EVENTUAL_BUCKET_HANDLER_NAME",
   TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
@@ -70,7 +69,6 @@ export const entityStreamName = () => tryGetEnv(ENV_NAMES.ENTITY_STREAM_NAME);
 export const bucketName = () => tryGetEnv(ENV_NAMES.BUCKET_NAME);
 export const bucketHandlerName = () => tryGetEnv(ENV_NAMES.BUCKET_HANDLER_NAME);
 export const queueName = () => tryGetEnv(ENV_NAMES.QUEUE_NAME);
-export const queueHandlerName = () => tryGetEnv(ENV_NAMES.QUEUE_HANDLER_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);
 export const bucketOverrides = () => {

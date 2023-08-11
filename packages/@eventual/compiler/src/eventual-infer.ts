@@ -9,7 +9,6 @@ import {
   getEventualResources,
   type BucketNotificationHandlerSpec,
   type CommandSpec,
-  type QueueHandlerSpec,
   type QueueSpec,
   type ServiceSpec,
 } from "@eventual/core/internal";
@@ -175,19 +174,11 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       (q) =>
         ({
           name: q.name,
-          handlers: q.handlers.map(
-            (h) =>
-              ({
-                name: h.name,
-                queueName: q.name,
-                options: h.options,
-                batch: h.batch,
-                fifo: h.fifo,
-                sourceLocation: h.sourceLocation,
-              } satisfies QueueHandlerSpec)
-          ),
-          message: q.message ? generateSchema(q.message) : undefined,
           fifo: q.fifo,
+          handler: {
+            sourceLocation: q.handler.sourceLocation,
+            options: q.handler.options,
+          },
         } satisfies QueueSpec)
     ),
   };

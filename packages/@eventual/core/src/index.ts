@@ -11,7 +11,7 @@ export * from "./http-method.js";
 export * from "./http/index.js";
 export * from "./infer.js";
 export * from "./logging.js";
-export * from "./queue/index.js";
+export * from "./queue.js";
 export * from "./schedule.js";
 export * from "./search/index.js";
 export * from "./secret.js";

@@ -311,19 +311,15 @@ export interface QueueHandlerOptions extends FunctionRuntimeProps {
   batchingWindow?: DurationSchedule;
 }
 
-export interface QueueHandlerSpec<Name extends string = string> {
-  name: Name;
-  queueName: string;
+export interface QueueHandlerSpec {
   options?: QueueHandlerOptions;
-  batch: boolean;
-  fifo: boolean;
   sourceLocation?: SourceLocation;
 }
 
 export interface QueueSpec<Name extends string = string> {
   name: Name;
-  handlers: QueueHandlerSpec[];
+  handler: QueueHandlerSpec;
   fifo: boolean;
-  message?: openapi.SchemaObject;
+  contentBasedDeduplication?: boolean;
   visibilityTimeout?: DurationSchedule;
 }

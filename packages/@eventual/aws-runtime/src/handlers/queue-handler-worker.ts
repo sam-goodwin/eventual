@@ -15,12 +15,7 @@ import {
   createQueueClient,
   createServiceClient,
 } from "../create.js";
-import {
-  queueHandlerName,
-  queueName,
-  serviceName,
-  serviceUrl,
-} from "../env.js";
+import { queueName, serviceName, serviceUrl } from "../env.js";
 
 const worker = createQueueHandlerWorker({
   queueClient: createQueueClient(),
@@ -48,11 +43,7 @@ export default <SQSHandler>(async (event) => {
           sent: new Date(r.attributes.SentTimestamp),
         } satisfies FifoQueueHandlerMessageItem | QueueHandlerMessageItem)
     );
-  const result = await worker(
-    getLazy(queueName),
-    getLazy(queueHandlerName),
-    items
-  );
+  const result = await worker(getLazy(queueName), items);
   if (result) {
     return {
       batchItemFailures: result.failedMessageIds.map(

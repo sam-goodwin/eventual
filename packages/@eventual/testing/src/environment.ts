@@ -449,31 +449,25 @@ export class TestEnvironment extends RuntimeServiceClient {
           this.localContainer.subscriptionWorker(e.events)
         ),
         ...queuesToPoll.map(async (queueName) => {
-          const queue = this.localContainer.queueProvider.getQueue(queueName);
           const messages =
             this.localContainer.queueClient.receiveMessages(queueName);
+          const result = await this.localContainer.queueHandlerWorker(
+            queueName,
+            messages
+          );
+
+          const messagesToDelete = result
+            ? messages.filter((m) => result.failedMessageIds.includes(m.id))
+            : messages;
+
+          // when a queue message is handled without error, delete it.
           await Promise.all(
-            queue?.handlers.map(async (h) => {
-              const result = await this.localContainer.queueHandlerWorker(
+            messagesToDelete.map((m) =>
+              this.localContainer.queueClient.deleteMessage(
                 queueName,
-                h.name,
-                messages
-              );
-
-              const messagesToDelete = result
-                ? messages.filter((m) => result.failedMessageIds.includes(m.id))
-                : messages;
-
-              // when a queue message is handled without error, delete it.
-              await Promise.all(
-                messagesToDelete.map((m) =>
-                  this.localContainer.queueClient.deleteMessage(
-                    queueName,
-                    m.receiptHandle
-                  )
-                )
-              );
-            }) ?? []
+                m.receiptHandle
+              )
+            )
           );
         }),
       ]

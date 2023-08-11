@@ -7,13 +7,12 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { Execution, ExecutionHandle } from "../execution.js";
-import { FifoContentBasedDeduplication, FifoQueue } from "../queue/fifo.js";
-import type { Queue } from "../queue/queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";
+import { FifoContentBasedDeduplication, FifoQueue, Queue } from "../queue.js";
 
 export type Call =
   | AwaitTimerCall
@@ -233,7 +232,7 @@ export type QueueMethod = Exclude<
   {
     [k in keyof Queue]: Queue[k] extends Function ? k : never;
   }[keyof Queue],
-  "forEach" | "forEachBatch" | undefined
+  "handler" | undefined
 >;
 
 export interface QueueCall<Op extends QueueMethod = QueueMethod>
