@@ -18,7 +18,7 @@ type QueueClientBase = {
 };
 
 export abstract class QueueClient implements QueueClientBase {
-  constructor(private queueProvider: QueueProvider) {}
+  constructor(protected queueProvider: QueueProvider) {}
 
   public abstract sendMessage(
     operation: QueueSendMessageOperation

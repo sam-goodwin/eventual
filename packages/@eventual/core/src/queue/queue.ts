@@ -127,6 +127,12 @@ export interface Queue<Name extends string = string, Message = any>
 
 export interface QueueOptions<Message = any> {
   message?: z.Schema<Message>;
+  /**
+   * The default visibility timeout for messages in the queue.
+   *
+   * @default Schedule.duration(30, "seconds")
+   */
+  visibilityTimeout?: DurationSchedule;
 }
 
 export function queue<Name extends string = string, Message = any>(
@@ -143,6 +149,7 @@ export function queue<Name extends string = string, Message = any>(
     handlers,
     name,
     fifo: false,
+    visibilityTimeout: options?.visibilityTimeout,
     message: options?.message,
     sendMessage(message, options) {
       return getEventualHook().executeEventualCall(

@@ -28,6 +28,7 @@ import {
   isBucketNotificationEvent,
   isLocalEmittedEvents,
   isLocalEntityStreamEvent,
+  isLocalQueuePollEvent,
   isTaskSendEventRequest,
   isTaskWorkerRequest,
   isTimerRequest,
@@ -379,6 +380,11 @@ export class TestEnvironment extends RuntimeServiceClient {
     const entityStreamItems = events.filter(isLocalEntityStreamEvent);
     const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
     const localEmittedEvents = events.filter(isLocalEmittedEvents);
+    const localQueuePollEvents = events.filter(isLocalQueuePollEvent);
+
+    const queuesToPoll = Array.from(
+      new Set(localQueuePollEvents.map((s) => s.queueName))
+    );
 
     await Promise.all(
       // run all task requests, don't wait for a result
@@ -442,6 +448,34 @@ export class TestEnvironment extends RuntimeServiceClient {
         ...localEmittedEvents.map((e) =>
           this.localContainer.subscriptionWorker(e.events)
         ),
+        ...queuesToPoll.map(async (queueName) => {
+          const queue = this.localContainer.queueProvider.getQueue(queueName);
+          const messages =
+            this.localContainer.queueClient.receiveMessages(queueName);
+          await Promise.all(
+            queue?.handlers.map(async (h) => {
+              const result = await this.localContainer.queueHandlerWorker(
+                queueName,
+                h.name,
+                messages
+              );
+
+              const messagesToDelete = result
+                ? messages.filter((m) => result.failedMessageIds.includes(m.id))
+                : messages;
+
+              // when a queue message is handled without error, delete it.
+              await Promise.all(
+                messagesToDelete.map((m) =>
+                  this.localContainer.queueClient.deleteMessage(
+                    queueName,
+                    m.receiptHandle
+                  )
+                )
+              );
+            }) ?? []
+          );
+        }),
       ]
     );
   }

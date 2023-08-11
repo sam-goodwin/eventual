@@ -1,7 +1,7 @@
 import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
-  type ServiceSpec,
   getEventualResources,
+  type ServiceSpec,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
@@ -19,6 +19,7 @@ import {
   LocalEvent,
   isLocalEmittedEvents,
   isLocalEntityStreamEvent,
+  isLocalQueuePollEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
 
@@ -121,6 +122,7 @@ export class LocalEnvironment {
       const entityStreamItems = events.filter(isLocalEntityStreamEvent);
       const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
       const localEmittedEvents = events.filter(isLocalEmittedEvents);
+      const localQueuePollEvents = events.filter(isLocalQueuePollEvent);
 
       // run all task requests, don't wait for a result
       taskWorkerRequests.forEach(async (request) => {
@@ -180,6 +182,35 @@ export class LocalEnvironment {
 
       // run the orchestrator, but wait for a result.
       await this.localContainer.orchestrator(workflowTasks);
+
+      // check to see if any queues have messages to process
+      const queuesToPoll = Array.from(
+        new Set(localQueuePollEvents.map((s) => s.queueName))
+      );
+      queuesToPoll.forEach((queueName) => {
+        const queue = this.localContainer.queueProvider.getQueue(queueName);
+        const messages =
+          this.localContainer.queueClient.receiveMessages(queueName);
+        queue?.handlers.forEach(async (h) => {
+          const result = await this.localContainer.queueHandlerWorker(
+            queueName,
+            h.name,
+            messages
+          );
+
+          const messagesToDelete = result
+            ? messages.filter((m) => result.failedMessageIds.includes(m.id))
+            : messages;
+
+          // when a queue message is handled without error, delete it.
+          messagesToDelete.forEach((m) =>
+            this.localContainer.queueClient.deleteMessage(
+              queueName,
+              m.receiptHandle
+            )
+          );
+        });
+      });
     }
   }
 

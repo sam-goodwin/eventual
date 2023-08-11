@@ -325,4 +325,5 @@ export interface QueueSpec<Name extends string = string> {
   handlers: QueueHandlerSpec[];
   fifo: boolean;
   message?: openapi.SchemaObject;
+  visibilityTimeout?: DurationSchedule;
 }

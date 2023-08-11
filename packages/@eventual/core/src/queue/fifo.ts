@@ -174,6 +174,7 @@ export function fifoQueue<Name extends string = string, Message = any>(
     handlers,
     name,
     fifo: true,
+    visibilityTimeout: options?.visibilityTimeout,
     message: options?.message,
     sendMessage(message, sendOptions) {
       const messageGroupId =

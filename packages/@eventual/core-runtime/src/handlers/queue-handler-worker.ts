@@ -15,7 +15,7 @@ import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
 export type QueueHandlerDependencies = WorkerIntrinsicDeps;
 
-export interface QueueHandler {
+export interface QueueHandlerWorker {
   (
     queueName: string,
     handlerName: string,
@@ -25,7 +25,7 @@ export interface QueueHandler {
 
 export function createQueueHandlerWorker(
   dependencies: QueueHandlerDependencies
-): QueueHandler {
+): QueueHandlerWorker {
   return createEventualWorker(
     { serviceType: ServiceType.QueueHandlerWorker, ...dependencies },
     async (queueName, handlerName, items) => {
