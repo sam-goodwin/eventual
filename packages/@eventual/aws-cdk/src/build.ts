@@ -1,11 +1,12 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { BuildManifest } from "@eventual/core-runtime";
+import { BuildManifest, QueueRuntime } from "@eventual/core-runtime";
 import {
   BucketNotificationHandlerSpec,
   CommandSpec,
   EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
-  ServiceType,
+  QueueHandlerSpec,
+  QueueSpec,
   SubscriptionSpec,
   TaskSpec,
 } from "@eventual/core/internal";
@@ -70,6 +71,17 @@ export interface BuildAWSRuntimeProps {
   };
 }
 
+const WORKER_ENTRY_POINTS = [
+  "orchestrator",
+  "task-worker",
+  "command-worker",
+  "subscription-worker",
+  "entity-stream-worker",
+  "bucket-handler-worker",
+  "queue-handler-worker",
+  "transaction-worker",
+] as const;
+
 export async function buildService(request: BuildAWSRuntimeProps) {
   const outDir = request.outDir;
   const serviceSpec = await infer(request.entry, request.openApi);
@@ -82,16 +94,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec, null, 2));
 
   const [
-    [
-      // bundle the default handlers first as we refer to them when bundling all of the individual handlers
-      orchestrator,
-      monoTaskFunction,
-      monoCommandFunction,
-      monoSubscriptionFunction,
-      monoEntityStreamWorkerFunction,
-      monoBucketHandlerWorkerFunction,
-      transactionWorkerFunction,
-    ],
+    monolithFunctions,
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
       taskFallbackHandler,
@@ -119,7 +122,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     subscriptions,
     commands,
     commandDefault: {
-      entry: monoCommandFunction!,
+      entry: monolithFunctions["command-worker"],
       spec: {
         name: "default",
       },
@@ -142,9 +145,20 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         }))
       ),
     },
+    queues: {
+      queues: await Promise.all(
+        serviceSpec.queues.map(
+          async (q) =>
+            ({
+              ...q,
+              handler: await bundleQueueHandler(q),
+            } satisfies QueueRuntime)
+        )
+      ),
+    },
     system: {
       entityService: {
-        transactionWorker: { entry: transactionWorkerFunction! },
+        transactionWorker: { entry: monolithFunctions["transaction-worker"] },
       },
       taskService: {
         fallbackHandler: { entry: taskFallbackHandler! },
@@ -192,7 +206,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
       workflowService: {
         orchestrator: {
-          entry: orchestrator!,
+          entry: monolithFunctions.orchestrator!,
         },
       },
     },
@@ -207,14 +221,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return await Promise.all(
       commandSpecs.map(async (spec) => {
         return {
-          entry: await bundleFile(
-            specPath,
-            spec,
-            "command",
-            "command-worker",
-            spec.name,
-            monoCommandFunction!
-          ),
+          entry: await bundleFile(spec, "command", "command-worker", spec.name),
           spec,
         };
       })
@@ -226,12 +233,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
-            specPath,
             spec,
             "subscription",
             "subscription-worker",
-            spec.name,
-            monoSubscriptionFunction!
+            spec.name
           ),
           spec,
         };
@@ -243,14 +248,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
-          entry: await bundleFile(
-            specPath,
-            spec,
-            "task",
-            "task-worker",
-            spec.name,
-            monoTaskFunction!
-          ),
+          entry: await bundleFile(spec, "task", "task-worker", spec.name),
           spec,
         };
       })
@@ -262,12 +260,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
-            specPath,
             spec,
             "entity-streams",
             "entity-stream-worker",
-            spec.name,
-            monoEntityStreamWorkerFunction!
+            spec.name
           ),
           spec,
         };
@@ -280,12 +276,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
-            specPath,
             spec,
             "bucket-handlers",
             "bucket-handler-worker",
-            spec.name,
-            monoBucketHandlerWorkerFunction!
+            spec.name
           ),
           spec,
         };
@@ -293,15 +287,25 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
+  async function bundleQueueHandler(spec: QueueSpec) {
+    return {
+      entry: await bundleFile(
+        spec.handler,
+        "queue-handlers",
+        "queue-handler-worker",
+        spec.name
+      ),
+      spec: spec.handler,
+    };
+  }
+
   async function bundleFile<
-    Spec extends CommandSpec | SubscriptionSpec | TaskSpec
+    Spec extends CommandSpec | SubscriptionSpec | TaskSpec | QueueHandlerSpec
   >(
-    specPath: string,
     spec: Spec,
     pathPrefix: string,
-    entryPoint: string,
-    name: string,
-    monoFunction: string
+    entryPoint: (typeof WORKER_ENTRY_POINTS)[number],
+    name: string
   ): Promise<string> {
     return spec.sourceLocation?.fileName
       ? // we know the source location of the command, so individually build it from that
@@ -315,48 +319,26 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           injectedEntry: spec.sourceLocation.fileName,
           injectedServiceSpec: specPath,
         })
-      : monoFunction;
+      : monolithFunctions[entryPoint];
   }
 
-  function bundleMonolithDefaultHandlers(specPath: string) {
-    return Promise.all(
-      [
-        {
-          name: ServiceType.OrchestratorWorker,
-          entry: runtimeHandlersEntrypoint("orchestrator"),
-        },
-        {
-          name: ServiceType.TaskWorker,
-          entry: runtimeHandlersEntrypoint("task-worker"),
-        },
-        {
-          name: ServiceType.CommandWorker,
-          entry: runtimeHandlersEntrypoint("command-worker"),
-        },
-        {
-          name: ServiceType.Subscription,
-          entry: runtimeHandlersEntrypoint("subscription-worker"),
-        },
-        {
-          name: ServiceType.EntityStreamWorker,
-          entry: runtimeHandlersEntrypoint("entity-stream-worker"),
-        },
-        {
-          name: ServiceType.BucketNotificationHandlerWorker,
-          entry: runtimeHandlersEntrypoint("bucket-handler-worker"),
-        },
-        {
-          name: ServiceType.TransactionWorker,
-          entry: runtimeHandlersEntrypoint("transaction-worker"),
-        },
-      ]
-        .map((s) => ({
-          ...s,
-          injectedEntry: request.entry,
-          injectedServiceSpec: specPath,
-        }))
-        .map(buildFunction)
-    );
+  async function bundleMonolithDefaultHandlers(specPath: string) {
+    return Object.fromEntries(
+      await Promise.all(
+        WORKER_ENTRY_POINTS.map(
+          async (name) =>
+            [
+              name,
+              await buildFunction({
+                entry: runtimeHandlersEntrypoint(name),
+                name,
+                injectedEntry: request.entry,
+                injectedServiceSpec: specPath,
+              }),
+            ] as const
+        )
+      )
+    ) as Record<(typeof WORKER_ENTRY_POINTS)[number], string>;
   }
 
   function bundleEventualSystemFunctions(specPath: string) {
