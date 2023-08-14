@@ -1,7 +1,7 @@
 import {
   type FifoQueueHandlerMessageItem,
   type QueueHandlerContext,
-  type QueueHandlerMessageItem,
+  type StandardQueueHandlerMessageItem,
 } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { getLazy } from "../utils.js";
@@ -12,7 +12,7 @@ export type QueueHandlerDependencies = WorkerIntrinsicDeps;
 export interface QueueHandlerWorker {
   (
     queueName: string,
-    items: (FifoQueueHandlerMessageItem | QueueHandlerMessageItem)[]
+    items: (FifoQueueHandlerMessageItem | StandardQueueHandlerMessageItem)[]
   ): Promise<void | { failedMessageIds: string[] }>;
 }
 

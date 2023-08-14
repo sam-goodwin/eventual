@@ -24,6 +24,7 @@ import {
   event,
   expectSignal,
   index,
+  queue,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -1063,6 +1064,75 @@ export const bucketWorkflow = workflow(
     } finally {
       await Promise.all([myBucket.delete(key), myBucket.delete(key + "2")]);
     }
+  }
+);
+
+const queueSignal = signal<{ n: number }>("queueSignal");
+const fifoQueueSignal = signal<{ n: number }>("fifoQueueSignal");
+
+export const testQueue = queue<{
+  executionId: string;
+  source: "workflow" | "queue";
+  n: number;
+}>("testQueue", {}, async (messages) => {
+  await Promise.all(
+    messages.map(async (m) => {
+      if (m.message.source === "workflow") {
+        await testFifoQueue.sendMessage({
+          executionId: m.message.executionId,
+          source: "queue",
+          n: m.message.n + 1,
+        });
+      } else if (m.message.source === "queue") {
+        await queueSignal.sendSignal(m.message.executionId, {
+          n: m.message.n + 1,
+        });
+      }
+    })
+  );
+});
+
+export const testFifoQueue = queue<{
+  executionId: string;
+  source: "workflow" | "queue";
+  n: number;
+}>(
+  "testFifoQueue",
+  {
+    fifo: true,
+    groupBy: (m) => m.executionId,
+    dedupe: { contentBasedDeduplication: true },
+  },
+  async (messages) => {
+    await Promise.all(
+      messages.map(async (m) => {
+        if (m.message.source === "workflow") {
+          await testQueue.sendMessage({
+            executionId: m.message.executionId,
+            source: "queue",
+            n: m.message.n + 1,
+          });
+        } else if (m.message.source === "queue") {
+          await fifoQueueSignal.sendSignal(m.message.executionId, {
+            n: m.message.n + 1,
+          });
+        }
+      })
+    );
+  }
+);
+
+export const queueWorkflow = workflow(
+  "queueWorkflow",
+  async (_, { execution: { id } }) => {
+    const [, , { n }, { n: fifo_n }] = await Promise.all([
+      testQueue.sendMessage({ executionId: id, source: "workflow", n: 1 }),
+      testFifoQueue.sendMessage({ executionId: id, source: "workflow", n: 1 }),
+      queueSignal.expectSignal(),
+      fifoQueueSignal.expectSignal(),
+    ]);
+
+    return { n, fifo_n };
   }
 );
 

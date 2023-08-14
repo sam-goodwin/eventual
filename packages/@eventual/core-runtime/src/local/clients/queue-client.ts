@@ -4,7 +4,7 @@ import {
   type FifoQueue,
   type FifoQueueHandlerMessageItem,
   type Queue,
-  type QueueHandlerMessageItem,
+  type StandardQueueHandlerMessageItem,
 } from "@eventual/core";
 import type { QueueSendMessageOperation } from "@eventual/core/internal";
 import { ulid } from "ulidx";
@@ -81,8 +81,10 @@ export class LocalQueue {
     private localConnector: LocalEnvConnector
   ) {}
 
-  public messages: (FifoQueueHandlerMessageItem | QueueHandlerMessageItem)[] =
-    [];
+  public messages: (
+    | FifoQueueHandlerMessageItem
+    | StandardQueueHandlerMessageItem
+  )[] = [];
 
   public messageVisibility: Record<string, Date> = {};
 

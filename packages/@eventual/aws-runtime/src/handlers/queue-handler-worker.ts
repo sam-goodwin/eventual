@@ -4,7 +4,7 @@ import "@eventual/injected/entry";
 
 import type {
   FifoQueueHandlerMessageItem,
-  QueueHandlerMessageItem,
+  StandardQueueHandlerMessageItem,
 } from "@eventual/core";
 import { createQueueHandlerWorker, getLazy } from "@eventual/core-runtime";
 import type { SQSBatchItemFailure, SQSHandler } from "aws-lambda";
@@ -29,20 +29,22 @@ const worker = createQueueHandlerWorker({
 });
 
 export default <SQSHandler>(async (event) => {
-  const items: (FifoQueueHandlerMessageItem | QueueHandlerMessageItem)[] =
-    event.Records.map(
-      (r) =>
-        ({
-          id: r.messageId,
-          message: r.body,
-          sequenceNumber: r.attributes.SequenceNumber,
-          messageDeduplicationId: r.attributes.MessageDeduplicationId,
-          messageGroupId: r.attributes.MessageGroupId,
-          receiptHandle: r.receiptHandle,
-          receiveCount: Number(r.attributes.ApproximateReceiveCount),
-          sent: new Date(r.attributes.SentTimestamp),
-        } satisfies FifoQueueHandlerMessageItem | QueueHandlerMessageItem)
-    );
+  const items: (
+    | FifoQueueHandlerMessageItem
+    | StandardQueueHandlerMessageItem
+  )[] = event.Records.map(
+    (r) =>
+      ({
+        id: r.messageId,
+        message: r.body,
+        sequenceNumber: r.attributes.SequenceNumber,
+        messageDeduplicationId: r.attributes.MessageDeduplicationId,
+        messageGroupId: r.attributes.MessageGroupId,
+        receiptHandle: r.receiptHandle,
+        receiveCount: Number(r.attributes.ApproximateReceiveCount),
+        sent: new Date(r.attributes.SentTimestamp),
+      } satisfies FifoQueueHandlerMessageItem | StandardQueueHandlerMessageItem)
+  );
   const result = await worker(getLazy(queueName), items);
   if (result) {
     return {

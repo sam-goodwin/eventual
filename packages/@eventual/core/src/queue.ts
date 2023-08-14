@@ -26,13 +26,13 @@ export interface QueueHandlerContext {
 }
 
 export interface FifoQueueHandlerMessageItem<Message = any>
-  extends QueueHandlerMessageItem<Message> {
+  extends StandardQueueHandlerMessageItem<Message> {
   messageGroupId: string;
   sequenceNumber: string;
   messageDeduplicationId: string;
 }
 
-export interface QueueHandlerMessageItem<Message = any> {
+export interface StandardQueueHandlerMessageItem<Message = any> {
   id: string;
   receiptHandle: string;
   message: Message;
@@ -40,9 +40,9 @@ export interface QueueHandlerMessageItem<Message = any> {
   receiveCount: number;
 }
 
-export interface StandardQueueBatchHandlerFunction<
+export interface QueueBatchHandlerFunctionBase<
   Message = any,
-  MessageItem extends QueueHandlerMessageItem<Message> = QueueHandlerMessageItem<Message>
+  MessageItem extends StandardQueueHandlerMessageItem<Message> = StandardQueueHandlerMessageItem<Message>
 > {
   /**
    * Provides the keys, new value
@@ -53,20 +53,27 @@ export interface StandardQueueBatchHandlerFunction<
     | { failedMessageIds?: string[] };
 }
 
-export type QueueBatchHandlerFunction<Message> =
-  | FifoQueueBatchHandlerFunction<Message>
-  | StandardQueueBatchHandlerFunction<Message>;
+export type QueueBatchHandlerFunction<
+  Message,
+  Fifo extends boolean | undefined
+> = Fifo extends true
+  ? FifoQueueBatchHandlerFunction<Message>
+  : StandardQueueBatchHandlerFunction<Message>;
 
-export type FifoQueueBatchHandlerFunction<Message = any> =
-  StandardQueueBatchHandlerFunction<
+export type StandardQueueBatchHandlerFunction<Message = any> =
+  QueueBatchHandlerFunctionBase<
     Message,
-    FifoQueueHandlerMessageItem<Message>
+    StandardQueueHandlerMessageItem<Message>
   >;
 
-export type QueueBatchHandler<Handler extends QueueBatchHandlerFunction<any>> =
-  QueueHandlerSpec & {
-    handler: Handler;
-  };
+export type FifoQueueBatchHandlerFunction<Message = any> =
+  QueueBatchHandlerFunctionBase<Message, FifoQueueHandlerMessageItem<Message>>;
+
+export type QueueBatchHandler<
+  Handler extends QueueBatchHandlerFunction<any, any>
+> = QueueHandlerSpec & {
+  handler: Handler;
+};
 
 export interface StandardQueueSendMessageOptions {
   delay?: DurationSchedule;
@@ -138,22 +145,22 @@ export type FifoQueueMessagePropertyReference<Message> =
   | MessageIdField<Message>
   | ((message: Message) => string);
 
-interface QueueOptionsBase {
-  /**
+interface QueueOptionsBase<Fifo extends boolean> {
+  /** k
    * The default visibility timeout for messages in the queue.
    *
    * @default Schedule.duration(30, "seconds")
    */
   visibilityTimeout?: DurationSchedule;
-  fifo?: boolean;
+  fifo?: Fifo;
   handlerOptions?: QueueHandlerSpec;
 }
 
 export type QueueOptions<Message> =
   | FifoQueueOptions<Message>
-  | (QueueOptionsBase & { fifo: false });
+  | QueueOptionsBase<false>;
 
-export interface FifoQueueOptions<Message> extends QueueOptionsBase {
+export interface FifoQueueOptions<Message> extends QueueOptionsBase<true> {
   fifo: true;
   groupBy?: FifoQueueMessagePropertyReference<Message>;
   dedupe?:
@@ -164,21 +171,39 @@ export interface FifoQueueOptions<Message> extends QueueOptionsBase {
 export function queue<Message, Name extends string = string>(
   ...args: [
     name: Name,
+    options: FifoQueueOptions<Message>,
+    handler: FifoQueueBatchHandlerFunction<Message>
+  ]
+): FifoQueue<Name, Message>;
+export function queue<Message, Name extends string = string>(
+  ...args: [
+    name: Name,
     options: QueueOptions<Message>,
-    handler: QueueBatchHandlerFunction<Message>
+    handler: StandardQueueBatchHandlerFunction<Message>
+  ]
+): StandardQueue<Name, Message>;
+export function queue<
+  Message,
+  Name extends string = string,
+  Fifo extends boolean | undefined = undefined
+>(
+  ...args: [
+    name: Name,
+    options: QueueOptions<Message>,
+    handler: QueueBatchHandlerFunction<Message, Fifo>
   ]
 ): Queue<Name, Message> {
   const _args = args as
     | [
         name: Name,
         options: QueueOptions<Message>,
-        handler: QueueBatchHandlerFunction<Message>
+        handler: QueueBatchHandlerFunction<Message, Fifo>
       ]
     | [
         sourceLocation: SourceLocation,
         name: Name,
         options: QueueOptions<Message>,
-        handler: QueueBatchHandlerFunction<Message>
+        handler: QueueBatchHandlerFunction<Message, Fifo>
       ];
 
   const [sourceLocation, name, options, handler] =
@@ -237,8 +262,7 @@ export function queue<Message, Name extends string = string>(
           const messageDedupeIdReference = options?.dedupe;
 
           const messageGroupId =
-            (sendOptions as FifoQueueSendMessageOptions).group ??
-            messageGroupIdReference
+            sendOptions?.group ?? messageGroupIdReference
               ? typeof messageGroupIdReference === "string"
                 ? message[messageGroupIdReference]
                 : messageGroupIdReference?.(message)
@@ -250,8 +274,7 @@ export function queue<Message, Name extends string = string>(
           }
 
           const messageDeduplicationId =
-            (sendOptions as FifoQueueSendMessageOptions).dedupeId ??
-            messageDedupeIdReference
+            sendOptions?.dedupeId ?? messageDedupeIdReference
               ? typeof messageDedupeIdReference === "string"
                 ? message[messageDedupeIdReference]
                 : typeof messageDedupeIdReference === "function"
