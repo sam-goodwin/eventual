@@ -49,7 +49,7 @@ export function createEntityStreamWorker(
             return JSON.stringify(normalizedKey);
           },
           async (item) => {
-            const result = streamHandler.handler(item, context);
+            const result = await streamHandler.handler(item, context);
             if (result === false) {
               throw new Error("Handler failed");
             }
