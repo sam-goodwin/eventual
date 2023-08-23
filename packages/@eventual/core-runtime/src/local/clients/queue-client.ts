@@ -1,19 +1,22 @@
 import {
   DEFAULT_QUEUE_VISIBILITY_TIMEOUT,
+  QueueBatchResponse,
   type DurationSchedule,
   type FifoQueue,
   type FifoQueueHandlerMessageItem,
   type Queue,
   type StandardQueueHandlerMessageItem,
+  QueueDeleteBatchEntry,
 } from "@eventual/core";
-import type { QueueSendMessageOperation } from "@eventual/core/internal";
+import type {
+  QueueSendMessageBatchOperation,
+  QueueSendMessageOperation,
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { QueueClient } from "../../clients/queue-client.js";
-import {
-  computeScheduleDate,
-  type LocalEnvConnector,
-  type QueueProvider,
-} from "../../index.js";
+import type { QueueProvider } from "../../providers/queue-provider.js";
+import { computeScheduleDate } from "../../schedule.js";
+import type { LocalEnvConnector } from "../local-container.js";
 
 export interface QueueRetrieveMessagesRequest {
   maxMessages?: number;
@@ -53,6 +56,44 @@ export class LocalQueueClient extends QueueClient {
     return queue.sendMessage(operation);
   }
 
+  public async sendMessageBatch(
+    operation: QueueSendMessageBatchOperation
+  ): Promise<QueueBatchResponse> {
+    let queue = this.queues.get(operation.queueName);
+    if (!queue) {
+      queue = new LocalQueue(
+        this.queueProvider.getQueue(operation.queueName)!,
+        this.localConnector
+      );
+      this.queues.set(operation.queueName, queue);
+    }
+    await Promise.all(
+      operation.fifo
+        ? operation.entries.map((m) =>
+            queue!.sendMessage({
+              fifo: operation.fifo,
+              delay: m.delay,
+              message: m.message,
+              messageDeduplicationId: m.messageDeduplicationId,
+              messageGroupId: m.messageGroupId,
+              queueName: operation.queueName,
+              operation: "sendMessage",
+            })
+          )
+        : operation.entries.map((m) =>
+            queue!.sendMessage({
+              fifo: false,
+              message: m.message,
+              queueName: operation.queueName,
+              delay: m.delay,
+              operation: "sendMessage",
+            })
+          )
+    );
+    // messages cannot failed to be sent?
+    return {};
+  }
+
   public async changeMessageVisibility(
     queueName: string,
     receiptHandle: string,
@@ -68,6 +109,18 @@ export class LocalQueueClient extends QueueClient {
   ): Promise<void> {
     const queue = this.queues.get(queueName);
     await queue?.deleteMessage(receiptHandle);
+  }
+
+  public async deleteMessageBatch(
+    queueName: string,
+    entries: QueueDeleteBatchEntry[]
+  ): Promise<QueueBatchResponse> {
+    const queue = this.queues.get(queueName);
+    await Promise.all(
+      entries.map((e) => queue?.deleteMessage(e.receiptHandle))
+    );
+    // messages cannot failed to be deleted?
+    return {};
   }
 
   public physicalName(queueName: string): string {

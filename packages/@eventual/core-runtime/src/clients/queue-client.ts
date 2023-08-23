@@ -1,13 +1,22 @@
-import type { DurationSchedule, FifoQueue } from "@eventual/core";
-import { Queue } from "@eventual/core";
-import {
+import type {
+  DurationSchedule,
+  FifoQueue,
+  Queue,
+  QueueBatchResponse,
+  QueueDeleteBatchEntry,
+} from "@eventual/core";
+import type {
   QueueMethod,
+  QueueSendMessageBatchOperation,
   QueueSendMessageOperation,
 } from "@eventual/core/internal";
 import type { QueueProvider } from "../providers/queue-provider.js";
 
 type QueueClientBase = {
-  [K in keyof Pick<Queue, Exclude<QueueMethod, "sendMessage">>]: (
+  [K in keyof Pick<
+    Queue,
+    Exclude<QueueMethod, "sendMessage" | "sendMessageBatch">
+  >]: (
     queueName: string,
     ...args: Parameters<Queue[K]>
   ) => ReturnType<Queue[K]>;
@@ -15,6 +24,9 @@ type QueueClientBase = {
   sendMessage: (
     operation: QueueSendMessageOperation
   ) => ReturnType<FifoQueue["sendMessage"]>;
+  sendMessageBatch: (
+    operation: QueueSendMessageBatchOperation
+  ) => ReturnType<FifoQueue["sendMessageBatch"]>;
 };
 
 export abstract class QueueClient implements QueueClientBase {
@@ -23,6 +35,10 @@ export abstract class QueueClient implements QueueClientBase {
   public abstract sendMessage(
     operation: QueueSendMessageOperation
   ): Promise<void>;
+
+  public abstract sendMessageBatch(
+    operation: QueueSendMessageBatchOperation
+  ): Promise<QueueBatchResponse>;
 
   public abstract changeMessageVisibility(
     queueName: string,
@@ -34,6 +50,11 @@ export abstract class QueueClient implements QueueClientBase {
     queueName: string,
     receiptHandle: string
   ): Promise<void>;
+
+  public abstract deleteMessageBatch(
+    queueName: string,
+    entries: QueueDeleteBatchEntry[]
+  ): Promise<QueueBatchResponse>;
 
   public abstract physicalName(queueName: string): string;
 

@@ -1,4 +1,9 @@
-import { CallKind, createCall, type QueueCall } from "./internal/calls.js";
+import {
+  CallKind,
+  createCall,
+  FifoQueueSendMessagePayload,
+  type QueueCall,
+} from "./internal/calls.js";
 import { registerEventualResource } from "./internal/resources.js";
 import type {
   QueueHandlerSpec,
@@ -91,6 +96,27 @@ export interface FifoQueueSendMessageOptions
   dedupeId?: string;
 }
 
+export interface QueueSendMessageBatchEntry<
+  Message,
+  Options extends StandardQueueSendMessageOptions = StandardQueueSendMessageOptions
+> {
+  /**
+   * ID of the message. Will be returned if the message fails to send.
+   */
+  id: string;
+  message: Message;
+  options?: Options;
+}
+
+export interface QueueBatchResponse {
+  failed?: { id: string; message?: string }[];
+}
+
+export interface QueueDeleteBatchEntry {
+  id: string;
+  receiptHandle: string;
+}
+
 interface QueueBase<Name extends string = string>
   extends Omit<QueueSpec<Name>, "handler" | "message"> {
   kind: "Queue";
@@ -100,6 +126,9 @@ interface QueueBase<Name extends string = string>
     timeout: DurationSchedule
   ): Promise<void>;
   deleteMessage(receiptHandle: string): Promise<void>;
+  deleteMessageBatch(
+    entries: QueueDeleteBatchEntry[]
+  ): Promise<QueueBatchResponse>;
 }
 
 export interface StandardQueue<Name extends string = string, Message = any>
@@ -110,6 +139,9 @@ export interface StandardQueue<Name extends string = string, Message = any>
     message: Message,
     options?: StandardQueueSendMessageOptions
   ): Promise<void>;
+  sendMessageBatch(
+    entries: QueueSendMessageBatchEntry<Message>[]
+  ): Promise<QueueBatchResponse>;
 }
 
 export interface FifoQueue<Name extends string = string, Message = any>
@@ -124,6 +156,9 @@ export interface FifoQueue<Name extends string = string, Message = any>
     message: Message,
     options?: FifoQueueSendMessageOptions
   ): Promise<void>;
+  sendMessageBatch(
+    entries: QueueSendMessageBatchEntry<Message, FifoQueueSendMessageOptions>[]
+  ): Promise<QueueBatchResponse>;
 }
 
 export function isFifoQueue(queue: Queue): queue is FifoQueue {
@@ -235,7 +270,7 @@ export function queue<
     visibilityTimeout,
     changeMessageVisibility(...args) {
       return getEventualHook().executeEventualCall(
-        createCall<QueueCall>(CallKind.QueueCall, {
+        createCall<QueueCall<"changeMessageVisibility">>(CallKind.QueueCall, {
           operation: {
             queueName: name,
             operation: "changeMessageVisibility",
@@ -246,10 +281,21 @@ export function queue<
     },
     deleteMessage(...args) {
       return getEventualHook().executeEventualCall(
-        createCall<QueueCall>(CallKind.QueueCall, {
+        createCall<QueueCall<"deleteMessage">>(CallKind.QueueCall, {
           operation: {
             queueName: name,
             operation: "deleteMessage",
+            params: args,
+          },
+        })
+      );
+    },
+    deleteMessageBatch(...args) {
+      return getEventualHook().executeEventualCall(
+        createCall<QueueCall<"deleteMessageBatch">>(CallKind.QueueCall, {
+          operation: {
+            queueName: name,
+            operation: "deleteMessageBatch",
             params: args,
           },
         })
@@ -275,51 +321,35 @@ export function queue<
           message: Message,
           sendOptions?: FifoQueueSendMessageOptions
         ) {
-          const messageGroupIdReference = options?.groupBy;
-          const messageDedupeIdReference = options?.dedupe;
-
-          const messageGroupId =
-            sendOptions?.group ?? messageGroupIdReference
-              ? typeof messageGroupIdReference === "string"
-                ? message[messageGroupIdReference]
-                : messageGroupIdReference?.(message)
-              : undefined;
-          if (!messageGroupId || typeof messageGroupId !== "string") {
-            throw new Error(
-              "Message Group Id must be provided and must be a non-empty string"
-            );
-          }
-
-          const messageDeduplicationId =
-            sendOptions?.dedupeId ?? messageDedupeIdReference
-              ? typeof messageDedupeIdReference === "string"
-                ? message[messageDedupeIdReference]
-                : typeof messageDedupeIdReference === "function"
-                ? messageDedupeIdReference?.(message)
-                : messageDedupeIdReference
-              : undefined;
-          if (
-            !messageDeduplicationId ||
-            !(
-              typeof messageDeduplicationId === "string" ||
-              isFifoContentBasedDeduplication(messageDeduplicationId)
-            )
-          ) {
-            throw new Error(
-              "Message Deduplication Id must be provided and a non-empty string or set to { contentBasedDeduplication: true }"
-            );
-          }
-
           return getEventualHook().executeEventualCall(
             createCall<QueueCall>(CallKind.QueueCall, {
               operation: {
                 queueName: name,
                 operation: "sendMessage",
                 fifo,
-                messageGroupId,
-                messageDeduplicationId,
-                message,
-                delay: sendOptions?.delay,
+                ...processFifoSendMessageMessage(message, options, sendOptions),
+              },
+            })
+          );
+        },
+        sendMessageBatch(
+          entries: QueueSendMessageBatchEntry<
+            Message,
+            FifoQueueSendMessageOptions
+          >[]
+        ) {
+          const processMessages = entries.map((m) => ({
+            id: m.id,
+            ...processFifoSendMessageMessage(m.message, options, m.options),
+          }));
+
+          return getEventualHook().executeEventualCall(
+            createCall<QueueCall<"sendMessageBatch">>(CallKind.QueueCall, {
+              operation: {
+                queueName: name,
+                operation: "sendMessageBatch",
+                fifo,
+                entries: processMessages,
               },
             })
           );
@@ -349,6 +379,22 @@ export function queue<
             })
           );
         },
+        sendMessageBatch(messages) {
+          return getEventualHook().executeEventualCall(
+            createCall<QueueCall<"sendMessageBatch">>(CallKind.QueueCall, {
+              operation: {
+                queueName: name,
+                operation: "sendMessageBatch",
+                fifo: false,
+                entries: messages.map((m) => ({
+                  id: m.id,
+                  message: m.message,
+                  delay: m.options?.delay,
+                })),
+              },
+            })
+          );
+        },
       };
 
   return registerEventualResource("Queue", queue as Queue<Name, Message>);
@@ -367,4 +413,52 @@ export function isFifoContentBasedDeduplication(
   value: any
 ): value is FifoContentBasedDeduplication {
   return value && typeof value === "object" && value.contentBasedDeduplication;
+}
+
+function processFifoSendMessageMessage(
+  message: any,
+  options: FifoQueueOptions<any>,
+  sendOptions?: FifoQueueSendMessageOptions
+): FifoQueueSendMessagePayload {
+  const messageGroupIdReference = options?.groupBy;
+  const messageDedupeIdReference = options?.dedupe;
+
+  const messageGroupId =
+    sendOptions?.group ?? messageGroupIdReference
+      ? typeof messageGroupIdReference === "string"
+        ? message[messageGroupIdReference]
+        : messageGroupIdReference?.(message)
+      : undefined;
+  if (!messageGroupId || typeof messageGroupId !== "string") {
+    throw new Error(
+      "Message Group Id must be provided and must be a non-empty string"
+    );
+  }
+
+  const messageDeduplicationId =
+    sendOptions?.dedupeId ?? messageDedupeIdReference
+      ? typeof messageDedupeIdReference === "string"
+        ? message[messageDedupeIdReference]
+        : typeof messageDedupeIdReference === "function"
+        ? messageDedupeIdReference?.(message)
+        : messageDedupeIdReference
+      : undefined;
+  if (
+    !messageDeduplicationId ||
+    !(
+      typeof messageDeduplicationId === "string" ||
+      isFifoContentBasedDeduplication(messageDeduplicationId)
+    )
+  ) {
+    throw new Error(
+      "Message Deduplication Id must be provided and a non-empty string or set to { contentBasedDeduplication: true }"
+    );
+  }
+
+  return {
+    messageGroupId,
+    messageDeduplicationId,
+    message,
+    delay: sendOptions?.delay,
+  };
 }

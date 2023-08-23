@@ -1,21 +1,28 @@
 import {
   ChangeMessageVisibilityCommand,
+  DeleteMessageBatchCommand,
   DeleteMessageCommand,
+  SendMessageBatchCommand,
   SendMessageCommand,
   type SQSClient,
 } from "@aws-sdk/client-sqs";
 import {
   isFifoContentBasedDeduplication,
   type DurationSchedule,
+  type QueueBatchResponse,
+  type QueueDeleteBatchEntry,
 } from "@eventual/core";
 import {
   computeDurationSeconds,
   getLazy,
-  type LazyValue,
   QueueClient,
+  type LazyValue,
   type QueueProvider,
 } from "@eventual/core-runtime";
-import type { QueueSendMessageOperation } from "@eventual/core/internal";
+import type {
+  QueueSendMessageBatchOperation,
+  QueueSendMessageOperation,
+} from "@eventual/core/internal";
 import { queueServiceQueueName } from "../utils.js";
 
 export interface QueueRuntimeOverrides {
@@ -61,6 +68,42 @@ export class AWSQueueClient extends QueueClient {
     );
   }
 
+  public override async sendMessageBatch(
+    operation: QueueSendMessageBatchOperation
+  ): Promise<QueueBatchResponse> {
+    const result = await this.props.sqs.send(
+      new SendMessageBatchCommand({
+        QueueUrl: this.physicalQueueUrl(operation.queueName),
+        Entries: operation.fifo
+          ? operation.entries.map((m) => ({
+              Id: m.id,
+              MessageBody: JSON.stringify(m.message),
+              DelaySeconds: m.delay
+                ? computeDurationSeconds(m.delay)
+                : undefined,
+              MessageDeduplicationId:
+                // message deduplication is only supported for FIFO queues
+                // if fifo, deduplication id is required unless the definition asserts content based deduplication is on.
+                isFifoContentBasedDeduplication(m.messageDeduplicationId)
+                  ? undefined
+                  : m.messageDeduplicationId,
+              MessageGroupId: m.messageGroupId,
+            }))
+          : operation.entries.map((m) => ({
+              Id: m.id,
+              MessageBody: JSON.stringify(m.message),
+              DelaySeconds: m.delay
+                ? computeDurationSeconds(m.delay)
+                : undefined,
+            })),
+      })
+    );
+
+    return {
+      failed: result.Failed?.map((f) => ({ id: f.Id!, message: f.Message })),
+    };
+  }
+
   public override async changeMessageVisibility(
     queueName: string,
     receiptHandle: string,
@@ -85,6 +128,25 @@ export class AWSQueueClient extends QueueClient {
         ReceiptHandle: receiptHandle,
       })
     );
+  }
+
+  public override async deleteMessageBatch(
+    queueName: string,
+    entries: QueueDeleteBatchEntry[]
+  ): Promise<QueueBatchResponse> {
+    const result = await this.props.sqs.send(
+      new DeleteMessageBatchCommand({
+        QueueUrl: this.physicalQueueUrl(queueName),
+        Entries: entries.map((e) => ({
+          Id: e.id,
+          ReceiptHandle: e.receiptHandle,
+        })),
+      })
+    );
+
+    return {
+      failed: result.Failed?.map((f) => ({ id: f.Id!, message: f.Message })),
+    };
   }
 
   public physicalQueueUrl(queueName: string) {

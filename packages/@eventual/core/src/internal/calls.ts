@@ -245,23 +245,41 @@ interface QueueOperationBase<Op extends QueueMethod> {
   operation: Op;
 }
 
-export type QueueSendMessageOperation = QueueOperationBase<"sendMessage"> & {
+export type StandardQueueSendMessagePayload = {
   delay?: DurationSchedule;
   message: any;
-} & (
-    | {
-        fifo: true;
-        messageGroupId: string;
-        messageDeduplicationId: string | FifoContentBasedDeduplication;
-      }
-    | {
-        fifo: false;
-      }
+};
+
+export interface FifoQueueSendMessagePayload
+  extends StandardQueueSendMessagePayload {
+  messageGroupId: string;
+  messageDeduplicationId: string | FifoContentBasedDeduplication;
+}
+
+export type QueueSendMessageOperation = QueueOperationBase<"sendMessage"> &
+  (
+    | ({ fifo: true } & FifoQueueSendMessagePayload)
+    | ({ fifo: false } & StandardQueueSendMessagePayload)
   );
+
+export type QueueSendMessageBatchOperation =
+  QueueOperationBase<"sendMessageBatch"> &
+    (
+      | {
+          fifo: true;
+          entries: ({ id: string } & FifoQueueSendMessagePayload)[];
+        }
+      | {
+          fifo: false;
+          entries: ({ id: string } & StandardQueueSendMessagePayload)[];
+        }
+    );
 
 export type QueueOperation<Op extends QueueMethod = QueueMethod> =
   Op extends "sendMessage"
     ? QueueSendMessageOperation
+    : Op extends "sendMessageBatch"
+    ? QueueSendMessageBatchOperation
     : QueueOperationBase<Op> & {
         params: Parameters<FifoQueue[Op]>;
       };
