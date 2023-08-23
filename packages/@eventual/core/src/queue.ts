@@ -149,19 +149,25 @@ export type FifoQueueMessagePropertyReference<Message> =
 
 interface QueueOptionsBase<Fifo extends boolean> {
   /**
-   * The default visibility timeout for messages in the queue.
-   *
-   * @default Schedule.duration(30, "seconds")
-   */
-  visibilityTimeout?: DurationSchedule;
-  /**
    * Amount of time to delay the delivery of messages in the queue to consumers.
    *
    * @default 0 seconds
    */
   delay?: DurationSchedule;
+  /**
+   * When true, the contents of the messages are encrypted server side with a managed key.
+   *
+   * @default true
+   */
+  encryption?: boolean;
   fifo?: Fifo;
   handlerOptions?: QueueHandlerSpec;
+  /**
+   * The default visibility timeout for messages in the queue.
+   *
+   * @default Schedule.duration(30, "seconds")
+   */
+  visibilityTimeout?: DurationSchedule;
 }
 
 export type QueueOptions<Message> =
@@ -217,14 +223,16 @@ export function queue<
   const [sourceLocation, name, options, handler] =
     _args.length === 4 ? _args : [undefined, ..._args];
 
-  const { fifo, handlerOptions, visibilityTimeout, delay } = options;
+  const { fifo, handlerOptions, visibilityTimeout, delay, encryption } =
+    options;
 
   const queueBase = {
     kind: "Queue",
     name,
+    delay,
+    encryption: encryption ?? true,
     fifo,
     visibilityTimeout,
-    delay,
     changeMessageVisibility(...args) {
       return getEventualHook().executeEventualCall(
         createCall<QueueCall>(CallKind.QueueCall, {

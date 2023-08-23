@@ -148,6 +148,10 @@ class Queue extends Construct implements IQueue {
             computeDurationSeconds(props.queue.visibilityTimeout)
           )
         : undefined,
+      // TODO: support customer managed key
+      encryption: props.queue.encryption
+        ? sqs.QueueEncryption.SQS_MANAGED
+        : sqs.QueueEncryption.UNENCRYPTED,
       ...overrides,
     });
 

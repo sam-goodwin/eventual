@@ -317,10 +317,11 @@ export interface QueueHandlerSpec {
 }
 
 export interface QueueSpec<Name extends string = string> {
-  name: Name;
-  handler: QueueHandlerSpec;
-  fifo: boolean;
   contentBasedDeduplication?: boolean;
-  visibilityTimeout?: DurationSchedule;
   delay?: DurationSchedule;
+  encryption: boolean;
+  fifo: boolean;
+  handler: QueueHandlerSpec;
+  name: Name;
+  visibilityTimeout?: DurationSchedule;
 }

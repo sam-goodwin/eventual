@@ -181,6 +181,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
           },
           contentBasedDeduplication: q.contentBasedDeduplication,
           delay: q.delay,
+          encryption: q.encryption,
           visibilityTimeout: q.visibilityTimeout,
         } satisfies QueueSpec)
     ),
