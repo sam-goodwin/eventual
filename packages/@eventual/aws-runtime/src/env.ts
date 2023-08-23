@@ -4,6 +4,7 @@ import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
 import { QueueRuntimeOverrides } from "./clients/queue-client.js";
 
 export const ENV_NAMES = {
+  AWS_ACCOUNT_ID: "EVENTUAL_AWS_ACCOUNT_ID",
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",
   SERVICE_URL: "EVENTUAL_SERVICE_URL",
   EXECUTION_TABLE_NAME: "EVENTUAL_EXECUTION_TABLE_NAME",
@@ -38,7 +39,7 @@ export function tryGetEnv<T extends string = string>(name: string) {
   ) as T;
 }
 
-export const awsAccount = () => tryGetEnv("AWS_ACCOUNT_ID");
+export const awsAccount = () => tryGetEnv(ENV_NAMES.AWS_ACCOUNT_ID);
 export const awsRegion = () => tryGetEnv("AWS_REGION");
 export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
 export const openSearchEndpoint = () =>

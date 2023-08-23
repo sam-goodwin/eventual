@@ -44,7 +44,7 @@ export class AWSQueueClient extends QueueClient {
   ): Promise<void> {
     await this.props.sqs.send(
       new SendMessageCommand({
-        MessageBody: operation.message,
+        MessageBody: JSON.stringify(operation.message),
         QueueUrl: this.physicalQueueUrl(operation.queueName),
         DelaySeconds: operation.delay
           ? computeDurationSeconds(operation.delay)
@@ -98,9 +98,14 @@ export class AWSQueueClient extends QueueClient {
   public override physicalName(queueName: string) {
     const overrides = getLazy(this.props.queueOverrides);
     const nameOverride = overrides[queueName]?.queueName;
+    const queue = this.getQueue(queueName);
     return (
       nameOverride ??
-      queueServiceQueueName(getLazy(this.props.serviceName), queueName)
+      queueServiceQueueName(
+        getLazy(this.props.serviceName),
+        queueName,
+        queue.fifo
+      )
     );
   }
 }

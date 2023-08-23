@@ -1,9 +1,11 @@
 import {
   ENV_NAMES,
   QueueRuntimeOverrides,
+  queueServiceQueueName,
   queueServiceQueueSuffix,
 } from "@eventual/aws-runtime";
-import type { QueueRuntime } from "@eventual/core-runtime";
+import { DEFAULT_QUEUE_VISIBILITY_TIMEOUT } from "@eventual/core";
+import { QueueRuntime, computeDurationSeconds } from "@eventual/core-runtime";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -78,7 +80,7 @@ export class QueueService<Service> {
           .filter((s): s is string => !!s)
       : [];
 
-    // grants the permission to start any task
+    // grants the permission to interact with any queue
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: [
@@ -92,7 +94,7 @@ export class QueueService<Service> {
             queueServiceQueueSuffix("*"),
             false
           ),
-          ...queueNameOverrides.map(formatQueueArn),
+          ...queueNameOverrides.map((n) => formatQueueArn(n)),
         ],
       })
     );
@@ -131,6 +133,21 @@ class Queue extends Construct implements IQueue {
       props.serviceProps.queueOverrides?.[props.queue.name] ?? {};
 
     this.queue = new sqs.Queue(this, "Queue", {
+      contentBasedDeduplication: props.queue.contentBasedDeduplication,
+      deliveryDelay: props.queue.delay
+        ? Duration.seconds(computeDurationSeconds(props.queue.delay))
+        : undefined,
+      fifo: props.queue.fifo,
+      queueName: queueServiceQueueName(
+        props.serviceProps.serviceName,
+        props.queue.name,
+        props.queue.fifo
+      ),
+      visibilityTimeout: props.queue.visibilityTimeout
+        ? Duration.seconds(
+            computeDurationSeconds(props.queue.visibilityTimeout)
+          )
+        : undefined,
       ...overrides,
     });
 
@@ -164,7 +181,14 @@ export class QueueHandler extends Construct implements EventualResource {
       functionNameSuffix: `queue-handler-${queueName}`,
       serviceName: props.serviceProps.serviceName,
       defaults: {
-        timeout: Duration.minutes(1),
+        // CFN enforces that the queue's visibility timeout is greater than or equal to the lambda timeout.
+        // default queue visibility is 30 seconds.
+        timeout: Duration.seconds(
+          computeDurationSeconds(
+            props.runtimeQueue.visibilityTimeout ??
+              DEFAULT_QUEUE_VISIBILITY_TIMEOUT
+          )
+        ),
         environment: {
           [ENV_NAMES.QUEUE_NAME]: queueName,
           ...props.serviceProps.environment,

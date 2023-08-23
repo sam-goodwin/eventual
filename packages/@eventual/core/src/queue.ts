@@ -5,8 +5,10 @@ import type {
   QueueSpec,
   SourceLocation,
 } from "./internal/service-spec.js";
-import type { DurationSchedule } from "./schedule.js";
+import { DurationSchedule, Schedule } from "./schedule.js";
 import type { ServiceContext } from "./service.js";
+
+export const DEFAULT_QUEUE_VISIBILITY_TIMEOUT = Schedule.duration(30);
 
 /**
  * Context passed to the handler.
@@ -146,12 +148,18 @@ export type FifoQueueMessagePropertyReference<Message> =
   | ((message: Message) => string);
 
 interface QueueOptionsBase<Fifo extends boolean> {
-  /** k
+  /**
    * The default visibility timeout for messages in the queue.
    *
    * @default Schedule.duration(30, "seconds")
    */
   visibilityTimeout?: DurationSchedule;
+  /**
+   * Amount of time to delay the delivery of messages in the queue to consumers.
+   *
+   * @default 0 seconds
+   */
+  delay?: DurationSchedule;
   fifo?: Fifo;
   handlerOptions?: QueueHandlerSpec;
 }
@@ -209,13 +217,14 @@ export function queue<
   const [sourceLocation, name, options, handler] =
     _args.length === 4 ? _args : [undefined, ..._args];
 
-  const { fifo, handlerOptions, visibilityTimeout } = options;
+  const { fifo, handlerOptions, visibilityTimeout, delay } = options;
 
   const queueBase = {
     kind: "Queue",
     name,
     fifo,
     visibilityTimeout,
+    delay,
     changeMessageVisibility(...args) {
       return getEventualHook().executeEventualCall(
         createCall<QueueCall>(CallKind.QueueCall, {

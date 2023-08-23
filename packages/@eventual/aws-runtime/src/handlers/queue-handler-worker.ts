@@ -36,7 +36,7 @@ export default <SQSHandler>(async (event) => {
     (r) =>
       ({
         id: r.messageId,
-        message: r.body,
+        message: JSON.parse(r.body),
         sequenceNumber: r.attributes.SequenceNumber,
         messageDeduplicationId: r.attributes.MessageDeduplicationId,
         messageGroupId: r.attributes.MessageGroupId,

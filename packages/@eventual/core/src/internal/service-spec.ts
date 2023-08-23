@@ -322,4 +322,5 @@ export interface QueueSpec<Name extends string = string> {
   fifo: boolean;
   contentBasedDeduplication?: boolean;
   visibilityTimeout?: DurationSchedule;
+  delay?: DurationSchedule;
 }

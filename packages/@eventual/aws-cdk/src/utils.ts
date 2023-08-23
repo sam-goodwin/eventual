@@ -126,6 +126,6 @@ export function serviceQueueArn(
   );
 }
 
-export function formatQueueArn(queueName: string) {
-  return `arn:aws:sqs:::${queueName}`;
+export function formatQueueArn(queueName: string, region = "*", account = "*") {
+  return `arn:aws:sqs:${region}:${account}:${queueName}`;
 }

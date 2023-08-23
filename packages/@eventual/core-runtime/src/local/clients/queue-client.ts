@@ -1,5 +1,5 @@
 import {
-  Schedule,
+  DEFAULT_QUEUE_VISIBILITY_TIMEOUT,
   type DurationSchedule,
   type FifoQueue,
   type FifoQueueHandlerMessageItem,
@@ -94,7 +94,7 @@ export class LocalQueue {
     const visibilityTimeout =
       request?.visibilityTimeout ??
       this.queue.visibilityTimeout ??
-      Schedule.duration(30, "seconds");
+      DEFAULT_QUEUE_VISIBILITY_TIMEOUT;
 
     // if we saw a message group ID, track if it was taken or not.
     const messageGroupTaken: Record<string, boolean> = {};
