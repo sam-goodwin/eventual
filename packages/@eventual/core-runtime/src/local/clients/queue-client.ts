@@ -170,11 +170,10 @@ export class LocalQueue {
       receiveCount: 0,
     });
 
-    if (operation.delay) {
-      const visibilityTime = computeScheduleDate(
-        operation.delay,
-        operation.message
-      );
+    const delay = operation.delay ?? this.queue.delay;
+
+    if (delay) {
+      const visibilityTime = computeScheduleDate(delay, operation.message);
       this.messageVisibility[operation.message.id] = visibilityTime;
       // trigger an event to poll this queue for events on the queue when this message is planned to be visible.
       this.localConnector.scheduleEvent(visibilityTime, {
