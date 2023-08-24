@@ -29,6 +29,7 @@ import {
   isLocalEntityStreamEvent,
   isLocalQueuePollEvent,
 } from "./local-container.js";
+import { LocalPersistanceStore } from "./local-persistance-store.js";
 import { TimeController } from "./time-controller.js";
 import { WebSocketContainer } from "./web-socket-container.js";
 
@@ -43,15 +44,22 @@ export class LocalEnvironment {
   private localConnector: LocalEnvConnector;
   private running = false;
   private localContainer: LocalContainer;
+  private localPersistanceStore: LocalPersistanceStore;
 
   constructor(
     private environmentManifest: EnvironmentManifest,
-    webSocketContainer: WebSocketContainer
+    webSocketContainer: WebSocketContainer,
+    private persistLocation?: string
   ) {
-    this.timeController = new TimeController([], {
-      increment: 1,
-      start: new Date().getTime(),
-    });
+    this.localPersistanceStore = new LocalPersistanceStore(persistLocation);
+    this.timeController = this.localPersistanceStore.register("time", (data) =>
+      data
+        ? TimeController.fromSerializedData(data)
+        : new TimeController([], {
+            increment: 1,
+            start: new Date().getTime(),
+          })
+    );
     this.localConnector = {
       getTime: () => new Date(),
       // local env doesn't care about current vs next tick
@@ -68,11 +76,15 @@ export class LocalEnvironment {
         this.tryStartProcessingEvents();
       },
     };
-    this.localContainer = new LocalContainer(this.localConnector, {
-      serviceName: environmentManifest.serviceName,
-      serviceUrl: environmentManifest.serviceUrl,
-      webSocketContainer,
-    });
+    this.localContainer = new LocalContainer(
+      this.localConnector,
+      this.localPersistanceStore,
+      {
+        serviceName: environmentManifest.serviceName,
+        serviceUrl: environmentManifest.serviceUrl,
+        webSocketContainer,
+      }
+    );
 
     this.start();
   }

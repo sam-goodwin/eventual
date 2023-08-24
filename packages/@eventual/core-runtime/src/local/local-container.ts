@@ -95,6 +95,7 @@ import { LocalSocketClient } from "./clients/socket-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
+import { LocalPersistanceStore } from "./local-persistance-store.js";
 import { LocalBucketStore } from "./stores/bucket-store.js";
 import { LocalEntityStore } from "./stores/entity-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -195,12 +196,17 @@ export class LocalContainer {
 
   constructor(
     private localConnector: LocalEnvConnector,
+    private localPersistanceStore: LocalPersistanceStore,
     props: LocalContainerProps
   ) {
     this.executionQueueClient = new LocalExecutionQueueClient(
       this.localConnector
     );
-    this.executionStore = new LocalExecutionStore(this.localConnector);
+    this.executionStore = localPersistanceStore.register("executions", (data) =>
+      data
+        ? LocalExecutionStore.fromSerializedData(this.localConnector, data)
+        : new LocalExecutionStore(this.localConnector)
+    );
     this.logsClient = new LocalLogsClient();
     this.workflowProvider = new GlobalWorkflowProvider();
     this.queueProvider = new GlobalQueueProvider();

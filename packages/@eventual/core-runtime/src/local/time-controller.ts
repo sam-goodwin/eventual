@@ -1,4 +1,5 @@
 import { Heap } from "heap-js";
+import { LocalSerializable } from "./local-persistance-store.js";
 
 export interface TimeControllerProps {
   start?: number;
@@ -18,7 +19,7 @@ export interface TimeEvent<E = any> {
  *
  * Uses real time as a based, but can start at any time and only progresses when explicitly told to.
  */
-export class TimeController<E = any> {
+export class TimeController<E = any> implements LocalSerializable {
   // current millisecond time
   private current = 0;
   private ordCounter = 0;
@@ -48,6 +49,26 @@ export class TimeController<E = any> {
     this.timeHeap.init(
       initialEvents.map((e) => ({ ...e, ord: this.ordCounter++ }))
     );
+  }
+
+  public static fromSerializedData(data: Record<string, Buffer>) {
+    const { current, increment, events } = JSON.parse(
+      data.data!.toString("utf-8")
+    );
+    return new TimeController(events, { increment, start: current });
+  }
+
+  public serialize(): Record<string, Buffer> {
+    return {
+      data: Buffer.from(
+        JSON.stringify({
+          current: this.current,
+          increment: this.increment,
+          events: this.timeHeap.toArray(),
+        }),
+        "utf-8"
+      ),
+    };
   }
 
   /**

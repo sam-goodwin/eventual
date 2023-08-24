@@ -15,11 +15,29 @@ import {
 } from "@eventual/core/internal";
 import type { ExecutionStore } from "../../stores/execution-store.js";
 import type { LocalEnvConnector } from "../local-container.js";
+import { LocalSerializable } from "../local-persistance-store.js";
 
-export class LocalExecutionStore implements ExecutionStore {
-  private executionStore: Record<string, Execution<any>> = {};
+export class LocalExecutionStore implements ExecutionStore, LocalSerializable {
+  constructor(
+    private localConnector: LocalEnvConnector,
+    private executionStore: Record<string, Execution<any>> = {}
+  ) {}
 
-  constructor(private localConnector: LocalEnvConnector) {}
+  public static fromSerializedData(
+    localConnector: LocalEnvConnector,
+    data: Record<string, Buffer>
+  ) {
+    return new LocalExecutionStore(
+      localConnector,
+      JSON.parse(data.data!.toString("utf-8"))
+    );
+  }
+
+  public serialize(): Record<string, Buffer> {
+    return {
+      data: Buffer.from(JSON.stringify(this.executionStore)),
+    };
+  }
 
   public async create(
     execution: InProgressExecution,
