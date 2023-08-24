@@ -21,7 +21,7 @@ const worker = createQueueHandlerWorker({
   queueClient: createQueueClient(),
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,

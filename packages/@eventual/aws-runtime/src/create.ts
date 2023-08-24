@@ -5,6 +5,7 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { Client, Pluggable } from "@aws-sdk/types";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { LogLevel } from "@eventual/core";
@@ -23,9 +24,12 @@ import {
   WorkflowClient,
   WorkflowSpecProvider,
 } from "@eventual/core-runtime";
+import type { ServiceSpec } from "@eventual/core/internal";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { AWSLogsClient } from "./clients/log-client.js";
+import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
+import { AWSQueueClient } from "./clients/queue-client.js";
 import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
@@ -36,9 +40,6 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
-import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
-import { AWSQueueClient } from "./clients/queue-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -298,16 +299,22 @@ export const createHttpServiceClient = /* @__PURE__ */ memoize(
     new AWSHttpEventualClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
 );
 
-export const createOpenSearchClient = /* @__PURE__ */ memoize(async () => {
-  const credentials = await defaultProvider()();
-  const region = env.awsRegion();
+export const createOpenSearchClient = /* @__PURE__ */ memoize(
+  async (serviceSpec?: ServiceSpec) => {
+    if (serviceSpec?.search.indices.length === 0) {
+      return undefined;
+    } else {
+      const credentials = await defaultProvider()();
+      const region = env.awsRegion();
 
-  return new AWSOpenSearchClient({
-    credentials,
-    region,
-    node: env.openSearchEndpoint(),
-  });
-});
+      return new AWSOpenSearchClient({
+        credentials,
+        region,
+        node: env.openSearchEndpoint(),
+      });
+    }
+  }
+);
 
 function memoize<T extends (...args: any[]) => any>(
   fn: T,

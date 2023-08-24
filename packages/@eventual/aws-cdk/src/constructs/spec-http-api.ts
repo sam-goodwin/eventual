@@ -81,7 +81,6 @@ export class SpecHttpApi extends HttpApiBase {
     props.apiDefinition.bindAfterCreate(this, this);
 
     const resource = new CfnApi(this, "Resource", {
-      name: props.apiName,
       body: apiDefConfig.inlineDefinition ?? undefined,
       bodyS3Location: apiDefConfig.inlineDefinition
         ? undefined
@@ -120,7 +119,12 @@ export class SpecHttpApi extends HttpApiBase {
 
 export type SpecHttpApiProps = Omit<
   HttpApiProps,
-  "corsPreflight" | "description"
+  | "corsPreflight"
+  | "description"
+  | "apiName"
+  | "defaultIntegration"
+  | "defaultAuthorizer"
+  | "defaultAuthorizationScopes"
 > & {
   /**
    * An OpenAPI definition compatible with API Gateway.

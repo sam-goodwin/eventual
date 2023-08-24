@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.50.0 (2023-08-24)
+
+### Features
+
+- support api cdk overrides ([#431](https://github.com/functionless/eventual/issues/431)) ([9e17a69](https://github.com/functionless/eventual/commit/9e17a6900eff0f97f2a2c9d9fed0a721e6e32c02))
+
 ## 0.49.1 (2023-08-11)
 
 **Note:** Version bump only for package @eventual/timeline

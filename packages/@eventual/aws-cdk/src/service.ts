@@ -38,6 +38,7 @@ import {
 } from "./bucket-service";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
+  ApiOverrides,
   CommandProps,
   CommandService,
   Commands,
@@ -161,6 +162,7 @@ export interface ServiceProps<Service = any> {
    * Keep in mind that the output must be valid for APIGateway.
    */
   openApi?: CommandsProps<Service>["openApi"];
+  api?: ApiOverrides;
   /**
    * Customize the configuration of the OpenSearch clusters and each of the OpenSearch Indices.
    */
@@ -447,6 +449,7 @@ export class Service<S = any> extends Construct {
       cors: props.cors,
       local: this.local,
       openApi,
+      apiOverrides: props.api,
       ...workerConstructProps,
     });
     proxyCommandService._bind(this.commandService);

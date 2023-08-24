@@ -20,7 +20,7 @@ import { serviceName, serviceUrl } from "../env.js";
 export const processEvent = createSubscriptionWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
     eventClient: createEventClient(),

@@ -25,7 +25,7 @@ import {
 const worker = createBucketNotificationHandlerWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   serviceClient: createServiceClient({}),
   queueClient: createQueueClient(),
   serviceName,
