@@ -27,7 +27,7 @@ import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
-import { SpecHttpApi } from "./constructs/spec-http-api";
+import { SpecHttpApi, SpecHttpApiProps } from "./constructs/spec-http-api";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import { EventualResource } from "./resource.js";
@@ -40,6 +40,8 @@ import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
+
+export type ApiOverrides = Omit<SpecHttpApiProps, "apiDefinition">;
 
 export type Commands<Service> = {
   default: EventualResource;
@@ -93,6 +95,7 @@ export interface CommandsProps<Service = any>
     info: openapi.InfoObject;
   };
   overrides?: CommandProps<Service>;
+  apiOverrides?: ApiOverrides;
   taskService: TaskService<Service>;
   workflowService: WorkflowService;
 }
@@ -201,6 +204,7 @@ export class CommandService<Service = any> {
     // Service => Gateway
     this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
       apiDefinition: ApiDefinition.fromInline(this.specification),
+      ...props.apiOverrides,
     });
 
     this.gateway.node.addDependency(this.integrationRole);
