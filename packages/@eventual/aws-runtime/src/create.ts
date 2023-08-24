@@ -37,6 +37,7 @@ import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
 import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { ServiceSpec } from "@eventual/core/internal";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -285,16 +286,22 @@ export const createHttpServiceClient = /* @__PURE__ */ memoize(
     new AWSHttpEventualClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
 );
 
-export const createOpenSearchClient = /* @__PURE__ */ memoize(async () => {
-  const credentials = await defaultProvider()();
-  const region = env.awsRegion();
+export const createOpenSearchClient = /* @__PURE__ */ memoize(
+  async (serviceSpec?: ServiceSpec) => {
+    if (serviceSpec?.search.indices.length === 0) {
+      return undefined;
+    } else {
+      const credentials = await defaultProvider()();
+      const region = env.awsRegion();
 
-  return new AWSOpenSearchClient({
-    credentials,
-    region,
-    node: env.openSearchEndpoint(),
-  });
-});
+      return new AWSOpenSearchClient({
+        credentials,
+        region,
+        node: env.openSearchEndpoint(),
+      });
+    }
+  }
+);
 
 function memoize<T extends (...args: any[]) => any>(
   fn: T,

@@ -33,7 +33,7 @@ const entityProvider = new GlobalEntityProvider();
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,

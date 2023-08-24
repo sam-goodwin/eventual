@@ -1,3 +1,4 @@
+import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
 
 import {
@@ -42,7 +43,7 @@ const orchestrate = createOrchestrator({
     entityStore: createEntityStore(),
     eventClient: createEventClient(),
     executionQueueClient: createExecutionQueueClient(),
-    openSearchClient: await createOpenSearchClient(),
+    openSearchClient: await createOpenSearchClient(serviceSpec),
     taskClient: createTaskClient(),
     timerClient: createTimerClient(),
     transactionClient: createTransactionClient(),
