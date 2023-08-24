@@ -31,7 +31,7 @@ interface WorkflowCallExecutorDependencies {
   bucketStore: BucketStore;
   entityStore: EntityStore;
   eventClient: EventClient;
-  openSearchClient: OpenSearchClient;
+  openSearchClient?: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
@@ -69,10 +69,12 @@ export function createDefaultWorkflowCallExecutor(
       deps.executionQueueClient
     ),
     SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
-    SearchCall: createSearchWorkflowQueueExecutor(
-      deps.openSearchClient,
-      deps.executionQueueClient
-    ),
+    SearchCall: deps.openSearchClient
+      ? createSearchWorkflowQueueExecutor(
+          deps.openSearchClient,
+          deps.executionQueueClient
+        )
+      : unsupportedExecutor,
     SendSignalCall: new SendSignalWorkflowCallExecutor(
       deps.executionQueueClient
     ),

@@ -21,7 +21,7 @@ import { createApiGCommandWorker } from "./apig-command-worker.js";
 export default createApiGCommandWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   // the service client, spec, and service url will be created at runtime, using a computed uri from the apigateway request
   // pulls the service url from the request instead of env variables to reduce the circular dependency between commands and the gateway.
   serviceClientBuilder: (serviceUrl) =>

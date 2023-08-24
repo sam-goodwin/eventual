@@ -29,7 +29,7 @@ const worker = createTaskWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
   eventClient: createEventClient(),
-  openSearchClient: await createOpenSearchClient(),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   executionQueueClient: createExecutionQueueClient(),
   logAgent: createLogAgent(),
   metricsClient: AWSMetricsClient,
