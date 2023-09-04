@@ -127,6 +127,8 @@ export function createEventualWorker<Input extends any[], Output>(
         // directly calling a task does not work outside of a workflow
         TaskCall: unsupportedExecutor,
         TaskRequestCall: serviceClientExecutor,
+        // Passthrough?
+        PromiseCall: unsupportedExecutor,
         ...resolvedExecutorOverrides,
       }),
       new AllPropertyRetriever({
