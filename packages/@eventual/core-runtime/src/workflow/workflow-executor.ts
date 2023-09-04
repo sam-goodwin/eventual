@@ -9,6 +9,7 @@ import {
   EventualPromiseSymbol,
   isCallEvent,
   isCompletionEvent,
+  isPromiseCall,
   isSignalReceived,
   isWorkflowRunStarted,
   isWorkflowStarted,
@@ -30,7 +31,13 @@ import { CallExecutor } from "../call-executor.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import { _Iterator, iterator } from "../iterator.js";
 import { PropertyRetriever } from "../property-retriever.js";
-import { Result, isFailed, isResolved, isResult } from "../result.js";
+import {
+  Result,
+  isFailed,
+  isResolved,
+  isResult,
+  resultToString,
+} from "../result.js";
 import { deepEqual, extendsSystemError } from "../utils.js";
 import {
   EventualFactory,
@@ -167,6 +174,12 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      * Cleared and returned when the method's promise resolves.
      */
     callsToEmit: WorkflowCall[];
+    /**
+     * Non-eventual promises created within the workflow through the PromiseCall.
+     *
+     * TODO: can we capture all real promises?
+     */
+    realPromises: Promise<any>[];
   };
 
   /**
@@ -361,12 +374,17 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
               });
             },
             callsToEmit: [],
+            realPromises: [],
           };
           // ensure the workflow hook is available to the workflow
           // and tied to the workflow promise context
           // Also ensure that any handlers like signal handlers returned by the workflow
           // have access to the workflow hook
           beforeCommitEvents?.();
+
+          // Wait for any real promises to complete
+          await this.runRealPromises();
+
           // APPLY EVENTS
           await this.applyEvents();
 
@@ -420,7 +438,11 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
    */
   private resolveWorkflow(result: Result) {
     if (!this.currentRun) {
-      throw new SystemError("Execution is not running.");
+      throw new SystemError(
+        `Execution is not running. Attempted to resolve with: ${resultToString(
+          result
+        )}`
+      );
     }
     this.result = result;
     if (isFailed(result) && extendsSystemError(result.error)) {
@@ -460,51 +482,61 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
         }
 
         try {
-          const eventual = self.eventualFactory.initializeEventual(
-            call,
-            // resolve eventual call, can be used by call factories to resolve another eventual with a value at any time
-            // currently used signalHandler.dispose to remove the signal handler
-            (seq, result) => {
-              self.tryResolveEventual(seq, result);
+          if (isPromiseCall(call)) {
+            console.log(
+              "special case, known promise is allowed to execute in the workflow"
+            );
+            self.currentRun?.realPromises.push(call.promise);
+            // return the promise itself.
+            return call.promise;
+          } else {
+            const eventual = self.eventualFactory.initializeEventual(
+              call,
+              // resolve eventual call, can be used by call factories to resolve another eventual with a value at any time
+              // currently used signalHandler.dispose to remove the signal handler
+              (seq, result) => {
+                self.tryResolveEventual(seq, result);
+              }
+            );
+            const seq = self.nextSeq++;
+
+            // not all calls generate events, these calls will not emit calls and thus will not cause determinism errors.
+            const event = eventual.createCallEvent?.(seq);
+            if (event) {
+              const hasExpectedEvents = self.expected.hasNext();
+              // if there are events to compare against, check if the event matches
+              if (hasExpectedEvents) {
+                /**
+                 * Check if there is a matching event for the call.
+                 */
+                assertEventIsExpected(event, call);
+              } else {
+                // if there are no more expected events, start to emit the new calls
+                self.currentRun?.callsToEmit.push({ call, seq, event });
+              }
             }
-          );
-          const seq = self.nextSeq++;
 
-          // not all calls generate events, these calls will not emit calls and thus will not cause determinism errors.
-          const event = eventual.createCallEvent?.(seq);
-          if (event) {
-            const hasExpectedEvents = self.expected.hasNext();
-            // if there are events to compare against, check if the event matches
-            if (hasExpectedEvents) {
-              /**
-               * Check if there is a matching event for the call.
-               */
-              assertEventIsExpected(event, call);
-            } else {
-              // if there are no more expected events, start to emit the new calls
-              self.currentRun?.callsToEmit.push({ call, seq, event });
+            /**
+             * If the eventual comes with a result, do not active it, it is already resolved!
+             */
+            if (isResolvedEventualDefinition(eventual)) {
+              return createEventualPromise<any>(seq, eventual.result);
             }
-          }
 
-          /**
-           * If the eventual comes with a result, do not active it, it is already resolved!
-           */
-          if (isResolvedEventualDefinition(eventual)) {
-            return createEventualPromise<any>(seq, eventual.result);
+            return self.activateEventual(seq, eventual);
           }
-
-          return self.activateEventual(seq, eventual);
         } catch (err) {
           self.resolveWorkflow(Result.failed(err));
           throw err;
         }
       },
     };
-    return await enterEventualCallHookScope(
+    const result = await enterEventualCallHookScope(
       callExecutor,
       this.propertyRetriever,
       callback
     );
+    return result;
 
     /**
      * Checks the call against the expected events.
@@ -560,6 +592,26 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           resolve(undefined);
         });
       });
+
+      /**
+       * Wait for promises after each event to ensure the workflow is deterministic.
+       */
+      await this.runRealPromises();
+    }
+  }
+
+  /**
+   * We'll wait for any registered promises before any events are applied and after each event is applied.
+   */
+  private async runRealPromises() {
+    while (
+      this.currentRun &&
+      this.currentRun.realPromises.length > 0 &&
+      !this.stopped
+    ) {
+      const promises = this.currentRun.realPromises;
+      this.currentRun.realPromises = [];
+      await Promise.all(promises);
     }
   }
 

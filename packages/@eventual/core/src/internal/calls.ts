@@ -23,6 +23,7 @@ export type Call =
   | ExpectSignalCall
   | GetExecutionCall
   | InvokeTransactionCall
+  | PromiseCall
   | SignalHandlerCall
   | SearchCall
   | SendSignalCall
@@ -46,6 +47,7 @@ export enum CallKind {
   TaskRequestCall = 12,
   SearchCall = 11,
   StartWorkflowCall = 13,
+  PromiseCall = 15,
 }
 
 export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -381,4 +383,13 @@ export interface InvokeTransactionCall<Input = any>
   extends CallBase<CallKind.InvokeTransactionCall, any> {
   input: Input;
   transactionName: string;
+}
+
+export function isPromiseCall(a: any): a is PromiseCall {
+  return isCallOfKind(CallKind.PromiseCall, a);
+}
+
+export interface PromiseCall<T = any>
+  extends CallBase<CallKind.PromiseCall, T> {
+  promise: Promise<T>;
 }

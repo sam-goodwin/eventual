@@ -78,6 +78,7 @@ export function createDefaultWorkflowCallExecutor(
     SendSignalCall: new SendSignalWorkflowCallExecutor(
       deps.executionQueueClient
     ),
+    PromiseCall: noOpExecutor, // promises do not generate events
     TaskCall: new TaskCallWorkflowExecutor(deps.taskClient),
     TaskRequestCall: unsupportedExecutor, // TODO: add support for task heartbeat, success, and failure to the workflow
     ChildWorkflowCall: workflowClientExecutor,

@@ -75,6 +75,7 @@ export function createDefaultEventualFactory(): AllWorkflowEventualFactory {
     ExpectSignalCall: new ExpectSignalFactory(),
     GetExecutionCall: unsupportedFactory,
     InvokeTransactionCall: new TransactionCallEventualFactory(),
+    PromiseCall: unsupportedFactory, // promise is handled within the workflow
     SignalHandlerCall: new RegisterSignalHandlerCallFactory(),
     SearchCall: new SearchCallEventualFactory(),
     SendSignalCall: new SendSignalEventualFactory(),
