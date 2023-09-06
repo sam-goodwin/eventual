@@ -18,26 +18,71 @@ import { Readable } from "stream";
 import type { BucketStore } from "../../stores/bucket-store.js";
 import { streamToBuffer } from "../../utils.js";
 import type { LocalEnvConnector } from "../local-container.js";
+import type { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
 
 export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
 }
 
-export class LocalBucketStore implements BucketStore {
-  private objects: Record<
-    string,
-    Record<
-      string,
-      {
-        body: Uint8Array | string | Buffer;
-        contentLength: number;
-        etag: string;
-      } & PutBucketOptions
-    >
-  > = {};
+interface ObjectData extends PutBucketOptions {
+  body: Uint8Array | string | Buffer;
+  contentLength: number;
+  etag: string;
+}
 
-  constructor(private props: LocalBucketStoreProps) {}
+type Buckets = Record<string, Record<string, ObjectData>>;
+
+export class LocalBucketStore implements BucketStore, LocalSerializable {
+  constructor(
+    private props: LocalBucketStoreProps,
+    private buckets: Buckets = {}
+  ) {}
+
+  public serialize(): Record<string, Buffer> {
+    return Object.fromEntries(
+      Object.entries(this.buckets).flatMap(([bucketName, value]) =>
+        Object.entries(value).flatMap(([objectKey, value]) => {
+          const key = `${bucketName}/${objectKey}`;
+          const { body, ...meta } = value;
+          return [
+            [key, Buffer.from(JSON.stringify(value.body))],
+            [`${key}##meta`, Buffer.from(JSON.stringify(meta))],
+          ];
+        })
+      )
+    );
+  }
+
+  public static fromSerializedData(
+    props: LocalBucketStoreProps,
+    data?: Record<string, Buffer>
+  ) {
+    if (!data) {
+      return new LocalBucketStore(props);
+    }
+    const objectBody = Object.entries(data).filter(
+      ([name]) => !name.endsWith("##meta")
+    );
+    const buckets: Buckets = {};
+    objectBody.forEach(([key, value]) => {
+      const [bucketName, ...objectKeyParts] = key.split("/") as [
+        string,
+        ...string[]
+      ];
+      const objectKey = objectKeyParts.join("/");
+      const bucket = (buckets[bucketName] ??= {});
+      const metaData = data[`${key}##meta`];
+      const meta: Omit<ObjectData, "body"> = metaData
+        ? JSON.parse(metaData.toString("utf-8"))
+        : { contentLength: 0, etag: "" };
+      bucket[objectKey] = {
+        ...meta,
+        body: value,
+      };
+    });
+    return new LocalBucketStore(props, buckets);
+  }
 
   public async get(
     bucketName: string,
@@ -79,7 +124,7 @@ export class LocalBucketStore implements BucketStore {
     key: string,
     options?: GetBucketObjectOptions
   ) {
-    const bucket = this.objects[bucketName];
+    const bucket = this.buckets[bucketName];
 
     if (!bucket) {
       return undefined;
@@ -109,7 +154,7 @@ export class LocalBucketStore implements BucketStore {
     data: string | Buffer | Readable,
     options?: PutBucketOptions
   ): Promise<PutBucketObjectResponse> {
-    const bucket = (this.objects[bucketName] ??= {});
+    const bucket = (this.buckets[bucketName] ??= {});
 
     const body =
       typeof data === "string"
@@ -141,7 +186,7 @@ export class LocalBucketStore implements BucketStore {
   }
 
   public async delete(bucketName: string, key: string): Promise<void> {
-    const bucket = this.objects[bucketName];
+    const bucket = this.buckets[bucketName];
 
     if (!bucket) {
       return;
@@ -163,7 +208,7 @@ export class LocalBucketStore implements BucketStore {
     sourceBucket?: Bucket | undefined,
     options?: CopyBucketObjectOptions | undefined
   ): Promise<CopyBucketObjectResponse> {
-    const _sourceBucket = this.objects[sourceBucket?.name ?? bucketName];
+    const _sourceBucket = this.buckets[sourceBucket?.name ?? bucketName];
 
     if (!_sourceBucket) {
       return {};
@@ -178,7 +223,7 @@ export class LocalBucketStore implements BucketStore {
       return {};
     }
 
-    const destBucket = (this.objects[bucketName] ??= {});
+    const destBucket = (this.buckets[bucketName] ??= {});
 
     destBucket[key] = {
       ...sourceObject,
@@ -216,7 +261,7 @@ export class LocalBucketStore implements BucketStore {
     bucketName: string,
     request: ListBucketRequest
   ): Promise<ListBucketResult> {
-    const bucket = this.objects[bucketName];
+    const bucket = this.buckets[bucketName];
 
     if (!bucket) {
       return {

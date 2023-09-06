@@ -5,10 +5,38 @@ import type {
 } from "@eventual/core";
 import type { WorkflowEvent } from "@eventual/core/internal";
 import { ExecutionHistoryStore } from "../../stores/execution-history-store.js";
+import { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
 
-export class LocalExecutionHistoryStore extends ExecutionHistoryStore {
-  private eventStore: Record<string, WorkflowEvent[]> = {};
+export class LocalExecutionHistoryStore
+  extends ExecutionHistoryStore
+  implements LocalSerializable
+{
+  constructor(private eventStore: Record<string, WorkflowEvent[]> = {}) {
+    super();
+  }
+
+  public serialize(): Record<string, Buffer> {
+    return Object.fromEntries(
+      Object.entries(this.eventStore).map(([key, value]) => [
+        key,
+        Buffer.from(JSON.stringify(value)),
+      ])
+    );
+  }
+
+  public static fromSerializedData(data?: Record<string, Buffer>) {
+    return new LocalExecutionHistoryStore(
+      data
+        ? Object.fromEntries(
+            Object.entries(data).map(([key, value]) => [
+              key,
+              JSON.parse(value.toString("utf-8")),
+            ])
+          )
+        : {}
+    );
+  }
 
   public async putEvents(
     executionId: ExecutionID,

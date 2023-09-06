@@ -207,6 +207,7 @@ export class LocalContainer {
         ? LocalExecutionStore.fromSerializedData(this.localConnector, data)
         : new LocalExecutionStore(this.localConnector)
     );
+    // TODO: Support local log persistance and retrieval https://github.com/functionless/eventual/issues/435
     this.logsClient = new LocalLogsClient();
     this.workflowProvider = new GlobalWorkflowProvider();
     this.queueProvider = new GlobalQueueProvider();
@@ -218,19 +219,37 @@ export class LocalContainer {
       () => this.localConnector.getTime()
     );
     this.timerClient = new LocalTimerClient(this.localConnector);
-    this.executionHistoryStore = new LocalExecutionHistoryStore();
+    this.executionHistoryStore = localPersistanceStore.register(
+      "execution-history",
+      (data) =>
+        data
+          ? LocalExecutionHistoryStore.fromSerializedData(data)
+          : new LocalExecutionHistoryStore()
+    );
     this.taskProvider = props.taskProvider ?? new GlobalTaskProvider();
-    this.taskStore = new LocalTaskStore();
+    this.taskStore = localPersistanceStore.register("tasks", (data) =>
+      LocalTaskStore.fromSerializedData(data)
+    );
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
     this.entityProvider = new GlobalEntityProvider();
-    const entityStore = new LocalEntityStore({
-      entityProvider: this.entityProvider,
-      localConnector: this.localConnector,
-    });
-    const bucketStore = new LocalBucketStore({
-      localConnector: this.localConnector,
-    });
+    const entityStore = localPersistanceStore.register("entities", (data) =>
+      LocalEntityStore.fromSerializedData(
+        {
+          entityProvider: this.entityProvider,
+          localConnector: this.localConnector,
+        },
+        data
+      )
+    );
+    const bucketStore = localPersistanceStore.register("buckets", (data) =>
+      LocalBucketStore.fromSerializedData(
+        {
+          localConnector: this.localConnector,
+        },
+        data
+      )
+    );
     const openSearchClient = new LocalOpenSearchClient();
     this.eventClient = new LocalEventClient(this.localConnector);
     this.metricsClient = new LocalMetricsClient();
@@ -246,11 +265,17 @@ export class LocalContainer {
       executionStore: this.executionStore,
     });
 
-    this.executionHistoryStateStore = new LocalExecutionHistoryStateStore();
+    this.executionHistoryStateStore = localPersistanceStore.register(
+      "execution-history",
+      (data) => LocalExecutionHistoryStateStore.fromSerializedData(data)
+    );
 
-    this.queueClient = new LocalQueueClient(
-      this.queueProvider,
-      this.localConnector
+    this.queueClient = localPersistanceStore.register("queues", (data) =>
+      LocalQueueClient.fromSerializedData(
+        this.queueProvider,
+        this.localConnector,
+        data
+      )
     );
 
     this.socketClient = new LocalSocketClient(props.webSocketContainer);
