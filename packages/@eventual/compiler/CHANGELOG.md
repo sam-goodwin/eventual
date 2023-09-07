@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.50.2 (2023-09-07)
+
+### Bug Fixes
+
+- log errors in entity stream worker, fix includeOld types, do not remove key from oldValue ([#440](https://github.com/functionless/eventual/issues/440)) ([e5e94de](https://github.com/functionless/eventual/commit/e5e94de14a3c045606f0470b3ae723f0bcdc127e))
+
 ## 0.50.1 (2023-09-07)
 
 ### Bug Fixes
