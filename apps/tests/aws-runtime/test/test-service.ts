@@ -616,6 +616,7 @@ export const counterWatcher = counter.stream(
     console.log(item);
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
+      item.operation;
       await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
     } else if (item.newValue.namespace === "default") {
       const { n } = item.newValue;
@@ -1286,3 +1287,24 @@ export const searchBlog = command(
     };
   }
 );
+
+// check types of entity
+function streamShouldHaveEmptyIfNoInclude() {
+  counter.stream("", {}, (item) => {
+    if (item.operation === "modify") {
+      // @ts-expect-error - no oldValue without includeOld: true
+      item.oldValue!.namespace;
+    }
+  });
+  counter.stream(
+    "",
+    {
+      includeOld: true,
+    },
+    (item) => {
+      if (item.operation === "modify") {
+        item.oldValue.namespace;
+      }
+    }
+  );
+}

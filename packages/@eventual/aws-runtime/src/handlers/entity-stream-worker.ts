@@ -104,6 +104,7 @@ export default (async (event) => {
         newValue: newValue as any,
         newVersion,
         operation,
+        // @ts-ignore
         oldValue,
         oldVersion,
       };
