@@ -322,6 +322,7 @@ export function task<Name extends string, Input = any, Output = any>(
   };
   func.sourceLocation = sourceLocation;
   func.options = opts;
+  func.kind = "Task";
 
   // @ts-ignore
   func.handler = handler;
