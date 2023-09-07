@@ -153,11 +153,12 @@ export interface Entity<
   ): EntityIndexMapper<Name, Attr, Partition, IndexPartition, IndexSort>;
   stream<
     Name extends string = string,
-    Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+    Operations extends EntityStreamOperation[] = EntityStreamOperation[],
+    IncludeOld extends boolean = false
   >(
     name: Name,
-    options: EntityStreamOptions<Attr, Partition, Sort, Operations>,
-    handler: EntityStreamHandler<Attr, Partition, Sort, Operations>
+    options: EntityStreamOptions<Attr, Partition, Sort, Operations, IncludeOld>,
+    handler: EntityStreamHandler<Attr, Partition, Sort, Operations, IncludeOld>
   ): EntityStream<Name, Attr, Partition, Sort>;
   stream<Name extends string = string>(
     name: string,

@@ -227,7 +227,8 @@ export interface EntityStreamOptions<
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined,
-  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[],
+  IncludeOld extends boolean = false
 > extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
@@ -238,7 +239,7 @@ export interface EntityStreamOptions<
   /**
    * When true, the old value will be sent with the new value.
    */
-  includeOld?: boolean;
+  includeOld?: IncludeOld;
   /**
    * One or more key queries that will be included in the stream.
    */

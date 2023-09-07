@@ -1286,3 +1286,24 @@ export const searchBlog = command(
     };
   }
 );
+
+// check types of entity
+function streamShouldHaveEmptyIfNoInclude() {
+  counter.stream("", {}, (item) => {
+    if (item.operation === "modify") {
+      // @ts-expect-error - no oldValue without includeOld: true
+      item.oldValue!.namespace;
+    }
+  });
+  counter.stream(
+    "",
+    {
+      includeOld: true,
+    },
+    (item) => {
+      if (item.operation === "modify") {
+        item.oldValue.namespace;
+      }
+    }
+  );
+}

@@ -60,7 +60,9 @@ export function createEntityStreamWorker(
                 if (result !== false) {
                   continue;
                 }
-              } catch {}
+              } catch (err) {
+                console.error(err);
+              }
               // if the handler fails or returns false, return the rest of the items
               return itemGroup.slice(Number(i)).map((i) => i.id);
             }

@@ -82,18 +82,18 @@ export default (async (event) => {
     const normalizedKey = normalizeCompositeKey(entity, bestValue);
     const keyMap = convertNormalizedEntityKeyToMap(normalizedKey);
 
-    if (newValue) {
-      delete newValue[EntityEntityRecord.VERSION_FIELD];
-      delete newValue[normalizedKey.partition.keyAttribute];
-      if (normalizedKey.sort) {
-        delete newValue[normalizedKey.sort.keyAttribute];
-      }
-    }
-    if (oldValue) {
-      delete oldValue[EntityEntityRecord.VERSION_FIELD];
-      delete oldValue[normalizedKey.partition.keyAttribute];
-      if (normalizedKey.sort) {
-        delete oldValue[normalizedKey.sort.keyAttribute];
+    removeSyntheticKey(newValue);
+    removeSyntheticKey(oldValue);
+
+    function removeSyntheticKey(value: Record<string, any> | undefined) {
+      if (value) {
+        delete value[EntityEntityRecord.VERSION_FIELD];
+        if (normalizedKey.partition.attributes.length > 0) {
+          delete value[normalizedKey.partition.keyAttribute];
+        }
+        if (normalizedKey.sort && normalizedKey.sort.attributes.length > 0) {
+          delete value[normalizedKey.sort.keyAttribute];
+        }
       }
     }
 
@@ -104,6 +104,7 @@ export default (async (event) => {
         newValue: newValue as any,
         newVersion,
         operation,
+        // @ts-ignore
         oldValue,
         oldVersion,
       };
