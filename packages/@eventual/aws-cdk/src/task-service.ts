@@ -11,20 +11,20 @@ import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { BuildOutput } from "./build";
-import { DeepCompositePrincipal } from "./deep-composite-principal";
-import { grant } from "./grant";
-import type { LazyInterface } from "./proxy-construct";
-import type { SchedulerService } from "./scheduler-service";
-import type { ServiceLocal } from "./service";
+import type { BuildOutput } from "./build.js";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import { grant } from "./grant.js";
+import type { LazyInterface } from "./proxy-construct.js";
+import type { SchedulerService } from "./scheduler-service.js";
+import type { ServiceLocal } from "./service.js";
 import {
   WorkerServiceConstructProps,
   configureWorkerCalls,
-} from "./service-common";
-import { ServiceFunction } from "./service-function";
-import { ServiceEntityProps, serviceFunctionArn } from "./utils";
-import type { WorkflowService } from "./workflow-service";
-import { EventualResource } from "./resource";
+} from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import { ServiceEntityProps, serviceFunctionArn } from "./utils.js";
+import type { WorkflowService } from "./workflow-service.js";
+import { EventualResource } from "./resource.js";
 
 export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 

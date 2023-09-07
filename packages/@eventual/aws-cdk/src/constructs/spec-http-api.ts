@@ -6,11 +6,11 @@ import {
   VpcLink,
   VpcLinkProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { ApiBase } from "@aws-cdk/aws-apigatewayv2-alpha/lib/common/base";
+import { ApiBase } from "@aws-cdk/aws-apigatewayv2-alpha/lib/common/base.js";
 import { CfnApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { Metric, MetricOptions } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
-import { ApiDefinition } from "./http-api-definition";
+import { ApiDefinition } from "./http-api-definition.js";
 
 /**
  * Taken from (and modified) closed cdk PR:

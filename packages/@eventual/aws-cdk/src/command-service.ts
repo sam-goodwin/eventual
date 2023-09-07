@@ -27,19 +27,19 @@ import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
-import { SpecHttpApi, SpecHttpApiProps } from "./constructs/spec-http-api";
-import type { EventService } from "./event-service";
-import { grant } from "./grant";
+import { SpecHttpApi, SpecHttpApiProps } from "./constructs/spec-http-api.js";
+import type { EventService } from "./event-service.js";
+import { grant } from "./grant.js";
 import { EventualResource } from "./resource.js";
-import { ServiceLocal } from "./service";
+import { ServiceLocal } from "./service.js";
 import {
   WorkerServiceConstructProps,
   configureWorkerCalls,
 } from "./service-common.js";
 import { ServiceFunction } from "./service-function.js";
-import type { TaskService } from "./task-service";
-import { ServiceEntityProps, serviceFunctionArn } from "./utils";
-import type { WorkflowService } from "./workflow-service";
+import type { TaskService } from "./task-service.js";
+import { ServiceEntityProps, serviceFunctionArn } from "./utils.js";
+import type { WorkflowService } from "./workflow-service.js";
 
 export type ApiOverrides = Omit<SpecHttpApiProps, "apiDefinition">;
 

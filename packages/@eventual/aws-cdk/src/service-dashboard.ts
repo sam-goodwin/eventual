@@ -2,10 +2,10 @@ import {
   Dashboard,
   GraphWidget,
   MathExpression,
-  Statistic,
+  Stats,
 } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
-import { Service } from "./service";
+import { Service } from "./service.js";
 import { Stack } from "aws-cdk-lib/core";
 
 export interface ServiceDashboardProps {
@@ -62,7 +62,7 @@ export class ServiceDashboard extends Construct {
                 expression: "max_age / 1000",
                 usingMetrics: {
                   max_age: service.metricMaxTaskAge({
-                    statistic: Statistic.MAXIMUM,
+                    statistic: Stats.MAXIMUM,
                   }),
                 },
                 label: "Maximum age of any Task processed by the Orchestrator",
@@ -95,7 +95,7 @@ export class ServiceDashboard extends Construct {
               }),
               service.metricSavedHistoryEvents({
                 label: "Maximum number of events in the History",
-                statistic: Statistic.MAXIMUM,
+                statistic: Stats.MAXIMUM,
               }),
             ],
             width: 12,
@@ -114,7 +114,7 @@ export class ServiceDashboard extends Construct {
               }),
               service.metricCommandsInvoked({
                 label: "Maximum number of Commands output by a Workflow step",
-                statistic: Statistic.MAXIMUM,
+                statistic: Stats.MAXIMUM,
               }),
             ],
             width: 12,

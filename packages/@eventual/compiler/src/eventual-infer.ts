@@ -54,6 +54,8 @@ export async function infer(
     bundle: true,
     write: false,
     platform: "node",
+    format: "esm",
+    target: "es2022",
   });
 
   const script = bundle.outputFiles[0]!.text;
