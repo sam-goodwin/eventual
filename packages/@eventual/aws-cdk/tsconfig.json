@@ -1,18 +1,18 @@
 {
-  "extends": "../../../tsconfig-base.cjs",
+  "extends": "../../../tsconfig-base",
   "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib",
+    "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true
   },
   "references": [
-    { "path": "../aws-runtime/tsconfig.cjs.json" },
-    { "path": "../core/tsconfig.cjs.json" },
-    { "path": "../compiler/tsconfig.cjs.json" },
-    { "path": "../core-runtime/tsconfig.cjs.json" },
-    { "path": "../project/tsconfig.cjs.json" }
+    { "path": "../aws-runtime/tsconfig.json" },
+    { "path": "../core/tsconfig.json" },
+    { "path": "../compiler/tsconfig.json" },
+    { "path": "../core-runtime/tsconfig.json" },
+    { "path": "../project/tsconfig.json" }
   ]
 }

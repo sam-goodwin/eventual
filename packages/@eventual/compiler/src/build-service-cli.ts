@@ -1,4 +1,4 @@
-import { buildService, BuildAWSRuntimeProps } from "./build";
+import { buildService, BuildAWSRuntimeProps } from "./build-service.js";
 
 export async function main() {
   try {
@@ -16,8 +16,3 @@ export async function main() {
     process.exit(1);
   }
 }
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});

@@ -1,12 +1,12 @@
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
-import { BuildOutput } from "./build";
-import { CommandService } from "./command-service";
-import { EntityService } from "./entity-service";
-import { LazyInterface } from "./proxy-construct";
-import { SearchService } from "./search/search-service";
-import { Service } from "./service";
+import { BucketService } from "./bucket-service.js";
+import { BuildOutput } from "./build.js";
+import { CommandService } from "./command-service.js";
+import { EntityService } from "./entity-service.js";
+import { LazyInterface } from "./proxy-construct.js";
+import { SearchService } from "./search/search-service.js";
+import { Service } from "./service.js";
 
 export interface ServiceConstructProps {
   /**

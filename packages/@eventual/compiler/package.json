@@ -2,6 +2,7 @@
   "name": "@eventual/compiler",
   "version": "0.50.0",
   "bin": {
+    "eventual-build-service": "./bin/eventual-build-service.mjs",
     "eventual-bundle": "./bin/eventual-bundle.mjs",
     "eventual-infer": "./bin/eventual-infer.mjs"
   },
@@ -9,6 +10,9 @@
     ".": {
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
+    },
+    "./bin/eventual-build-service.mjs": {
+      "require": "./bin/eventual-build-service.mjs"
     },
     "./bin/eventual-bundle.mjs": {
       "require": "./bin/eventual-bundle.mjs"
@@ -33,6 +37,7 @@
   "dependencies": {
     "@anatine/zod-openapi": "^1.12.0",
     "@eventual/core": "workspace:^",
+    "@eventual/core-runtime": "workspace:^",
     "@swc/core": "^1.2.245",
     "esbuild-plugin-alias-path": "^2.0.2",
     "openapi3-ts": "^3.1.2",

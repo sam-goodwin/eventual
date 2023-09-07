@@ -7,8 +7,8 @@ import {
 import { Duration } from "aws-cdk-lib/core";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import type { BuildOutput } from "./build";
-import { baseFnProps } from "./utils";
+import type { BuildOutput } from "./build.js";
+import { baseFnProps } from "./utils.js";
 
 export interface ServiceFunctionProps {
   overrides?: Omit<Partial<FunctionProps>, "code" | "handler" | "functionName">;

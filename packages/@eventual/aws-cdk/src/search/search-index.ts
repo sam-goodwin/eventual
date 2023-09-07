@@ -2,7 +2,7 @@ import { IndexSpec } from "@eventual/core/internal";
 import type { opensearchtypes } from "@opensearch-project/opensearch";
 import { CustomResource, Resource } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { SearchPrincipal, SearchService } from "./search-service";
+import type { SearchPrincipal, SearchService } from "./search-service.js";
 
 /**
  * Attributes exposed by the {@link SearchIndex} Resource.
