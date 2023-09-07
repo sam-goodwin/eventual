@@ -114,8 +114,8 @@ function esmPolyfillRequireBanner() {
 import { fileURLToPath as topLevelFileURLToPath } from 'url';
 import { dirname as topLevelDirname } from 'path';
 
-const __filename = topLevelFileURLToPath(import.meta.url);
-const __dirname = topLevelDirname(__filename);`,
+var __filename = topLevelFileURLToPath(import.meta.url);
+var __dirname = topLevelDirname(__filename);`,
     ].join("\n"),
   };
 }
