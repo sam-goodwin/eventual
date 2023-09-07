@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.50.1 (2023-09-07)
+
+### Bug Fixes
+
+- add **dirname and **filename to banner ([#438](https://github.com/functionless/eventual/issues/438)) ([e296947](https://github.com/functionless/eventual/commit/e29694735a9b49cdf176019b3dd6d1aca87cfb79))
+
 # 0.50.0 (2023-08-24)
 
 ### Features
