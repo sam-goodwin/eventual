@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.50.3 (2023-09-08)
+
+### Bug Fixes
+
+- entity remove missing attributes ([#441](https://github.com/functionless/eventual/issues/441)) ([557c02e](https://github.com/functionless/eventual/commit/557c02e1e1c1a96d977ab827fd1645c2257953a2))
+
 ## 0.50.2 (2023-09-07)
 
 ### Bug Fixes
