@@ -454,7 +454,7 @@ export class AWSEntityStore extends EntityStore {
               )}`
           ),
         ].join(",") +
-        (missingAttributes
+        (missingAttributes.length > 0
           ? ` REMOVE ${missingAttributes
               .map((a) => formatAttributeNameMapKey(a))
               .join(",")}`
