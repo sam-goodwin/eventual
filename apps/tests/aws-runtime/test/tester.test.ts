@@ -235,6 +235,8 @@ eventualRuntimeTestHarness(
         { counterNumber: 2, n: 2 },
         { counterNumber: 3, n: 1 },
       ]),
+      // testing optional set, optional field should be erased
+      [{ n: 2 }, { n: 2 }],
     ]);
 
     testCompletion("transaction", transactionWorkflow, ([one, two, three]) => {
