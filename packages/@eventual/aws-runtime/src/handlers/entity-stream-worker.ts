@@ -11,6 +11,7 @@ import {
   createEntityStreamWorker,
   getLazy,
   normalizeCompositeKey,
+  removeGeneratedKeyAttributes,
 } from "@eventual/core-runtime";
 import type { EntityStreamOperation } from "@eventual/core/internal";
 import type { DynamoDBStreamHandler } from "aws-lambda";
@@ -88,12 +89,7 @@ export default (async (event) => {
     function removeSyntheticKey(value: Record<string, any> | undefined) {
       if (value) {
         delete value[EntityEntityRecord.VERSION_FIELD];
-        if (normalizedKey.partition.attributes.length > 0) {
-          delete value[normalizedKey.partition.keyAttribute];
-        }
-        if (normalizedKey.sort && normalizedKey.sort.attributes.length > 0) {
-          delete value[normalizedKey.sort.keyAttribute];
-        }
+        removeGeneratedKeyAttributes(entity!, value, false, true);
       }
     }
 
