@@ -14,6 +14,8 @@
     "@aws-sdk/client-s3": "^3.341.0",
     "@aws-sdk/client-sqs": "^3.341.0",
     "@aws-sdk/lib-dynamodb": "^3.341.0",
+    "@aws-sdk/smithy-client": "^3.341.0",
+    "@aws-sdk/types": "^3.341.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/integrations-slack": "workspace:^",
