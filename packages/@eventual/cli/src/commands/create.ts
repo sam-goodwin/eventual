@@ -1,5 +1,5 @@
-import { createNewService } from "@eventual/project";
 import { Argv } from "yargs";
+import { createNewService } from "../create-new-service.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.

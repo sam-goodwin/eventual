@@ -9,12 +9,8 @@
   },
   "main": "lib/cjs/index.js",
   "module": "lib/esm/index.js",
-  "dependencies": {
-    "inquirer": "^8"
-  },
-  "devDependencies": {
-    "@types/inquirer": "^8.2.6"
-  },
+  "dependencies": {},
+  "devDependencies": {},
   "publishConfig": {
     "access": "public"
   }
