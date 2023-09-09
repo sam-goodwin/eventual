@@ -1,5 +1,6 @@
-import { Argv } from "yargs";
-import { createNewService } from "../create-new-service.js";
+import { createNewService, validateServiceName } from "@eventual/project";
+import inquirer from "inquirer";
+import type { Argv } from "yargs";
 
 /**
  * Creates a new Service in an Eventual-managed project.
@@ -25,6 +26,20 @@ export const create = (yargs: Argv) =>
         type: "string",
       }),
     async (args) => {
+      if (!args.name) {
+        args.name = (
+          await inquirer.prompt([
+            {
+              type: "input",
+              name: "serviceName",
+              when: !args.name,
+              message: `service name`,
+              validate: validateServiceName,
+            },
+          ])
+        ).serviceName! as string;
+      }
+
       await createNewService(args.name);
     }
   );

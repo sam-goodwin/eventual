@@ -1,18 +1,14 @@
-import {
-  addTsReferences,
-  createServicePackage,
-  discoverEventualConfig,
-  discoverEventualVersion,
-  updateJsonFile,
-  validateServiceName,
-} from "@eventual/project";
-import inquirer from "inquirer";
 import path from "path";
+import { createServicePackage } from "./create-service-package.js";
+import { discoverEventualConfig } from "./eventual-manifest.js";
+import { updateJsonFile } from "./json-file.js";
+import { addTsReferences } from "./tsconfig-file.js";
+import { discoverEventualVersion } from "./version.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.
  */
-export async function createNewService(serviceName?: string) {
+export async function createNewService(serviceName: string) {
   const eventualJsonFile = await discoverEventualConfig(process.cwd());
   if (eventualJsonFile === undefined) {
     console.error(
@@ -24,20 +20,6 @@ export async function createNewService(serviceName?: string) {
 
   // @ts-ignore
   const eventualJson = JSON.parse(eventualJsonFile);
-
-  if (!serviceName) {
-    serviceName = (
-      await inquirer.prompt([
-        {
-          type: "input",
-          name: "serviceName",
-          when: !serviceName,
-          message: `service name`,
-          validate: validateServiceName,
-        },
-      ])
-    ).serviceName! as string;
-  }
 
   await createServicePackage(path.resolve(process.cwd(), "apps", serviceName), {
     packageName: serviceName,
