@@ -1,6 +1,6 @@
-import { commandRpcPath, HttpMethod } from "@eventual/core/constants";
+import { commandRpcPath, type HttpMethod } from "@eventual/core/constants";
 import { getRequestHandler } from "./request-handler/factory.js";
-import {
+import type {
   BeforeRequest,
   RequestHandler,
 } from "./request-handler/request-handler.js";
