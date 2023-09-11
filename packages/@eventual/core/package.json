@@ -18,6 +18,7 @@
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "files": [
+    "constants",
     "internal",
     "lib"
   ],
