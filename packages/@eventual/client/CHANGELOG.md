@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.50.5 (2023-09-11)
+
+### Bug Fixes
+
+- missing node constants export ([#443](https://github.com/functionless/eventual/issues/443)) ([f9c4ecf](https://github.com/functionless/eventual/commit/f9c4ecf5dbc708fe0d6ce5764b26426f4924fa3a))
+
 ## 0.50.4 (2023-09-11)
 
 **Note:** Version bump only for package @eventual/client
