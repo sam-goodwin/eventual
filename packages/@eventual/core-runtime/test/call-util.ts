@@ -154,11 +154,12 @@ export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   };
 }
 
-export function taskScheduled(name: string, seq: number) {
+export function taskScheduled(name: string, seq: number, input?: any) {
   return callEvent<TaskScheduled>({
     type: WorkflowCallHistoryType.TaskScheduled,
     name,
     seq,
+    input,
   });
 }
 
