@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.51.0 (2023-09-12)
+
+### Features
+
+- add task event input ([#444](https://github.com/functionless/eventual/issues/444)) ([cf37af3](https://github.com/functionless/eventual/commit/cf37af38d97c8c3516f2d6aa9885a75d8789bc8c))
+
 ## 0.50.5 (2023-09-11)
 
 ### Bug Fixes
