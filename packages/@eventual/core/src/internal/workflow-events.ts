@@ -220,6 +220,7 @@ export type WorkflowRunStarted =
 export interface TaskScheduled
   extends CallEventBase<WorkflowCallHistoryType.TaskScheduled> {
   name: string;
+  input?: any;
 }
 
 export interface TaskSucceeded

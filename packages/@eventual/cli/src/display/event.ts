@@ -44,7 +44,8 @@ export function displayEvent(event: WorkflowEvent) {
             : []),
           ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
           ...((isChildWorkflowScheduled(event.event) ||
-            isTransactionRequest(event.event)) &&
+            isTransactionRequest(event.event) ||
+            isTaskScheduled(event.event)) &&
           event.event.input
             ? [`Payload: ${JSON.stringify(event.event.input)}`]
             : []),
