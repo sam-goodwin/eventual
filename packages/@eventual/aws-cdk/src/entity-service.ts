@@ -368,6 +368,7 @@ export class EntityStream extends Construct implements EventualResource {
               : Duration.seconds(0),
             reportBatchItemFailures: true,
             startingPosition: StartingPosition.TRIM_HORIZON,
+
             ...(filters.length > 0 ? { filters } : {}),
           }),
         ],

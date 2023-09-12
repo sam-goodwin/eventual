@@ -423,6 +423,13 @@ export class AWSEntityStore extends EntityStore {
       value
     );
 
+    /**
+     * Any attribute not in the input object, but in the schema, will be removed
+     */
+    const missingAttributes = Object.keys(entity.attributes.shape).filter(
+      (a) => !(a in value)
+    );
+
     // remove the entity keys if they are not generated
     const valueToSave = removeKeyAttributes(
       entity,
@@ -437,15 +444,21 @@ export class AWSEntityStore extends EntityStore {
 
     return {
       Key: this.entityKey(key),
-      UpdateExpression: [
-        "SET #__version=if_not_exists(#__version, :__startingVersion) + :__versionIncrement",
-        ...Object.keys(valueRecord).map(
-          (key) =>
-            `${formatAttributeNameMapKey(key)}=${formatAttributeValueMapKey(
-              key
-            )}`
-        ),
-      ].join(","),
+      UpdateExpression:
+        [
+          "SET #__version=if_not_exists(#__version, :__startingVersion) + :__versionIncrement",
+          ...Object.keys(valueRecord).map(
+            (key) =>
+              `${formatAttributeNameMapKey(key)}=${formatAttributeValueMapKey(
+                key
+              )}`
+          ),
+        ].join(",") +
+        (missingAttributes.length > 0
+          ? ` REMOVE ${missingAttributes
+              .map((a) => formatAttributeNameMapKey(a))
+              .join(",")}`
+          : ""),
       ExpressionAttributeNames: {
         "#__version": EntityEntityRecord.VERSION_FIELD,
         ...Object.fromEntries(
@@ -453,6 +466,9 @@ export class AWSEntityStore extends EntityStore {
             formatAttributeNameMapKey(key),
             key,
           ])
+        ),
+        ...Object.fromEntries(
+          missingAttributes.map((m) => [formatAttributeNameMapKey(m), m])
         ),
       },
       ExpressionAttributeValues: {

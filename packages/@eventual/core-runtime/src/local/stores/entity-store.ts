@@ -131,7 +131,7 @@ export class LocalEntityStore extends EntityStore {
           item: {
             key: convertNormalizedEntityKeyToMap(key),
             operation: "remove" as const,
-            oldValue: item.value,
+            oldValue: item.value as any,
             oldVersion: item.version,
           } as EntityStreamItem,
         });

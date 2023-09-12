@@ -321,6 +321,8 @@ export function task<Name extends string, Input = any, Output = any>(
     return sendTaskHeartbeat(request.taskToken);
   };
   func.sourceLocation = sourceLocation;
+  func.options = opts;
+  func.kind = "Task";
 
   // @ts-ignore
   func.handler = handler;

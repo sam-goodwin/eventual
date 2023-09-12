@@ -558,6 +558,8 @@ export const counter = entity("counter5", {
       z.literal("default"),
       z.literal("another"),
       z.literal("another2"),
+      z.literal("remove"),
+      z.literal("remove2"),
     ]),
     id: z.string(),
     optional: z.string().optional(),
@@ -885,6 +887,24 @@ export const entityWorkflow = workflow(
       { select: ["n", "counterNumber"] }
     );
 
+    /**
+     * Set putting undefined or missing values.
+     */
+    await Promise.all([
+      counter.put({ namespace: "remove", id, n: 1, optional: "someValue" }),
+      counter.put({ namespace: "remove2", id, n: 1, optional: "someValue" }),
+    ]);
+
+    await Promise.all([
+      counter.put({ namespace: "remove", id, n: 2 }),
+      counter.put({ namespace: "remove2", id, n: 2, optional: undefined }),
+    ]);
+
+    const removed = await countersByNamespace.query(
+      { namespace: { $beginsWith: "remove" }, id },
+      { select: ["n", "optional"] }
+    );
+
     return [
       result0,
       result1,
@@ -904,6 +924,7 @@ export const entityWorkflow = workflow(
         // @ts-check - should not error
         return c.value;
       }),
+      removed.entries?.map(({ value }) => value),
     ];
   }
 );
@@ -1356,3 +1377,24 @@ export const searchBlog = command(
     };
   }
 );
+
+// check types of entity
+function streamShouldHaveEmptyIfNoInclude() {
+  counter.stream("", {}, (item) => {
+    if (item.operation === "modify") {
+      // @ts-expect-error - no oldValue without includeOld: true
+      item.oldValue!.namespace;
+    }
+  });
+  counter.stream(
+    "",
+    {
+      includeOld: true,
+    },
+    (item) => {
+      if (item.operation === "modify") {
+        item.oldValue.namespace;
+      }
+    }
+  );
+}

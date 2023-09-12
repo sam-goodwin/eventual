@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.50.5 (2023-09-11)
+
+### Bug Fixes
+
+- missing node constants export ([#443](https://github.com/functionless/eventual/issues/443)) ([f9c4ecf](https://github.com/functionless/eventual/commit/f9c4ecf5dbc708fe0d6ce5764b26426f4924fa3a))
+
+## 0.50.4 (2023-09-11)
+
+**Note:** Version bump only for package @eventual/testing
+
+## 0.50.3 (2023-09-08)
+
+### Bug Fixes
+
+- entity remove missing attributes ([#441](https://github.com/functionless/eventual/issues/441)) ([557c02e](https://github.com/functionless/eventual/commit/557c02e1e1c1a96d977ab827fd1645c2257953a2))
+
+## 0.50.2 (2023-09-07)
+
+### Bug Fixes
+
+- log errors in entity stream worker, fix includeOld types, do not remove key from oldValue ([#440](https://github.com/functionless/eventual/issues/440)) ([e5e94de](https://github.com/functionless/eventual/commit/e5e94de14a3c045606f0470b3ae723f0bcdc127e))
+
+## 0.50.1 (2023-09-07)
+
+### Bug Fixes
+
+- add **dirname and **filename to banner ([#438](https://github.com/functionless/eventual/issues/438)) ([e296947](https://github.com/functionless/eventual/commit/e29694735a9b49cdf176019b3dd6d1aca87cfb79))
+
 # 0.50.0 (2023-08-24)
 
 ### Features

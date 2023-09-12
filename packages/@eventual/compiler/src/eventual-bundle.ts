@@ -110,7 +110,12 @@ function esmPolyfillRequireBanner() {
   return {
     js: [
       `import { createRequire as topLevelCreateRequire } from 'module'`,
-      `const require = topLevelCreateRequire(import.meta.url)`,
+      `const require = topLevelCreateRequire(import.meta.url)
+import { fileURLToPath as topLevelFileURLToPath } from 'url';
+import { dirname as topLevelDirname } from 'path';
+
+var __filename = topLevelFileURLToPath(import.meta.url);
+var __dirname = topLevelDirname(__filename);`,
     ].join("\n"),
   };
 }

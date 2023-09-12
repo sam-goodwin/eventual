@@ -1,3 +1,4 @@
+export * from "./create-service-package.js";
 export * from "./create-new-service.js";
 export * from "./eventual-manifest.js";
 export * from "./exec.js";

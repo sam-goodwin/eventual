@@ -29,13 +29,14 @@ export interface EntityStreamHandler<
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined,
-  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[],
+  IncludeOld extends boolean = false
 > {
   /**
    * Provides the keys, new value
    */
   (
-    item: EntityStreamItem<Attr, Partition, Sort, Operations>,
+    item: EntityStreamItem<Attr, Partition, Sort, Operations, IncludeOld>,
     context: EntityStreamContext
   ): Promise<void | false> | void | false;
 }
@@ -76,11 +77,12 @@ export type EntityStreamItem<
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined,
-  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[],
+  IncludeOld extends boolean = false
 > = (
   | EntityStreamInsertItem<Attr, Partition, Sort>
-  | EntityStreamModifyItem<Attr, Partition, Sort>
-  | EntityStreamRemoveItem<Attr, Partition, Sort>
+  | EntityStreamModifyItem<Attr, Partition, Sort, IncludeOld>
+  | EntityStreamRemoveItem<Attr, Partition, Sort, IncludeOld>
 ) & { id: string; operation: Operations[number] };
 
 export interface EntityStreamInsertItem<
@@ -100,13 +102,14 @@ export interface EntityStreamModifyItem<
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
-    | undefined
+    | undefined,
+  IncludeOld extends boolean = false
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "modify";
   newValue: Attr;
   newVersion: number;
-  oldValue?: Attr;
-  oldVersion?: number;
+  oldValue: IncludeOld extends true ? Attr : undefined;
+  oldVersion: number;
 }
 
 export interface EntityStreamRemoveItem<
@@ -114,10 +117,11 @@ export interface EntityStreamRemoveItem<
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
-    | undefined
+    | undefined,
+  IncludeOld extends boolean = false
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "remove";
-  oldValue?: Attr;
+  oldValue?: IncludeOld extends true ? Attr : undefined;
   oldVersion?: number;
 }
 
