@@ -10,6 +10,7 @@ import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { LogsClient } from "../clients/logs-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
+import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { TaskClient, TaskWorkerRequest } from "../clients/task-client.js";
 import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { TransactionClient } from "../clients/transaction-client.js";
@@ -28,6 +29,10 @@ import {
 } from "../handlers/entity-stream-worker.js";
 import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
+  QueueHandlerWorker,
+  createQueueHandlerWorker,
+} from "../handlers/queue-handler-worker.js";
+import {
   SubscriptionWorker,
   createSubscriptionWorker,
 } from "../handlers/subscription-worker.js";
@@ -43,6 +48,10 @@ import {
   GlobalEntityProvider,
 } from "../providers/entity-provider.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
+import {
+  GlobalQueueProvider,
+  QueueProvider,
+} from "../providers/queue-provider.js";
 import {
   GlobalSubscriptionProvider,
   SubscriptionProvider,
@@ -78,6 +87,7 @@ import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalOpenSearchClient } from "./clients/open-search-client.js";
+import { LocalQueueClient } from "./clients/queue-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
@@ -87,7 +97,6 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
-import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 
 export type LocalEvent =
   | WorkflowTask
@@ -95,8 +104,23 @@ export type LocalEvent =
   | TaskWorkerRequest
   | LocalEntityStreamEvent
   | LocalEmittedEvents
+  | LocalQueuePollEvent
   | Omit<BucketNotificationPutEvent, "handlerName">
   | Omit<BucketNotificationDeleteEvent, "handlerName">;
+
+/**
+ * Event that tells the environment to poll for queue events when one or more exist in the local events.
+ */
+export interface LocalQueuePollEvent {
+  kind: "QueuePollEvent";
+  queueName: string;
+}
+
+export function isLocalQueuePollEvent(
+  event: LocalEvent
+): event is LocalQueuePollEvent {
+  return "kind" in event && event.kind === "QueuePollEvent";
+}
 
 export interface LocalEmittedEvents {
   kind: "EmittedEvents";
@@ -137,16 +161,18 @@ export class LocalContainer {
   public entityStreamWorker: EntityStreamWorker;
   public subscriptionWorker: SubscriptionWorker;
   public transactionWorker: TransactionWorker;
+  public queueHandlerWorker: QueueHandlerWorker;
 
-  public taskClient: TaskClient;
   public eventClient: EventClient;
   public executionQueueClient: ExecutionQueueClient;
-  public workflowClient: WorkflowClient;
   public logsClient: LogsClient;
-  public timerClient: TimerClient;
   public metricsClient: MetricsClient;
-  public transactionClient: TransactionClient;
+  public queueClient: LocalQueueClient;
   public serviceClient: EventualServiceClient;
+  public taskClient: TaskClient;
+  public timerClient: TimerClient;
+  public transactionClient: TransactionClient;
+  public workflowClient: WorkflowClient;
 
   public executionHistoryStateStore: ExecutionHistoryStateStore;
   public executionHistoryStore: ExecutionHistoryStore;
@@ -154,6 +180,7 @@ export class LocalContainer {
   public taskStore: TaskStore;
 
   public entityProvider: EntityProvider;
+  public queueProvider: QueueProvider;
   public subscriptionProvider: SubscriptionProvider;
   public taskProvider: TaskProvider;
   public workflowProvider: WorkflowProvider;
@@ -168,6 +195,7 @@ export class LocalContainer {
     this.executionStore = new LocalExecutionStore(this.localConnector);
     this.logsClient = new LocalLogsClient();
     this.workflowProvider = new GlobalWorkflowProvider();
+    this.queueProvider = new GlobalQueueProvider();
     this.workflowClient = new WorkflowClient(
       this.executionStore,
       this.logsClient,
@@ -206,6 +234,11 @@ export class LocalContainer {
 
     this.executionHistoryStateStore = new LocalExecutionHistoryStateStore();
 
+    this.queueClient = new LocalQueueClient(
+      this.queueProvider,
+      this.localConnector
+    );
+
     this.transactionWorker = createTransactionWorker({
       entityStore,
       entityProvider: this.entityProvider,
@@ -232,6 +265,7 @@ export class LocalContainer {
       bucketStore,
       entityStore,
       openSearchClient,
+      queueClient: this.queueClient,
       serviceClient: this.serviceClient,
       serviceSpec: undefined,
       serviceName: props.serviceName,
@@ -243,6 +277,7 @@ export class LocalContainer {
       bucketStore,
       entityStore,
       openSearchClient,
+      queueClient: this.queueClient,
       serviceName: props.serviceName,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
@@ -256,6 +291,7 @@ export class LocalContainer {
       logAgent,
       metricsClient: this.metricsClient,
       openSearchClient,
+      queueClient: this.queueClient,
       serviceName: props.serviceName,
       serviceClient: this.serviceClient,
       serviceSpec: undefined,
@@ -269,6 +305,7 @@ export class LocalContainer {
       openSearchClient,
       bucketStore,
       entityStore,
+      queueClient: this.queueClient,
       serviceClient: this.serviceClient,
       serviceName: props.serviceName,
       serviceSpec: undefined,
@@ -283,11 +320,13 @@ export class LocalContainer {
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
         openSearchClient,
+        queueClient: this.queueClient,
         taskClient: this.taskClient,
         timerClient: this.timerClient,
         transactionClient: this.transactionClient,
         workflowClient: this.workflowClient,
       }),
+      queueClient: this.queueClient,
       workflowClient: this.workflowClient,
       timerClient: this.timerClient,
       serviceName: props.serviceName,
@@ -296,6 +335,17 @@ export class LocalContainer {
       workflowProvider: this.workflowProvider,
       logAgent,
       metricsClient: this.metricsClient,
+    });
+
+    this.queueHandlerWorker = createQueueHandlerWorker({
+      openSearchClient,
+      bucketStore,
+      entityStore,
+      queueClient: this.queueClient,
+      serviceClient: this.serviceClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
     });
 
     /**
@@ -331,6 +381,7 @@ export class LocalContainer {
     this.commandWorker = createCommandWorker({
       entityStore,
       bucketStore,
+      queueClient: this.queueClient,
       serviceClient: this.serviceClient,
       serviceName: props.serviceName,
       serviceUrl: props.serviceUrl,

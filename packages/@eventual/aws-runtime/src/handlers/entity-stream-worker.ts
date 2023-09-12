@@ -19,6 +19,7 @@ import {
   createBucketStore,
   createEntityStore,
   createOpenSearchClient,
+  createQueueClient,
   createServiceClient,
 } from "../create.js";
 import {
@@ -35,6 +36,7 @@ const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
   openSearchClient: await createOpenSearchClient(serviceSpec),
+  queueClient: createQueueClient(),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,

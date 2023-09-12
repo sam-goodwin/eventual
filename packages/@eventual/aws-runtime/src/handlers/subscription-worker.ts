@@ -11,6 +11,7 @@ import {
   createEntityStore,
   createEventClient,
   createOpenSearchClient,
+  createQueueClient,
   createServiceClient,
   createTransactionClient,
 } from "../create.js";
@@ -25,6 +26,7 @@ export const processEvent = createSubscriptionWorker({
     eventClient: createEventClient(),
     transactionClient: createTransactionClient(),
   }),
+  queueClient: createQueueClient(),
   serviceSpec,
   subscriptionProvider: new GlobalSubscriptionProvider(),
   serviceName,

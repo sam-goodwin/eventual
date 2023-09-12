@@ -65,6 +65,8 @@ import { WorkflowCallExecutor } from "../workflow/call-executor.js";
 import { createEvent } from "../workflow/events.js";
 import { isExecutionId, parseWorkflowName } from "../workflow/execution.js";
 import { WorkflowExecutor } from "../workflow/workflow-executor.js";
+import { QueuePhysicalNamePropertyRetriever } from "../property-retrievers/queue-name-property-retriever.js";
+import { QueueClient } from "../clients/queue-client.js";
 
 export interface OrchestratorResult {
   /**
@@ -90,11 +92,13 @@ export function createOrchestrator(
   const unsupportedProperty = new UnsupportedPropertyRetriever(
     "Workflow Orchestrator"
   );
+  // TODO: load these from history when running past executions https://github.com/functionless/eventual/issues/416
   const propertyRetriever = new AllPropertyRetriever({
     BucketPhysicalName: new BucketPhysicalNamePropertyRetriever(
       deps.bucketStore
     ),
     OpenSearchClient: unsupportedProperty,
+    QueuePhysicalName: new QueuePhysicalNamePropertyRetriever(deps.queueClient),
     ServiceClient: unsupportedProperty,
     ServiceName: deps.serviceName,
     ServiceSpec: unsupportedProperty,
@@ -137,6 +141,7 @@ interface OrchestratorDependencies {
   executorProvider: ExecutorProvider<ExecutorRunContext>;
   logAgent?: LogAgent;
   metricsClient?: MetricsClient;
+  queueClient: QueueClient;
   serviceName: string;
   timerClient: TimerClient;
   workflowClient: WorkflowClient;

@@ -1,15 +1,17 @@
 import type {
-  BucketSpec,
   BucketNotificationHandlerSpec,
+  BucketSpec,
   CommandSpec,
   EntitySpec,
   EntityStreamSpec,
   EventSpec,
   EventualService,
+  IndexSpec,
+  QueueHandlerSpec,
+  QueueSpec,
   SubscriptionSpec,
   TaskSpec,
   TransactionSpec,
-  IndexSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -31,6 +33,7 @@ export interface BuildManifest {
   commandDefault: CommandFunction;
   entities: Entities;
   buckets: Buckets;
+  queues: Queues;
   search: Search;
   system: {
     entityService: {
@@ -64,6 +67,10 @@ export interface BucketRuntime extends Omit<BucketSpec, "handlers"> {
   handlers: BucketNotificationHandlerFunction[];
 }
 
+export interface QueueRuntime extends Omit<QueueSpec, "handler"> {
+  handler: QueueHandlerFunction;
+}
+
 export interface Entities {
   entities: EntityRuntime[];
   transactions: TransactionSpec[];
@@ -71,6 +78,10 @@ export interface Entities {
 
 export interface Buckets {
   buckets: BucketRuntime[];
+}
+
+export interface Queues {
+  queues: QueueRuntime[];
 }
 
 export interface Search {
@@ -114,3 +125,5 @@ export type EntityStreamFunction = BundledFunction<EntityStreamSpec>;
 
 export type BucketNotificationHandlerFunction =
   BundledFunction<BucketNotificationHandlerSpec>;
+
+export type QueueHandlerFunction = BundledFunction<QueueHandlerSpec>;

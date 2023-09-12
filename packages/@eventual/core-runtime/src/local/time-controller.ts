@@ -21,8 +21,16 @@ export interface TimeEvent<E = any> {
 export class TimeController<E = any> {
   // current millisecond time
   private current = 0;
+  private ordCounter = 0;
   private increment: number;
-  private timeHeap: Heap<TimeEvent<E>>;
+  private timeHeap: Heap<
+    TimeEvent<E> & {
+      /**
+       * Order the event was added to the heap. Acts as a tie break when events have the same time.
+       */
+      ord: number;
+    }
+  >;
 
   constructor(
     initialEvents: TimeEvent<E>[],
@@ -30,8 +38,16 @@ export class TimeController<E = any> {
   ) {
     this.current = props?.start ?? 0;
     this.increment = props?.increment ?? 1;
-    this.timeHeap = new Heap<TimeEvent<E>>((a, b) => a.timestamp - b.timestamp);
-    this.timeHeap.init(initialEvents);
+    this.timeHeap = new Heap<TimeEvent<E> & { ord: number }>((a, b) => {
+      const diff = a.timestamp - b.timestamp;
+      if (diff === 0) {
+        return a.ord - b.ord;
+      }
+      return diff;
+    });
+    this.timeHeap.init(
+      initialEvents.map((e) => ({ ...e, ord: this.ordCounter++ }))
+    );
   }
 
   /**
@@ -121,21 +137,23 @@ export class TimeController<E = any> {
    * Add an event to the {@link TimeController}.
    */
   public addEvent(timestamp: number, event: E): void {
-    this.timeHeap.add({ timestamp, event });
+    this.timeHeap.add({ timestamp, event, ord: this.ordCounter++ });
   }
 
   /**
    * Add an event to the {@link TimeController}.
    */
   public addEventAtNextTick(event: E): void {
-    this.timeHeap.add({ timestamp: this.nextTick, event });
+    this.addEvent(this.nextTick, event);
   }
 
   /**
    * Add events to the {@link TimeController}.
    */
   public addEvents(timeEvents: TimeEvent<E>[]): void {
-    this.timeHeap.addAll(timeEvents);
+    this.timeHeap.addAll(
+      timeEvents.map((e) => ({ ...e, ord: this.ordCounter++ }))
+    );
   }
 
   /**

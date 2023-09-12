@@ -1,8 +1,10 @@
 import { LogLevel } from "@eventual/core";
 import { assertNonNull } from "@eventual/core/internal";
 import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
+import { QueueRuntimeOverrides } from "./clients/queue-client.js";
 
 export const ENV_NAMES = {
+  AWS_ACCOUNT_ID: "EVENTUAL_AWS_ACCOUNT_ID",
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",
   SERVICE_URL: "EVENTUAL_SERVICE_URL",
   EXECUTION_TABLE_NAME: "EVENTUAL_EXECUTION_TABLE_NAME",
@@ -22,10 +24,12 @@ export const ENV_NAMES = {
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
   ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
   ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
+  QUEUE_NAME: "EVENTUAL_QUEUE_NAME",
   BUCKET_NAME: "EVENTUAL_BUCKET_NAME",
   BUCKET_HANDLER_NAME: "EVENTUAL_BUCKET_HANDLER_NAME",
   TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
   BUCKET_OVERRIDES: "EVENTUAL_BUCKET_OVERRIDES",
+  QUEUE_OVERRIDES: "EVENTUAL_QUEUE_OVERRIDES",
 } as const;
 
 export function tryGetEnv<T extends string = string>(name: string) {
@@ -35,6 +39,7 @@ export function tryGetEnv<T extends string = string>(name: string) {
   ) as T;
 }
 
+export const awsAccount = () => tryGetEnv(ENV_NAMES.AWS_ACCOUNT_ID);
 export const awsRegion = () => tryGetEnv("AWS_REGION");
 export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
 export const openSearchEndpoint = () =>
@@ -64,6 +69,7 @@ export const entityName = () => tryGetEnv(ENV_NAMES.ENTITY_NAME);
 export const entityStreamName = () => tryGetEnv(ENV_NAMES.ENTITY_STREAM_NAME);
 export const bucketName = () => tryGetEnv(ENV_NAMES.BUCKET_NAME);
 export const bucketHandlerName = () => tryGetEnv(ENV_NAMES.BUCKET_HANDLER_NAME);
+export const queueName = () => tryGetEnv(ENV_NAMES.QUEUE_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);
 export const bucketOverrides = () => {
@@ -71,5 +77,12 @@ export const bucketOverrides = () => {
   return JSON.parse(bucketOverridesString) as Record<
     string,
     BucketRuntimeOverrides
+  >;
+};
+export const queueOverrides = () => {
+  const queueOverridesString = process.env[ENV_NAMES.QUEUE_OVERRIDES] ?? "{}";
+  return JSON.parse(queueOverridesString) as Record<
+    string,
+    QueueRuntimeOverrides
   >;
 };

@@ -32,10 +32,11 @@ import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
-import type { SearchService } from "./search/search-service";
-import { ServiceConstructProps } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
+import type { SearchService } from "./search/search-service";
+import { ServiceConstructProps } from "./service-common";
+import { QueueService } from "./queue-service";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
@@ -45,6 +46,7 @@ export interface WorkflowsProps extends ServiceConstructProps {
   overrides?: WorkflowServiceOverrides;
   schedulerService: LazyInterface<SchedulerService>;
   taskService: LazyInterface<TaskService>;
+  queueService: LazyInterface<QueueService<any>>;
 }
 
 export interface WorkflowServiceOverrides {
@@ -482,6 +484,10 @@ export class WorkflowService {
      * Bucket Call
      */
     this.props.bucketService.configureReadWriteBuckets(this.orchestrator);
+    /**
+     * Queue Calls
+     */
+    this.props.queueService.configureSendMessage(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

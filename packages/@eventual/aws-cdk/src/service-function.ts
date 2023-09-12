@@ -4,7 +4,7 @@ import {
   BundledFunction,
   computeDurationSeconds,
 } from "@eventual/core-runtime";
-import { Duration } from "aws-cdk-lib/core";
+import { Duration, Stack } from "aws-cdk-lib/core";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
@@ -56,6 +56,7 @@ export class ServiceFunction extends Function {
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.SERVICE_NAME]: props.build.serviceName,
+        [ENV_NAMES.AWS_ACCOUNT_ID]: Stack.of(scope).account,
         ...baseFnProps.environment,
         ...props.defaults?.environment,
         ...props.overrides?.environment,

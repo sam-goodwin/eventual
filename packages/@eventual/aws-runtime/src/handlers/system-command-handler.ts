@@ -22,6 +22,7 @@ import {
   createExecutionHistoryStore,
   createExecutionQueueClient,
   createExecutionStore,
+  createQueueClient,
   createTaskClient,
   createTransactionClient,
   createWorkflowClient,
@@ -34,6 +35,7 @@ function systemCommandWorker(
 ): APIGatewayProxyHandlerV2<Response> {
   return createApiGCommandWorker({
     bucketStore: createBucketStore(),
+    queueClient: createQueueClient(),
     entityStore: undefined,
     openSearchClient: undefined,
     serviceSpec,

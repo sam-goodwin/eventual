@@ -49,6 +49,7 @@ export interface ServiceSpec {
   search: {
     indices: IndexSpec[];
   };
+  queues: QueueSpec[];
 }
 
 export interface FunctionSpec {
@@ -288,4 +289,40 @@ export interface EntityIndexSpec<Name extends string = string> {
 
 export interface TransactionSpec<Name extends string = string> {
   name: Name;
+}
+
+/**
+ * TODO: Support filter criteria.
+ */
+export interface QueueHandlerOptions extends FunctionRuntimeProps {
+  /**
+   * Max batch size.
+   *
+   * Queue - Between 1 and 10000.
+   * Fifo Queue - Between 1 and 10
+   *
+   * @default: 100 (Queue) 10 (Fifo Queue).
+   */
+  batchSize?: number;
+  /**
+   * Amount of time to wait for the batch size before sending a batch.
+   *
+   * @default: 0 seconds.
+   */
+  batchingWindow?: DurationSchedule;
+}
+
+export interface QueueHandlerSpec {
+  options?: QueueHandlerOptions;
+  sourceLocation?: SourceLocation;
+}
+
+export interface QueueSpec<Name extends string = string> {
+  contentBasedDeduplication?: boolean;
+  delay?: DurationSchedule;
+  encryption: boolean;
+  fifo: boolean;
+  handler: QueueHandlerSpec;
+  name: Name;
+  visibilityTimeout?: DurationSchedule;
 }

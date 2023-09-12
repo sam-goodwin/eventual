@@ -5,6 +5,7 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { Client, Pluggable } from "@aws-sdk/types";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { LogLevel } from "@eventual/core";
@@ -12,6 +13,7 @@ import {
   ExecutionQueueClient,
   ExecutionStore,
   GlobalEntityProvider,
+  GlobalQueueProvider,
   GlobalTaskProvider,
   GlobalWorkflowProvider,
   LogAgent,
@@ -22,9 +24,12 @@ import {
   WorkflowClient,
   WorkflowSpecProvider,
 } from "@eventual/core-runtime";
+import type { ServiceSpec } from "@eventual/core/internal";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { AWSLogsClient } from "./clients/log-client.js";
+import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
+import { AWSQueueClient } from "./clients/queue-client.js";
 import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
@@ -35,9 +40,6 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
-import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
-import { ServiceSpec } from "@eventual/core/internal";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -210,6 +212,17 @@ export const createTaskClient = /* @__PURE__ */ memoize(
       serviceName: env.serviceName,
     })
 );
+
+export const createQueueClient = memoize(() => {
+  return new AWSQueueClient({
+    sqs: sqs(),
+    awsAccount: env.awsAccount,
+    serviceName: env.serviceName,
+    awsRegion: env.awsRegion,
+    queueOverrides: env.queueOverrides,
+    queueProvider: new GlobalQueueProvider(),
+  });
+});
 
 export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
   ({ executionHistoryBucket }: { executionHistoryBucket?: string } = {}) =>

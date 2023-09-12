@@ -222,6 +222,27 @@ export function serviceFunctionName(serviceName: string, suffix: string) {
   );
 }
 
+const FIFO_SUFFIX = ".fifo";
+
+/**
+ * Creates a queue name with a max length of 80 characters
+ *
+ * The name will be the whole service name followed by the suffix trimmed to fit 80 characters with .fifo appended on the end.
+ */
+export function serviceQueueName(
+  serviceName: string,
+  suffix: string,
+  fifo: boolean
+) {
+  const serviceNameAndSeparatorLength = serviceName.length + 1;
+  const remaining =
+    80 - serviceNameAndSeparatorLength - (fifo ? FIFO_SUFFIX.length : 0);
+  // the . in .fifo is only valid as part of the .fifo suffix
+  return `${sanitizeFunctionName(
+    `${serviceName}-${suffix.substring(0, remaining)}`
+  )}${fifo ? FIFO_SUFFIX : ""}`;
+}
+
 /**
  * Bucket names must:
  * * be between 3 and 63 characters long (inc)
@@ -258,6 +279,10 @@ export function bucketServiceBucketSuffix(bucketName: string) {
   return `bucket-${bucketName}`;
 }
 
+export function queueServiceQueueSuffix(queueName: string) {
+  return `queue-${queueName}`;
+}
+
 export function taskServiceFunctionName(
   serviceName: string,
   taskId: string
@@ -283,7 +308,22 @@ export function bucketServiceBucketName(
 }
 
 /**
- * Valid lambda function names contains letters, numbers, dash, or underscore and no spaces.
+ * Note: a queue's name can be overridden by the user.
+ */
+export function queueServiceQueueName(
+  serviceName: string,
+  queueName: string,
+  fifo: boolean
+): string {
+  return serviceQueueName(
+    serviceName,
+    queueServiceQueueSuffix(queueName),
+    fifo
+  );
+}
+
+/**
+ * Valid lambda function and sqs queue names contains letters, numbers, dash, or underscore and no spaces.
  */
 export function sanitizeFunctionName(name: string) {
   return (

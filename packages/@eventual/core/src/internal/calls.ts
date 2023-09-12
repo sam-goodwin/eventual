@@ -12,6 +12,7 @@ import type { SearchIndex } from "../search/search-index.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";
+import { FifoContentBasedDeduplication, FifoQueue, Queue } from "../queue.js";
 
 export type Call =
   | AwaitTimerCall
@@ -28,7 +29,8 @@ export type Call =
   | SendSignalCall
   | StartWorkflowCall
   | TaskCall
-  | TaskRequestCall;
+  | TaskRequestCall
+  | QueueCall;
 
 export enum CallKind {
   AwaitTimerCall = 1,
@@ -46,6 +48,7 @@ export enum CallKind {
   TaskRequestCall = 12,
   SearchCall = 11,
   StartWorkflowCall = 13,
+  QueueCall = 15,
 }
 
 export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -219,6 +222,73 @@ export function isBucketCallOperation<Op extends BucketMethod>(
   operation: BucketCall<any>
 ): operation is BucketCall<Op> {
   return operation.operation.operation === op;
+}
+
+export function isQueueCall(a: any): a is QueueCall {
+  return isCallOfKind(CallKind.QueueCall, a);
+}
+
+export type QueueMethod = Exclude<
+  {
+    [k in keyof Queue]: Queue[k] extends Function ? k : never;
+  }[keyof Queue],
+  "handler" | undefined
+>;
+
+export interface QueueCall<Op extends QueueMethod = QueueMethod>
+  extends CallBase<CallKind.QueueCall, ReturnType<FifoQueue[Op]>> {
+  operation: QueueOperation<Op>;
+}
+
+interface QueueOperationBase<Op extends QueueMethod> {
+  queueName: string;
+  operation: Op;
+}
+
+export type StandardQueueSendMessagePayload = {
+  delay?: DurationSchedule;
+  message: any;
+};
+
+export interface FifoQueueSendMessagePayload
+  extends StandardQueueSendMessagePayload {
+  messageGroupId: string;
+  messageDeduplicationId: string | FifoContentBasedDeduplication;
+}
+
+export type QueueSendMessageOperation = QueueOperationBase<"sendMessage"> &
+  (
+    | ({ fifo: true } & FifoQueueSendMessagePayload)
+    | ({ fifo: false } & StandardQueueSendMessagePayload)
+  );
+
+export type QueueSendMessageBatchOperation =
+  QueueOperationBase<"sendMessageBatch"> &
+    (
+      | {
+          fifo: true;
+          entries: ({ id: string } & FifoQueueSendMessagePayload)[];
+        }
+      | {
+          fifo: false;
+          entries: ({ id: string } & StandardQueueSendMessagePayload)[];
+        }
+    );
+
+export type QueueOperation<Op extends QueueMethod = QueueMethod> =
+  Op extends "sendMessage"
+    ? QueueSendMessageOperation
+    : Op extends "sendMessageBatch"
+    ? QueueSendMessageBatchOperation
+    : QueueOperationBase<Op> & {
+        params: Parameters<FifoQueue[Op]>;
+      };
+
+export function isQueueOperationOfType<Op extends QueueMethod>(
+  op: Op,
+  operation: QueueOperation<any>
+): operation is QueueOperation<Op> {
+  return operation.operation === op;
 }
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {

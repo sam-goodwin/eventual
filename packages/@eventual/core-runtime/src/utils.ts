@@ -44,6 +44,65 @@ export async function promiseAllSettledPartitioned<T, R>(
   };
 }
 
+/**
+ * Groups the items based on the group function and then executes the groups in parallel, but the items within a group in order.
+ *
+ * When one item in a group failed, fail the rest of the group which have yet to succeed.
+ */
+export async function groupedPromiseAllSettled<I, R>(
+  items: I[],
+  group: (item: I) => string,
+  handler: (item: I) => Promise<R> | R
+): Promise<
+  Record<
+    string,
+    {
+      fulfilled: (readonly [I, Awaited<R>])[];
+      rejected: (readonly [I, any])[];
+    }
+  >
+> {
+  const itemsByKey: Record<string, I[]> = {};
+  items.forEach((item) => {
+    const key = group(item);
+    (itemsByKey[key] ??= []).push(item);
+  });
+
+  const results = await promiseAllSettledPartitioned(
+    Object.entries(itemsByKey),
+    async ([, itemGroup]) => {
+      const fulfilled: [I, Awaited<R>][] = [];
+      for (const i in itemGroup) {
+        const item = itemGroup[i]!;
+        try {
+          const result = await handler(item);
+          // if the handler doesn't fail and doesn't return false, continue
+          fulfilled.push([item, result]);
+          continue;
+        } catch (err) {
+          return {
+            fulfilled,
+            rejected: [
+              [item, err] as const,
+              ...itemGroup
+                .slice(Number(i) + 1)
+                .map((i) => [i, "cascading failure"] as const),
+            ],
+          };
+        }
+      }
+      return {
+        fulfilled,
+        rejected: [] as [I, any][],
+      };
+    }
+  );
+
+  return Object.fromEntries(
+    results.fulfilled.map(([[group], r]) => [group, r])
+  );
+}
+
 export function groupBy<T>(
   items: T[],
   extract: (item: T) => string

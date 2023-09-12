@@ -20,6 +20,7 @@ import {
   failedWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
+  queueWorkflow,
   timedOutWorkflow,
   timedWorkflow,
   transactionWorkflow,
@@ -253,6 +254,8 @@ eventualRuntimeTestHarness(
       signalResult4: { data: "hello again again again!" },
       copied: "hello again again again!",
     });
+
+    testCompletion("queue", queueWorkflow, { n: 3, fifo_n: 3 });
   },
   {
     name: "s3 persist failures",

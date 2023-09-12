@@ -44,18 +44,36 @@ var CallKind;
   CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
   CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
   CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
+  CallKind2[CallKind2["QueueCall"] = 15] = "QueueCall";
 })(CallKind || (CallKind = {}));
+
+var Schedule = {
+  duration(dur, unit = "seconds") {
+    return {
+      type: "Duration",
+      dur,
+      unit
+    };
+  },
+  time(isoDate) {
+    return {
+      type: "Time",
+      isoDate: typeof isoDate === "string" ? isoDate : isoDate.toISOString()
+    };
+  }
+};
 
 var PropertyKind;
 (function(PropertyKind2) {
   PropertyKind2[PropertyKind2["BucketPhysicalName"] = 0] = "BucketPhysicalName";
-  PropertyKind2[PropertyKind2["OpenSearchClient"] = 1] = "OpenSearchClient";
-  PropertyKind2[PropertyKind2["ServiceClient"] = 2] = "ServiceClient";
-  PropertyKind2[PropertyKind2["ServiceName"] = 3] = "ServiceName";
-  PropertyKind2[PropertyKind2["ServiceSpec"] = 4] = "ServiceSpec";
-  PropertyKind2[PropertyKind2["ServiceType"] = 5] = "ServiceType";
-  PropertyKind2[PropertyKind2["ServiceUrl"] = 6] = "ServiceUrl";
-  PropertyKind2[PropertyKind2["TaskToken"] = 7] = "TaskToken";
+  PropertyKind2[PropertyKind2["QueuePhysicalName"] = 1] = "QueuePhysicalName";
+  PropertyKind2[PropertyKind2["OpenSearchClient"] = 2] = "OpenSearchClient";
+  PropertyKind2[PropertyKind2["ServiceClient"] = 3] = "ServiceClient";
+  PropertyKind2[PropertyKind2["ServiceName"] = 4] = "ServiceName";
+  PropertyKind2[PropertyKind2["ServiceSpec"] = 5] = "ServiceSpec";
+  PropertyKind2[PropertyKind2["ServiceType"] = 6] = "ServiceType";
+  PropertyKind2[PropertyKind2["ServiceUrl"] = 7] = "ServiceUrl";
+  PropertyKind2[PropertyKind2["TaskToken"] = 8] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
 
 globalThis._eventual ??= { resources: {} };
@@ -73,11 +91,12 @@ function isSourceLocation(a) {
 
 var ServiceType;
 (function(ServiceType2) {
-  ServiceType2["CommandWorker"] = "CommandWorker";
-  ServiceType2["Subscription"] = "Subscription";
-  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
-  ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
   ServiceType2["BucketNotificationHandlerWorker"] = "BucketNotificationHandlerWorker";
+  ServiceType2["CommandWorker"] = "CommandWorker";
+  ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
+  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
+  ServiceType2["QueueHandlerWorker"] = "QueueHandlerWorker";
+  ServiceType2["Subscription"] = "Subscription";
   ServiceType2["TaskWorker"] = "TaskWorker";
   ServiceType2["TransactionWorker"] = "TransactionWorker";
 })(ServiceType || (ServiceType = {}));
@@ -263,6 +282,8 @@ var LogLevel;
   LogLevel2["ERROR"] = "ERROR";
 })(LogLevel || (LogLevel = {}));
 var LOG_LEVELS = Object.values(LogLevel);
+
+var DEFAULT_QUEUE_VISIBILITY_TIMEOUT = Schedule.duration(30);
 
 var _BaseCachingSecret_value;
 _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();

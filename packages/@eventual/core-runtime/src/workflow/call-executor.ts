@@ -9,6 +9,7 @@ import { EmitEventsCallExecutor } from "../call-executors/emit-events-call-execu
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
+import type { QueueClient } from "../clients/queue-client.js";
 import type { TaskClient } from "../clients/task-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { TransactionClient } from "../clients/transaction-client.js";
@@ -17,15 +18,16 @@ import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import { AwaitTimerWorkflowExecutor } from "./call-executors-and-factories/await-timer-call.js";
 import { createBucketWorkflowQueueExecutor } from "./call-executors-and-factories/bucket-call.js";
+import { ChildWorkflowCallWorkflowExecutor } from "./call-executors-and-factories/child-workflow-call.js";
 import { createEntityWorkflowQueueExecutor } from "./call-executors-and-factories/entity-call.js";
 import { NoOpWorkflowExecutor } from "./call-executors-and-factories/no-op-call-executor.js";
 import { createSearchWorkflowQueueExecutor } from "./call-executors-and-factories/open-search-client-call.js";
-import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-call.js";
+import { createQueueCallWorkflowCallExecutor } from "./call-executors-and-factories/queue-call.js";
 import { SendSignalWorkflowCallExecutor } from "./call-executors-and-factories/send-signal-call.js";
 import { SimpleWorkflowExecutorAdaptor } from "./call-executors-and-factories/simple-workflow-executor-adaptor.js";
+import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-call.js";
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedWorkflowCallExecutor } from "./call-executors-and-factories/unsupported.js";
-import { ChildWorkflowCallWorkflowExecutor } from "./call-executors-and-factories/child-workflow-call.js";
 
 interface WorkflowCallExecutorDependencies {
   bucketStore: BucketStore;
@@ -33,6 +35,7 @@ interface WorkflowCallExecutorDependencies {
   eventClient: EventClient;
   openSearchClient?: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
+  queueClient: QueueClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
   transactionClient: TransactionClient;
@@ -68,7 +71,10 @@ export function createDefaultWorkflowCallExecutor(
       deps.transactionClient,
       deps.executionQueueClient
     ),
-    SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
+    QueueCall: createQueueCallWorkflowCallExecutor(
+      deps.queueClient,
+      deps.executionQueueClient
+    ),
     SearchCall: deps.openSearchClient
       ? createSearchWorkflowQueueExecutor(
           deps.openSearchClient,
@@ -78,6 +84,7 @@ export function createDefaultWorkflowCallExecutor(
     SendSignalCall: new SendSignalWorkflowCallExecutor(
       deps.executionQueueClient
     ),
+    SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
     TaskCall: new TaskCallWorkflowExecutor(deps.taskClient),
     TaskRequestCall: unsupportedExecutor, // TODO: add support for task heartbeat, success, and failure to the workflow
     ChildWorkflowCall: workflowClientExecutor,
