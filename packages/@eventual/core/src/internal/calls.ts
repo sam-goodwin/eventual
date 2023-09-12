@@ -7,12 +7,16 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { Execution, ExecutionHandle } from "../execution.js";
+import type {
+  FifoContentBasedDeduplication,
+  FifoQueue,
+  Queue,
+} from "../queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";
-import { FifoContentBasedDeduplication, FifoQueue, Queue } from "../queue.js";
 
 export type Call =
   | AwaitTimerCall
@@ -27,6 +31,7 @@ export type Call =
   | SignalHandlerCall
   | SearchCall
   | SendSignalCall
+  | SendSocketCall
   | StartWorkflowCall
   | TaskCall
   | TaskRequestCall
@@ -42,13 +47,14 @@ export enum CallKind {
   ExpectSignalCall = 3,
   GetExecutionCall = 14,
   InvokeTransactionCall = 9,
+  QueueCall = 15,
+  SearchCall = 11,
   SendSignalCall = 6,
+  SendSocketCall = 16,
   SignalHandlerCall = 5,
+  StartWorkflowCall = 13,
   TaskCall = 0,
   TaskRequestCall = 12,
-  SearchCall = 11,
-  StartWorkflowCall = 13,
-  QueueCall = 15,
 }
 
 export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -451,4 +457,14 @@ export interface InvokeTransactionCall<Input = any>
   extends CallBase<CallKind.InvokeTransactionCall, any> {
   input: Input;
   transactionName: string;
+}
+
+export function isSocketSendCall(a: any): a is SendSocketCall {
+  return isCallOfKind(CallKind.SendSocketCall, a);
+}
+
+export interface SendSocketCall extends CallBase<CallKind.SendSocketCall, any> {
+  name: string;
+  data: Buffer | string;
+  base64Encoded: boolean;
 }

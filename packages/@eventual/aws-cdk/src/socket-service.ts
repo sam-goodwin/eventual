@@ -111,6 +111,7 @@ class Socket extends Construct implements EventualResource {
       disconnectRouteOptions: {
         integration,
       },
+      routeSelectionExpression,
     });
 
     this.grantPrincipal = props.local

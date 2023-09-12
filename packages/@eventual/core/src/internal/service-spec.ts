@@ -328,11 +328,9 @@ export interface QueueSpec<Name extends string = string> {
   visibilityTimeout?: DurationSchedule;
 }
 
-export type SocketOptions = FunctionRuntimeProps;
-
-export interface SocketSpec<Name extends string = string> {
+export interface SocketSpec<Name extends string = string>
+  extends FunctionRuntimeProps {
   name: Name;
-  path: string;
   sourceLocation?: SourceLocation;
-  options: SocketOptions;
+  outgoingSchemas: Record<string, openapi.SchemaObject>;
 }

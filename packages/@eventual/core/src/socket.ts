@@ -1,4 +1,7 @@
-import { SocketOptions, isSourceLocation } from "./internal/service-spec.js";
+import { z } from "zod";
+import { FunctionRuntimeProps } from "./function-props.js";
+import { registerEventualResource } from "./internal/resources.js";
+import { isSourceLocation, type SocketSpec } from "./internal/service-spec.js";
 import { parseArgs } from "./internal/util.js";
 
 export type SocketHandlers<
@@ -20,44 +23,66 @@ export type SocketHandlers<
 };
 
 export type Socket<
-  Name extends string,
-  IncomingRoutes extends Record<string, { Input: any; Output: any }>,
-  OutgoingRoutes extends Record<string, any>,
-  ConnectQuery extends Record<string, any>
-> = {
-  name: Name;
+  Name extends string = string,
+  IncomingRoutes extends Record<string, { Input: any; Output: any }> = Record<
+    string,
+    { Input: any; Output: any }
+  >,
+  OutgoingRoutes extends Record<string, any> = Record<string, any>,
+  ConnectQuery extends Record<string, any> = Record<string, any>
+> = SocketSpec<Name> & {
+  kind: "Socket";
   handlers: SocketHandlers<IncomingRoutes, ConnectQuery>;
-  options?: SocketOptions;
 } & {
-  [route in keyof OutgoingRoutes]: (
+  send: (connectionId: string, input: Buffer | string) => Promise<void>;
+} & {
+  [route in Omit<keyof OutgoingRoutes, "send">]: (
     connectionId: string,
     input: OutgoingRoutes[route]
   ) => Promise<void>;
 };
 
+export interface SocketOptions<OutgoingActions extends Record<string, any>>
+  extends FunctionRuntimeProps {
+  outgoingActions: {
+    [action in keyof OutgoingActions]: z.ZodType<OutgoingActions[action]>;
+  };
+}
+
 export function socket<
   Name extends string,
-  IncomingRoutes extends Record<string, { Input: any; Output: any }>,
-  OutgoingRoutes extends Record<string, any>,
+  IncomingActions extends Record<string, { Input: any; Output: any }>,
+  OutgoingActions extends Record<string, any>,
   ConnectQuery extends Record<string, any>
 >(
   ...args:
     | [
         name: Name,
-        options: SocketOptions,
-        handlers: SocketHandlers<IncomingRoutes, ConnectQuery>
+        options: SocketOptions<OutgoingActions>,
+        handlers: SocketHandlers<IncomingActions, ConnectQuery>
       ]
-    | [name: Name, handlers: SocketHandlers<IncomingRoutes, ConnectQuery>]
-): Socket<Name, IncomingRoutes, OutgoingRoutes, ConnectQuery> {
+    | [name: Name, handlers: SocketHandlers<IncomingActions, ConnectQuery>]
+): Socket<Name, IncomingActions, OutgoingActions, ConnectQuery> {
   const { sourceLocation, name, options, handlers } = parseSocketArgs<
     Name,
-    IncomingRoutes,
+    IncomingActions,
     ConnectQuery
   >(args);
-  return {
+  const socket = {
     name,
     handlers,
-  };
+    sourceLocation,
+    kind: "Socket",
+    handlerTimeout: options?.handlerTimeout,
+    memorySize: options?.memorySize,
+  } as Socket<Name, IncomingActions, OutgoingActions, ConnectQuery>;
+
+  return registerEventualResource("Socket", socket as any) as Socket<
+    Name,
+    IncomingActions,
+    OutgoingActions,
+    ConnectQuery
+  >;
 }
 
 export function parseSocketArgs<
