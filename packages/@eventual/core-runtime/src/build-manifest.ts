@@ -9,9 +9,10 @@ import type {
   IndexSpec,
   QueueHandlerSpec,
   QueueSpec,
+  SocketSpec,
   SubscriptionSpec,
   TaskSpec,
-  TransactionSpec,
+  TransactionSpec
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -25,6 +26,7 @@ export interface BuildManifest {
    * The events and their schema.
    */
   events: EventSpec[];
+  sockets: SocketFunction[];
   /**
    * All subscriptions to events declared within the service.
    */
@@ -127,3 +129,5 @@ export type BucketNotificationHandlerFunction =
   BundledFunction<BucketNotificationHandlerSpec>;
 
 export type QueueHandlerFunction = BundledFunction<QueueHandlerSpec>;
+
+export type SocketFunction = BundledFunction<SocketSpec>;

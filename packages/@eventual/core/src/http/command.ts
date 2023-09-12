@@ -6,6 +6,7 @@ import { CommandSpec, isSourceLocation } from "../internal/service-spec.js";
 import type { ServiceContext } from "../service.js";
 import type { Middleware } from "./middleware.js";
 import type { ParsePath } from "./path.js";
+import { parseArgs } from "../internal/util.js";
 
 export interface CommandContext {
   service: ServiceContext;
@@ -209,7 +210,7 @@ export function command<
   Output = void,
   Context extends CommandContext = CommandContext
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
-  const [sourceLocation, name, options, handler] = parseCommandArgs<
+  const { sourceLocation, name, options, handler } = parseCommandArgs<
     Name,
     Input,
     Output
@@ -236,18 +237,12 @@ export function parseCommandArgs<
   Output = void,
   Context extends CommandContext = CommandContext
 >(args: any[]) {
-  return [
-    // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
-    // i think it would be marginal looping over a small array multiple times but i could be wrong
-    args.find(isSourceLocation),
-    args.find((a): a is Name => typeof a === "string")!,
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)) as
-      | CommandOptions<Input, Output, any, any>
-      | undefined,
-    args.find((a) => typeof a === "function") as CommandHandler<
-      Input,
-      Output,
-      Context
-    >,
-  ] as const;
+  return parseArgs(args, {
+    sourceLocation: isSourceLocation,
+    name: (a: any): a is Name => typeof a === "string",
+    options: (a: any): a is CommandOptions<Input, Output, any, any> =>
+      typeof a === "object" && !isSourceLocation(a),
+    handler: (a: any): a is CommandHandler<Input, Output, Context> =>
+      typeof a === "function",
+  });
 }

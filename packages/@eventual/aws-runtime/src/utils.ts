@@ -243,6 +243,14 @@ export function serviceQueueName(
   )}${fifo ? FIFO_SUFFIX : ""}`;
 }
 
+export function serviceWebSocketName(serviceName: string, suffix: string) {
+  const serviceNameAndSeparatorLength = serviceName.length + 1;
+  const remaining = 128 - serviceNameAndSeparatorLength;
+  return sanitizeFunctionName(
+    `${serviceName}-${suffix.substring(0, remaining)}`
+  );
+}
+
 /**
  * Bucket names must:
  * * be between 3 and 63 characters long (inc)
@@ -283,6 +291,10 @@ export function queueServiceQueueSuffix(queueName: string) {
   return `queue-${queueName}`;
 }
 
+export function socketServiceSocketSuffix(socketName: string) {
+  return `socket-${socketName}`;
+}
+
 export function taskServiceFunctionName(
   serviceName: string,
   taskId: string
@@ -305,6 +317,16 @@ export function bucketServiceBucketName(
   bucketName: string
 ): string {
   return serviceBucketName(serviceName, bucketServiceBucketSuffix(bucketName));
+}
+
+export function socketServiceSocketName(
+  serviceName: string,
+  socketName: string
+) {
+  return serviceWebSocketName(
+    serviceName,
+    socketServiceSocketSuffix(socketName)
+  );
 }
 
 /**

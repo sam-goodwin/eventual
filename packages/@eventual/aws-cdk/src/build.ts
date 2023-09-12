@@ -7,6 +7,7 @@ import {
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   QueueHandlerSpec,
   QueueSpec,
+  SocketSpec,
   SubscriptionSpec,
   TaskSpec,
 } from "@eventual/core/internal";
@@ -80,6 +81,7 @@ const WORKER_ENTRY_POINTS = [
   "bucket-handler-worker",
   "queue-handler-worker",
   "transaction-worker",
+  "socket-worker",
 ] as const;
 
 export async function buildService(request: BuildAWSRuntimeProps) {
@@ -127,6 +129,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         name: "default",
       },
     },
+    sockets: await bundleSocketHandlers(serviceSpec.sockets),
     search: serviceSpec.search,
     entities: {
       entities: await Promise.all(
@@ -297,6 +300,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       ),
       spec: spec.handler,
     };
+  }
+
+  async function bundleSocketHandlers(specs: SocketSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(spec, "socket", "socket-worker", spec.name),
+          spec,
+        };
+      })
+    );
   }
 
   async function bundleFile<

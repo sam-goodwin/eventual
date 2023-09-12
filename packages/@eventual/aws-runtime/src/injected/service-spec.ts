@@ -10,6 +10,7 @@ export default {
   transactions: [],
   events: [],
   commands: [],
+  sockets: [],
   tasks: [],
   subscriptions: [],
   buckets: { buckets: [] },
