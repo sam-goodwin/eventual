@@ -67,6 +67,7 @@ export class TaskCallEventualFactory implements EventualFactory<TaskCall> {
         return {
           name: call.name,
           seq,
+          input: call.input,
           type: WorkflowCallHistoryType.TaskScheduled,
         };
       },
