@@ -3,23 +3,25 @@ import type {
   ExecuteTransactionResponse,
 } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
-import type { EventClient } from "../clients/event-client.js";
-import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   AllPropertyRetriever,
   UnsupportedPropertyRetriever,
 } from "../property-retriever.js";
+import { SocketUrlPropertyRetriever } from "../property-retrievers/socket-url-property-retriever.js";
 import type { EntityProvider } from "../providers/entity-provider.js";
 import { isResolved, normalizeFailedResult } from "../result.js";
 import type { EntityStore } from "../stores/entity-store.js";
-import { createTransactionExecutor } from "../transaction-executor.js";
+import {
+  TransactionCallExecutorDependencies,
+  createTransactionCallExecutor,
+  createTransactionExecutor,
+} from "../transaction-executor.js";
 import { getLazy, type LazyValue } from "../utils.js";
 
-export interface TransactionWorkerProps {
+export interface TransactionWorkerProps
+  extends TransactionCallExecutorDependencies {
   entityStore: EntityStore;
   entityProvider: EntityProvider;
-  executionQueueClient: ExecutionQueueClient;
-  eventClient: EventClient;
   serviceName: LazyValue<string>;
 }
 
@@ -44,13 +46,13 @@ export function createTransactionWorker(
     ServiceSpec: unsupportedPropertyRetriever,
     ServiceType: ServiceType.TransactionWorker,
     ServiceUrl: unsupportedPropertyRetriever,
+    SocketUrls: new SocketUrlPropertyRetriever(props.socketClient),
     TaskToken: unsupportedPropertyRetriever,
   });
   const transactionExecutor = createTransactionExecutor(
     props.entityStore,
     props.entityProvider,
-    props.executionQueueClient,
-    props.eventClient,
+    createTransactionCallExecutor(props),
     propertyRetriever
   );
 

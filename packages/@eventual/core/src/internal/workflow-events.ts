@@ -89,6 +89,7 @@ export enum WorkflowCallHistoryType {
   EventsEmitted = 3,
   SearchRequest = 4,
   SignalSent = 5,
+  SocketMessageSent = 11,
   TaskScheduled = 7,
   TimerScheduled = 8,
   TransactionRequest = 9,
@@ -115,6 +116,7 @@ export type WorkflowCallHistoryEvent =
   | EventsEmitted
   | QueueRequest
   | SignalSent
+  | SocketMessageSent
   | TaskScheduled
   | TimerScheduled
   | TransactionRequest;
@@ -580,6 +582,20 @@ export function isEventsEmitted(
   event: WorkflowCallHistoryEvent
 ): event is EventsEmitted {
   return event.type === WorkflowCallHistoryType.EventsEmitted;
+}
+
+export interface SocketMessageSent
+  extends CallEventBase<WorkflowCallHistoryType.SocketMessageSent> {
+  socketName: string;
+  connectionId: string;
+  input: string;
+  isBase64Encoded: boolean;
+}
+
+export function isSocketMessageSent(
+  event: WorkflowCallHistoryEvent
+): event is SocketMessageSent {
+  return event.type === WorkflowCallHistoryType.SocketMessageSent;
 }
 
 export interface SearchRequest

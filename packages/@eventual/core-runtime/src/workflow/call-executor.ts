@@ -6,10 +6,12 @@ import {
   type EventualPromise,
 } from "@eventual/core/internal";
 import { EmitEventsCallExecutor } from "../call-executors/emit-events-call-executor.js";
+import { SocketSendCallExecutor } from "../call-executors/send-socket-call-executor.js";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
 import type { QueueClient } from "../clients/queue-client.js";
+import type { SocketClient } from "../clients/socket-client.js";
 import type { TaskClient } from "../clients/task-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { TransactionClient } from "../clients/transaction-client.js";
@@ -29,13 +31,14 @@ import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-ca
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedWorkflowCallExecutor } from "./call-executors-and-factories/unsupported.js";
 
-interface WorkflowCallExecutorDependencies {
+export interface WorkflowCallExecutorDependencies {
   bucketStore: BucketStore;
   entityStore: EntityStore;
   eventClient: EventClient;
   openSearchClient?: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
   queueClient: QueueClient;
+  socketClient: SocketClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
   transactionClient: TransactionClient;
@@ -61,6 +64,9 @@ export function createDefaultWorkflowCallExecutor(
     ConditionCall: noOpExecutor, // conditions do not generate events
     EmitEventsCall: new SimpleWorkflowExecutorAdaptor(
       new EmitEventsCallExecutor(deps.eventClient)
+    ),
+    SocketSendCall: new SimpleWorkflowExecutorAdaptor(
+      new SocketSendCallExecutor(deps.socketClient)
     ),
     EntityCall: createEntityWorkflowQueueExecutor(
       deps.entityStore,

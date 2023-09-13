@@ -14,6 +14,7 @@ import {
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
+  createSocketClient,
 } from "../create.js";
 import { queueName, serviceName, serviceUrl } from "../env.js";
 
@@ -26,6 +27,7 @@ const worker = createQueueHandlerWorker({
   serviceSpec,
   serviceName,
   serviceUrl,
+  socketClient: createSocketClient(),
 });
 
 export default <SQSHandler>(async (event) => {

@@ -13,6 +13,7 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.341.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.341.0",
     "@aws-sdk/client-dynamodb": "^3.341.0",
     "@aws-sdk/client-eventbridge": "^3.341.0",

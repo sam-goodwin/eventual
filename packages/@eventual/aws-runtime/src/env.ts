@@ -2,6 +2,7 @@ import { LogLevel } from "@eventual/core";
 import { assertNonNull } from "@eventual/core/internal";
 import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
 import { QueueRuntimeOverrides } from "./clients/queue-client.js";
+import { SocketEndpoints } from "./clients/socket-client.js";
 
 export const ENV_NAMES = {
   AWS_ACCOUNT_ID: "EVENTUAL_AWS_ACCOUNT_ID",
@@ -23,6 +24,7 @@ export const ENV_NAMES = {
     "EVENTUAL_WORKFLOW_EXECUTION_LOG_GROUP_NAME",
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
   SOCKET_NAME: "EVENTUAL_SOCKET_NAME",
+  SOCKET_URLS: "EVENTUAL_SOCKET_URLS",
   ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
   ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
   QUEUE_NAME: "EVENTUAL_QUEUE_NAME",
@@ -87,4 +89,8 @@ export const queueOverrides = () => {
     string,
     QueueRuntimeOverrides
   >;
+};
+export const socketUrls = () => {
+  const socketUrlsString = process.env[ENV_NAMES.SOCKET_URLS] ?? "{}";
+  return JSON.parse(socketUrlsString) as SocketEndpoints;
 };

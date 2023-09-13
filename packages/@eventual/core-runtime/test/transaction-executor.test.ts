@@ -20,8 +20,10 @@ import { EntityStore } from "../src/stores/entity-store.js";
 import {
   TransactionExecutor,
   TransactionResult,
+  createTransactionCallExecutor,
   createTransactionExecutor,
 } from "../src/transaction-executor.js";
+import { SocketClient } from "../src/clients/socket-client.js";
 
 const entity = (() => {
   let n = 0;
@@ -44,6 +46,10 @@ const mockExecutionQueueClient = {
 const mockEventClient = {
   emitEvents: jest.fn() as EventClient["emitEvents"],
 } satisfies Partial<EventClient> as unknown as EventClient;
+const mockSocketClient = {
+  send: jest.fn() as SocketClient["send"],
+  socketUrls: jest.fn() as SocketClient["socketUrls"],
+} satisfies Partial<SocketClient> as unknown as SocketClient;
 
 let store: EntityStore;
 let executor: TransactionExecutor;
@@ -64,8 +70,11 @@ beforeEach(() => {
   executor = createTransactionExecutor(
     store,
     entityProvider,
-    mockExecutionQueueClient,
-    mockEventClient,
+    createTransactionCallExecutor({
+      eventClient: mockEventClient,
+      executionQueueClient: mockExecutionQueueClient,
+      socketClient: mockSocketClient,
+    }),
     propertyRetriever
   );
 });

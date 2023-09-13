@@ -14,6 +14,7 @@ import {
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
+  createSocketClient,
 } from "../create.js";
 import {
   bucketHandlerName,
@@ -26,11 +27,12 @@ const worker = createBucketNotificationHandlerWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
   openSearchClient: await createOpenSearchClient(serviceSpec),
-  serviceClient: createServiceClient({}),
   queueClient: createQueueClient(),
+  serviceClient: createServiceClient({}),
   serviceName,
   serviceSpec,
   serviceUrl,
+  socketClient: createSocketClient(),
 });
 
 export default (async (event) => {

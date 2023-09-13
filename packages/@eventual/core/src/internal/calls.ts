@@ -31,7 +31,7 @@ export type Call =
   | SignalHandlerCall
   | SearchCall
   | SendSignalCall
-  | SendSocketCall
+  | SocketSendCall
   | StartWorkflowCall
   | TaskCall
   | TaskRequestCall
@@ -50,8 +50,8 @@ export enum CallKind {
   QueueCall = 15,
   SearchCall = 11,
   SendSignalCall = 6,
-  SendSocketCall = 16,
   SignalHandlerCall = 5,
+  SocketSendCall = 16,
   StartWorkflowCall = 13,
   TaskCall = 0,
   TaskRequestCall = 12,
@@ -459,12 +459,12 @@ export interface InvokeTransactionCall<Input = any>
   transactionName: string;
 }
 
-export function isSocketSendCall(a: any): a is SendSocketCall {
-  return isCallOfKind(CallKind.SendSocketCall, a);
+export function isSocketSendCall(a: any): a is SocketSendCall {
+  return isCallOfKind(CallKind.SocketSendCall, a);
 }
 
-export interface SendSocketCall extends CallBase<CallKind.SendSocketCall, any> {
+export interface SocketSendCall extends CallBase<CallKind.SocketSendCall, any> {
   name: string;
-  data: Buffer | string;
-  base64Encoded: boolean;
+  connectionId: string;
+  input: Buffer | string;
 }

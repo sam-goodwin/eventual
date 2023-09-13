@@ -81,13 +81,13 @@ import {
   createUpdateTaskCommand,
 } from "../system-commands.js";
 import type { WorkflowTask } from "../tasks.js";
-import { createDefaultWorkflowCallExecutor } from "../workflow/call-executor.js";
 import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalOpenSearchClient } from "./clients/open-search-client.js";
 import { LocalQueueClient } from "./clients/queue-client.js";
+import { LocalSocketClient } from "./clients/socket-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
@@ -97,6 +97,7 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
+import { SocketClient } from "../clients/socket-client.js";
 
 export type LocalEvent =
   | WorkflowTask
@@ -169,6 +170,7 @@ export class LocalContainer {
   public metricsClient: MetricsClient;
   public queueClient: LocalQueueClient;
   public serviceClient: EventualServiceClient;
+  public socketClient: SocketClient;
   public taskClient: TaskClient;
   public timerClient: TimerClient;
   public transactionClient: TransactionClient;
@@ -239,12 +241,15 @@ export class LocalContainer {
       this.localConnector
     );
 
+    this.socketClient = new LocalSocketClient();
+
     this.transactionWorker = createTransactionWorker({
       entityStore,
       entityProvider: this.entityProvider,
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
       serviceName: props.serviceName,
+      socketClient: this.socketClient,
     });
 
     this.transactionClient = new LocalTransactionClient(this.transactionWorker);
@@ -270,6 +275,7 @@ export class LocalContainer {
       serviceSpec: undefined,
       serviceName: props.serviceName,
       serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
     });
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
@@ -281,6 +287,7 @@ export class LocalContainer {
       serviceName: props.serviceName,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
     });
 
     this.taskWorker = createTaskWorker({
@@ -296,6 +303,7 @@ export class LocalContainer {
       serviceClient: this.serviceClient,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
       taskProvider: this.taskProvider,
       taskStore: this.taskStore,
       timerClient: this.timerClient,
@@ -310,31 +318,27 @@ export class LocalContainer {
       serviceName: props.serviceName,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
     });
 
     this.orchestrator = createOrchestrator({
       bucketStore,
-      callExecutor: createDefaultWorkflowCallExecutor({
-        bucketStore,
-        entityStore,
-        eventClient: this.eventClient,
-        executionQueueClient: this.executionQueueClient,
-        openSearchClient,
-        queueClient: this.queueClient,
-        taskClient: this.taskClient,
-        timerClient: this.timerClient,
-        transactionClient: this.transactionClient,
-        workflowClient: this.workflowClient,
-      }),
-      queueClient: this.queueClient,
-      workflowClient: this.workflowClient,
-      timerClient: this.timerClient,
-      serviceName: props.serviceName,
+      entityStore,
+      eventClient: this.eventClient,
+      executionQueueClient: this.executionQueueClient,
       executionHistoryStore: this.executionHistoryStore,
       executorProvider: new InMemoryExecutorProvider(),
-      workflowProvider: this.workflowProvider,
-      logAgent,
       metricsClient: this.metricsClient,
+      logAgent,
+      openSearchClient,
+      queueClient: this.queueClient,
+      serviceName: props.serviceName,
+      socketClient: this.socketClient,
+      taskClient: this.taskClient,
+      timerClient: this.timerClient,
+      transactionClient: this.transactionClient,
+      workflowClient: this.workflowClient,
+      workflowProvider: this.workflowProvider,
     });
 
     this.queueHandlerWorker = createQueueHandlerWorker({
@@ -346,6 +350,7 @@ export class LocalContainer {
       serviceName: props.serviceName,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
     });
 
     /**
@@ -379,14 +384,15 @@ export class LocalContainer {
 
     // must register commands before the command worker is loaded!
     this.commandWorker = createCommandWorker({
-      entityStore,
       bucketStore,
+      entityStore,
+      openSearchClient,
       queueClient: this.queueClient,
       serviceClient: this.serviceClient,
       serviceName: props.serviceName,
       serviceUrl: props.serviceUrl,
       serviceSpec: undefined,
-      openSearchClient,
+      socketClient: this.socketClient,
     });
 
     this.timerHandler = createTimerHandler({

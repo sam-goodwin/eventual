@@ -329,6 +329,16 @@ export function socketServiceSocketName(
   );
 }
 
+export function socketServiceSocketUrl(
+  serviceName: string,
+  socketName: string
+) {
+  return `wss://${socketServiceSocketName(
+    serviceName,
+    socketName
+  )}.execute-api.${process.env.AWS_REGION}.amazonaws.com/${process.env.STAGE}`;
+}
+
 /**
  * Note: a queue's name can be overridden by the user.
  */

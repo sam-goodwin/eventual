@@ -91,7 +91,7 @@ class Socket extends Construct implements EventualResource {
           ...props.serviceProps.environment,
         },
       },
-      runtimeProps: props.socket.spec.options,
+      runtimeProps: props.socket.spec,
       overrides: props.serviceProps.overrides?.[socketName],
     });
 
@@ -111,7 +111,6 @@ class Socket extends Construct implements EventualResource {
       disconnectRouteOptions: {
         integration,
       },
-      routeSelectionExpression,
     });
 
     this.grantPrincipal = props.local

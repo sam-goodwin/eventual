@@ -1,8 +1,7 @@
-import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
+import serviceSpec from "@eventual/injected/spec";
 
 import {
-  createDefaultWorkflowCallExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
   RemoteExecutorProvider,
@@ -19,6 +18,7 @@ import {
   createLogAgent,
   createOpenSearchClient,
   createQueueClient,
+  createSocketClient,
   createTaskClient,
   createTimerClient,
   createTransactionClient,
@@ -33,27 +33,22 @@ import { serviceName } from "../env.js";
  */
 const orchestrate = createOrchestrator({
   bucketStore: createBucketStore(),
+  entityStore: createEntityStore(),
+  eventClient: createEventClient(),
+  executionQueueClient: createExecutionQueueClient(),
   executionHistoryStore: createExecutionHistoryStore(),
   executorProvider: new RemoteExecutorProvider({
     executionHistoryStateStore: createExecutionHistoryStateStore(),
   }),
   logAgent: createLogAgent(),
   metricsClient: AWSMetricsClient,
-  callExecutor: createDefaultWorkflowCallExecutor({
-    bucketStore: createBucketStore(),
-    entityStore: createEntityStore(),
-    eventClient: createEventClient(),
-    queueClient: createQueueClient(),
-    executionQueueClient: createExecutionQueueClient(),
-    openSearchClient: await createOpenSearchClient(serviceSpec),
-    taskClient: createTaskClient(),
-    timerClient: createTimerClient(),
-    transactionClient: createTransactionClient(),
-    workflowClient: createWorkflowClient(),
-  }),
+  openSearchClient: await createOpenSearchClient(serviceSpec),
   queueClient: createQueueClient(),
+  socketClient: createSocketClient(),
   serviceName: serviceName(),
+  taskClient: createTaskClient(),
   timerClient: createTimerClient(),
+  transactionClient: createTransactionClient(),
   workflowClient: createWorkflowClient(),
   workflowProvider: createWorkflowProvider(),
 });

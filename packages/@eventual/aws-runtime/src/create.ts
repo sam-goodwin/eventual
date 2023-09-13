@@ -40,6 +40,9 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
+import { AWSSocketClient } from "./clients/socket-client.js";
+import { socketUrls } from "./env.js";
+import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -127,6 +130,19 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       workflowProvider ?? createWorkflowProvider()
     )
 );
+
+export const createApiGatewayManagementClient = /* @__PURE__ */ memoize(
+  ({ socketUrl }: { socketUrl: string }) =>
+    new ApiGatewayManagementApiClient({ endpoint: socketUrl })
+);
+
+export const createSocketClient = /* @__PURE__ */ memoize(() => {
+  return new AWSSocketClient({
+    socketUrls,
+    apiGatewayManagementClientFactory: (url) =>
+      createApiGatewayManagementClient({ socketUrl: url }),
+  });
+});
 
 export const createExecutionQueueClient = /* @__PURE__ */ memoize(
   ({ workflowQueueUrl }: { workflowQueueUrl?: string } = {}) =>

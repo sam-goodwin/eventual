@@ -332,5 +332,4 @@ export interface SocketSpec<Name extends string = string>
   extends FunctionRuntimeProps {
   name: Name;
   sourceLocation?: SourceLocation;
-  outgoingSchemas: Record<string, openapi.SchemaObject>;
 }

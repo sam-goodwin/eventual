@@ -5,6 +5,7 @@ export * from "./metrics-client.js";
 export * from "./open-search-client.js";
 export * from "./queue-client.js";
 export * from "./runtime-service-clients.js";
+export * from "./socket-client.js";
 export * from "./task-client.js";
 export * from "./timer-client.js";
 export * from "./transaction-client.js";

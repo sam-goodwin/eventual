@@ -21,6 +21,7 @@ import {
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
+  createSocketClient,
 } from "../create.js";
 import {
   entityName,
@@ -41,6 +42,7 @@ const worker = createEntityStreamWorker({
   serviceSpec,
   serviceName,
   serviceUrl,
+  socketClient: createSocketClient(),
 });
 
 export default (async (event) => {
