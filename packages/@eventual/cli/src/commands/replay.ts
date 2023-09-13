@@ -99,6 +99,7 @@ export const replay = (yargs: Argv) =>
             ServiceSpec: unsupportedPropertyRetriever,
             ServiceType: ServiceType.OrchestratorWorker,
             ServiceUrl: serviceData.apiEndpoint ?? unsupportedPropertyRetriever,
+            SocketUrls: unsupportedPropertyRetriever,
             TaskToken: unsupportedPropertyRetriever,
           })
         );
