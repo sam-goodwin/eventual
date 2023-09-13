@@ -1,3 +1,4 @@
+import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
@@ -30,19 +31,18 @@ import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { AWSLogsClient } from "./clients/log-client.js";
 import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
 import { AWSQueueClient } from "./clients/queue-client.js";
+import { AWSSocketClient } from "./clients/socket-client.js";
 import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
 import * as env from "./env.js";
+import { socketUrls } from "./env.js";
 import { AWSBucketStore } from "./stores/bucket-store.js";
 import { AWSEntityStore } from "./stores/entity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSTaskStore } from "./stores/task-store.js";
-import { AWSSocketClient } from "./clients/socket-client.js";
-import { socketUrls } from "./env.js";
-import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 
 /**
  * Client creators to be used by the lambda functions.

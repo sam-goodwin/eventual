@@ -12,7 +12,7 @@ import type {
   SocketSpec,
   SubscriptionSpec,
   TaskSpec,
-  TransactionSpec
+  TransactionSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {

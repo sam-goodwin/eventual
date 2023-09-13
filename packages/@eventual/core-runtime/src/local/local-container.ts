@@ -11,6 +11,7 @@ import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { LogsClient } from "../clients/logs-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
+import type { SocketClient } from "../clients/socket-client.js";
 import { TaskClient, TaskWorkerRequest } from "../clients/task-client.js";
 import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { TransactionClient } from "../clients/transaction-client.js";
@@ -97,7 +98,6 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
-import { SocketClient } from "../clients/socket-client.js";
 
 export type LocalEvent =
   | WorkflowTask
@@ -339,6 +339,18 @@ export class LocalContainer {
       transactionClient: this.transactionClient,
       workflowClient: this.workflowClient,
       workflowProvider: this.workflowProvider,
+    });
+
+    this.queueHandlerWorker = createQueueHandlerWorker({
+      openSearchClient,
+      bucketStore,
+      entityStore,
+      queueClient: this.queueClient,
+      serviceClient: this.serviceClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
     });
 
     this.queueHandlerWorker = createQueueHandlerWorker({

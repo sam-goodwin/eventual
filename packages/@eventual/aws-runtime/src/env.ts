@@ -1,8 +1,8 @@
 import { LogLevel } from "@eventual/core";
 import { assertNonNull } from "@eventual/core/internal";
-import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
-import { QueueRuntimeOverrides } from "./clients/queue-client.js";
-import { SocketEndpoints } from "./clients/socket-client.js";
+import type { QueueRuntimeOverrides } from "./clients/queue-client.js";
+import type { SocketEndpoints } from "./clients/socket-client.js";
+import type { BucketRuntimeOverrides } from "./stores/bucket-store.js";
 
 export const ENV_NAMES = {
   AWS_ACCOUNT_ID: "EVENTUAL_AWS_ACCOUNT_ID",

@@ -418,7 +418,7 @@ const unsupportedExecutor = new UnsupportedCallExecutor("Transaction Worker");
  * Calls that the transaction worker supports.
  *
  * The general rules is that, other than Entity calls, the transaction worker support calls that return Promise<void> | void.
- * This is because the calls will not be executed unless the transaction success, thus cannot return values that impact the transaction.
+ * This is because the calls will not be executed unless the transaction succeeds, thus cannot return values that impact the transaction.
  *
  * Entity calls are currently handled directly with the client.
  */

@@ -1,6 +1,6 @@
 {
   "name": "create-eventual",
-  "version": "0.50.5",
+  "version": "0.52.0",
   "type": "commonjs",
   "files": [
     "bin",
