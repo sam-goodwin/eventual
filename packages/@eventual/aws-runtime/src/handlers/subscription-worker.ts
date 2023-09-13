@@ -28,7 +28,6 @@ export const processEvent = createSubscriptionWorker({
     eventClient: createEventClient(),
     transactionClient: createTransactionClient(),
   }),
-  queueClient: createQueueClient(),
   serviceSpec,
   subscriptionProvider: new GlobalSubscriptionProvider(),
   serviceName,
