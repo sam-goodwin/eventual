@@ -38,13 +38,14 @@ var CallKind;
   CallKind2[CallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
   CallKind2[CallKind2["GetExecutionCall"] = 14] = "GetExecutionCall";
   CallKind2[CallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
+  CallKind2[CallKind2["QueueCall"] = 15] = "QueueCall";
+  CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
   CallKind2[CallKind2["SendSignalCall"] = 6] = "SendSignalCall";
   CallKind2[CallKind2["SignalHandlerCall"] = 5] = "SignalHandlerCall";
+  CallKind2[CallKind2["SocketSendCall"] = 16] = "SocketSendCall";
+  CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
   CallKind2[CallKind2["TaskCall"] = 0] = "TaskCall";
   CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
-  CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
-  CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
-  CallKind2[CallKind2["QueueCall"] = 15] = "QueueCall";
 })(CallKind || (CallKind = {}));
 
 var Schedule = {
@@ -73,7 +74,8 @@ var PropertyKind;
   PropertyKind2[PropertyKind2["ServiceSpec"] = 5] = "ServiceSpec";
   PropertyKind2[PropertyKind2["ServiceType"] = 6] = "ServiceType";
   PropertyKind2[PropertyKind2["ServiceUrl"] = 7] = "ServiceUrl";
-  PropertyKind2[PropertyKind2["TaskToken"] = 8] = "TaskToken";
+  PropertyKind2[PropertyKind2["SocketUrls"] = 8] = "SocketUrls";
+  PropertyKind2[PropertyKind2["TaskToken"] = 9] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
 
 globalThis._eventual ??= { resources: {} };
@@ -96,6 +98,7 @@ var ServiceType;
   ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
   ServiceType2["QueueHandlerWorker"] = "QueueHandlerWorker";
+  ServiceType2["SocketWorker"] = "SocketWorker";
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["TaskWorker"] = "TaskWorker";
   ServiceType2["TransactionWorker"] = "TransactionWorker";
@@ -130,8 +133,12 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
+function parseArgs(args, predicates) {
+  return Object.fromEntries(Object.entries(predicates).map(([name, predicate]) => [name, args.find(predicate)]));
+}
+
 function command(...args) {
-  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+  const { sourceLocation, name, options, handler } = parseCommandArgs(args);
   const command2 = {
     kind: "Command",
     name,
@@ -143,12 +150,12 @@ function command(...args) {
   return registerEventualResource("Command", command2);
 }
 function parseCommandArgs(args) {
-  return [
-    args.find(isSourceLocation),
-    args.find((a) => typeof a === "string"),
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function")
-  ];
+  return parseArgs(args, {
+    sourceLocation: isSourceLocation,
+    name: (a) => typeof a === "string",
+    options: (a) => typeof a === "object" && !isSourceLocation(a),
+    handler: (a) => typeof a === "function"
+  });
 }
 
 var router = itty_router_min_default.Router();
@@ -162,7 +169,7 @@ function createRouter(middlewares) {
         return (middleware) => createRouter([...middlewares ?? [], middleware]);
       } else if (method === "command") {
         return (...args) => {
-          const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+          const { sourceLocation, name, options, handler } = parseCommandArgs(args);
           return command(sourceLocation, name, {
             ...options ?? {},
             middlewares
