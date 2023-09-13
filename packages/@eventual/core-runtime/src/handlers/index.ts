@@ -4,6 +4,7 @@ export * from "./entity-stream-worker.js";
 export * from "./orchestrator.js";
 export * from "./queue-handler-worker.js";
 export * from "./schedule-forwarder.js";
+export * from "./socket-handler-worker.js";
 export * from "./subscription-worker.js";
 export * from "./task-fallback-handler.js";
 export * from "./task-worker.js";

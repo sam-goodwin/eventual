@@ -8,6 +8,7 @@ import { LazyInterface } from "./proxy-construct";
 import { QueueService } from "./queue-service";
 import { SearchService } from "./search/search-service";
 import { Service } from "./service";
+import { SocketService } from "./socket-service";
 
 export interface ServiceConstructProps {
   /**
@@ -38,6 +39,7 @@ export interface WorkerServiceConstructProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<Service>>;
   entityService: LazyInterface<EntityService<Service>>;
   searchService: LazyInterface<SearchService<Service>> | undefined;
+  socketService: LazyInterface<SocketService<Service>>;
 }
 
 export function configureWorkerCalls(
@@ -50,4 +52,5 @@ export function configureWorkerCalls(
   serviceProps.bucketService.configureReadWriteBuckets(func);
   serviceProps.entityService.configureReadWriteEntityTable(func);
   serviceProps.entityService.configureInvokeTransactions(func);
+  serviceProps.socketService.configureInvokeSocketEndpoints(func);
 }

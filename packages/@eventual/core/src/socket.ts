@@ -1,25 +1,35 @@
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { CallKind, SocketSendCall, createCall } from "./internal/calls.js";
+import { CallKind, createCall, type SocketSendCall } from "./internal/calls.js";
 import { registerEventualResource } from "./internal/resources.js";
 import { isSourceLocation, type SocketSpec } from "./internal/service-spec.js";
 import { parseArgs } from "./internal/util.js";
 import type { ServiceContext } from "./service.js";
 
+export interface SocketHandlerContext {
+  socket: { socketName: string };
+  service: ServiceContext;
+}
+
 export type SocketHandlers = {
   $connect: (
-    connectId: string,
-    query: Record<string, string[]>
-  ) => Promise<void> | void;
-  $disconnect: (connectId: string) => Promise<void> | void;
-  $default: (
-    body: string,
-    context: {
-      headers: Record<string, string[]>;
-      routeKey: string;
+    request: {
       connectionId: string;
-      service: ServiceContext;
-    }
-  ) => Promise<any>;
+      query?: Record<string, string | undefined>;
+    },
+    context: SocketHandlerContext
+  ) => Promise<void> | void;
+  $disconnect: (
+    request: { connectionId: string },
+    context: SocketHandlerContext
+  ) => Promise<void> | void;
+  $default: (
+    request: {
+      connectionId: string;
+      body?: string;
+      headers?: Record<string, string | undefined>;
+    },
+    context: SocketHandlerContext
+  ) => Promise<string | Buffer | any | void> | string | Buffer | any | void;
 };
 
 export type Socket<Name extends string = string> = SocketSpec<Name> & {

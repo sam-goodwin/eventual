@@ -1,19 +1,28 @@
 import { IWebSocketApi, WebSocketApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { WebSocketLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { ENV_NAMES, socketServiceSocketName } from "@eventual/aws-runtime";
+import {
+  ENV_NAMES,
+  socketServiceSocketName,
+  socketServiceSocketSuffix,
+} from "@eventual/aws-runtime";
 import { SocketFunction } from "@eventual/core-runtime";
-import { IPrincipal } from "aws-cdk-lib/aws-iam";
+import { SocketUrls } from "@eventual/core/internal/index.js";
+import {
+  Effect,
+  IGrantable,
+  IPrincipal,
+  PolicyStatement,
+} from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
-import { Duration } from "aws-cdk-lib/core";
+import { Duration, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type openapi from "openapi3-ts";
 import { SpecHttpApiProps } from "./constructs/spec-http-api.js";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventualResource } from "./resource.js";
 import { WorkerServiceConstructProps } from "./service-common.js";
 import { ServiceFunction } from "./service-function.js";
 import { ServiceLocal } from "./service.js";
-import { ServiceEntityProps } from "./utils.js";
-import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import { ServiceEntityProps, serviceApiArn } from "./utils.js";
 
 export type ApiOverrides = Omit<SpecHttpApiProps, "apiDefinition">;
 
@@ -26,9 +35,6 @@ export type SocketOverrides<Service> = Partial<
 export interface SocketsProps<Service = any>
   extends WorkerServiceConstructProps {
   local: ServiceLocal | undefined;
-  openApi: {
-    info: openapi.InfoObject;
-  };
   overrides?: SocketOverrides<Service>;
 }
 
@@ -45,7 +51,7 @@ export class SocketService<Service = any> {
    */
   public readonly sockets: Sockets<Service>;
 
-  constructor(props: SocketsProps<Service>) {
+  constructor(private props: SocketsProps<Service>) {
     const socketsScope = new Construct(props.serviceScope, "Sockets");
 
     this.sockets = Object.fromEntries(
@@ -60,6 +66,54 @@ export class SocketService<Service = any> {
       ])
     ) as Sockets<Service>;
   }
+
+  private readonly ENV_MAPPINGS = {
+    [ENV_NAMES.SOCKET_URLS]: () =>
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(this.sockets as Record<string, Socket>).map(
+            ([name, socket]) =>
+              [
+                name,
+                {
+                  http: socket.gateway.apiEndpoint,
+                  wss: socket.gateway.apiEndpoint.replace("https://", "wss://"),
+                } satisfies SocketUrls,
+              ] as const
+          )
+        )
+      ),
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
+  }
+
+  public configureInvokeSocketEndpoints(func: Function) {
+    this.grantInvokeSocketEndpoints(func);
+    this.addEnvs(func, ENV_NAMES.SOCKET_URLS);
+  }
+
+  public grantInvokeSocketEndpoints(grantable: IGrantable) {
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      this.executeApiPolicyStatement()
+    );
+  }
+
+  private executeApiPolicyStatement() {
+    return new PolicyStatement({
+      actions: ["execute-api:*"],
+      effect: Effect.ALLOW,
+      resources: [
+        serviceApiArn(
+          this.props.serviceName,
+          Stack.of(this.props.serviceScope),
+          socketServiceSocketSuffix("*"),
+          false
+        ),
+      ],
+    });
+  }
 }
 
 interface SocketProps {
@@ -69,7 +123,13 @@ interface SocketProps {
   local: ServiceLocal | undefined;
 }
 
-class Socket extends Construct implements EventualResource {
+export interface ISocket {
+  grantPrincipal: IPrincipal;
+  gateway: IWebSocketApi;
+  handler: Function;
+}
+
+class Socket extends Construct implements EventualResource, ISocket {
   public grantPrincipal: IPrincipal;
   public gateway: IWebSocketApi;
   public handler: Function;

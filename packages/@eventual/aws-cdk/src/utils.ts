@@ -1,4 +1,7 @@
-import { serviceFunctionName } from "@eventual/aws-runtime";
+import {
+  serviceFunctionName,
+  socketServiceSocketName,
+} from "@eventual/aws-runtime";
 import { ArnFormat, Stack } from "aws-cdk-lib/core";
 import {
   Architecture,
@@ -124,6 +127,21 @@ export function serviceQueueArn(
       ? serviceFunctionName(serviceName, nameSuffix)
       : `${serviceName}-${nameSuffix}`
   );
+}
+
+export function serviceApiArn(
+  serviceName: string,
+  stack: Stack,
+  nameSuffix: string,
+  sanitized = true
+) {
+  return stack.formatArn({
+    service: "execute-api",
+    resource: sanitized
+      ? socketServiceSocketName(serviceName, nameSuffix)
+      : `${serviceName}-${nameSuffix}`,
+    arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+  });
 }
 
 export function formatQueueArn(queueName: string, region = "*", account = "*") {
