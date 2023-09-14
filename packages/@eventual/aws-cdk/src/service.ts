@@ -515,21 +515,22 @@ export class Service<S = any> extends Construct {
       }
     );
 
-    this.commandsPrincipal = createResourceGroupPrincipal(this.commandsList);
-    this.tasksPrincipal = createResourceGroupPrincipal(this.tasksList);
-    this.subscriptionsPrincipal = createResourceGroupPrincipal(
+    this.commandsPrincipal = this.createResourceGroupPrincipal(
+      this.commandsList
+    );
+    this.tasksPrincipal = this.createResourceGroupPrincipal(this.tasksList);
+    this.subscriptionsPrincipal = this.createResourceGroupPrincipal(
       this.subscriptionsList
     );
-    this.entityStreamsPrincipal = createResourceGroupPrincipal(
+    this.entityStreamsPrincipal = this.createResourceGroupPrincipal(
       this.entityStreamList
     );
-    this.bucketNotificationHandlersPrincipal = createResourceGroupPrincipal(
-      this.bucketNotificationHandlersList
-    );
-    this.queueHandlersPrincipal = createResourceGroupPrincipal(
+    this.bucketNotificationHandlersPrincipal =
+      this.createResourceGroupPrincipal(this.bucketNotificationHandlersList);
+    this.queueHandlersPrincipal = this.createResourceGroupPrincipal(
       this.queueHandlersList
     );
-    this.socketHandlersPrincipal = createResourceGroupPrincipal(
+    this.socketHandlersPrincipal = this.createResourceGroupPrincipal(
       this.socketHandlersList
     );
     this.grantPrincipal = new DeepCompositePrincipal(
@@ -554,17 +555,6 @@ export class Service<S = any> extends Construct {
       workflowService,
     };
     proxyService._bind(this);
-
-    const self = this;
-
-    function createResourceGroupPrincipal(grantables: IGrantable[]) {
-      return grantables.length > 0 || self.local
-        ? new DeepCompositePrincipal(
-            ...(self.local ? [self.local.environmentRole] : []),
-            ...grantables.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: self });
-    }
   }
 
   public get tasksList(): Task[] {
@@ -593,6 +583,15 @@ export class Service<S = any> extends Construct {
 
   public get socketHandlersList(): ISocket[] {
     return Object.values<ISocket>(this.sockets);
+  }
+
+  private createResourceGroupPrincipal(grantables: IGrantable[]) {
+    return grantables.length > 0 || this.local
+      ? new DeepCompositePrincipal(
+          ...(this.local ? [this.local.environmentRole] : []),
+          ...grantables.map((f) => f.grantPrincipal)
+        )
+      : new UnknownPrincipal({ resource: this });
   }
 
   public subscribe(

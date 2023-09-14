@@ -18,7 +18,7 @@ export * from "./secret.js";
 export * from "./service-client.js";
 export * from "./service.js";
 export * from "./signals.js";
-export * from "./socket.js";
+export * from "./socket/index.js";
 export * from "./subscription.js";
 export * from "./task.js";
 export * from "./transaction.js";

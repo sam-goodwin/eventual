@@ -44,6 +44,7 @@ export default async (
           request: {
             connectionId: event.requestContext.connectionId,
             query: event.queryStringParameters,
+            headers: event.headers,
           },
         } satisfies SocketHandlerWorkerEvent<"$connect">)
       : event.requestContext.routeKey === "$disconnect"
@@ -63,13 +64,14 @@ export default async (
   const result = await worker(getLazy(socketName), workerEvent);
 
   if (result) {
-    const [data, base64] =
-      result instanceof Buffer
-        ? [result.toString("base64"), true]
-        : [JSON.stringify(result), false];
+    const [data, base64] = result.message
+      ? result.message instanceof Buffer
+        ? [result.message.toString("base64"), true]
+        : [JSON.stringify(result.message), false]
+      : [undefined, false];
 
     return {
-      statusCode: 200,
+      statusCode: result.status,
       body: data,
       isBase64Encoded: base64,
     };

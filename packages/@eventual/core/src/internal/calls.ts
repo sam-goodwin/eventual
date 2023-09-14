@@ -14,7 +14,7 @@ import type {
 } from "../queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
-import { Socket } from "../socket.js";
+import { Socket } from "../socket/socket.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";

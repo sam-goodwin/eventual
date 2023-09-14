@@ -9,6 +9,7 @@ import {
 import { ServiceType, getEventualResources } from "@eventual/core/internal";
 import itty from "itty-router";
 import { WorkerIntrinsicDeps, createEventualWorker } from "./worker.js";
+import { withMiddlewares } from "../utils.js";
 
 export type ApiHandlerDependencies = WorkerIntrinsicDeps;
 
@@ -96,41 +97,44 @@ function initRouter() {
       // RPC route takes a POST request and passes the parsed JSON body as input to the input
       router.post(
         commandRpcPath(command),
-        withMiddleware(async (request, context) => {
-          if (command.passThrough) {
-            // if passthrough is enabled, just proxy the request-response to the handler
-            return command.handler(request, context);
-          }
-
-          let input: any = await request.tryJson();
-          if (command.input && shouldValidate) {
-            try {
-              input = command.input.parse(input);
-            } catch (err) {
-              console.error("Invalid input", err, input);
-              return new HttpResponse(JSON.stringify(err), {
-                status: 400,
-                statusText: "Invalid input",
-              });
+        withMiddlewares<CommandContext, HttpResponse, HttpRequest>(
+          command.middlewares ?? [],
+          async (request, context) => {
+            if (command.passThrough) {
+              // if passthrough is enabled, just proxy the request-response to the handler
+              return command.handler(request, context);
             }
-          }
 
-          let output: any = await command.handler(input, context);
-          if (command.output?.schema && shouldValidate) {
-            try {
-              output = command.output.schema.parse(output);
-            } catch (err) {
-              console.error("RPC output did not match schema", output, err);
-              return new HttpResponse(JSON.stringify(err), {
-                status: 500,
-                statusText: "RPC output did not match schema",
-              });
+            let input: any = await request.tryJson();
+            if (command.input && shouldValidate) {
+              try {
+                input = command.input.parse(input);
+              } catch (err) {
+                console.error("Invalid input", err, input);
+                return new HttpResponse(JSON.stringify(err), {
+                  status: 400,
+                  statusText: "Invalid input",
+                });
+              }
             }
+
+            let output: any = await command.handler(input, context);
+            if (command.output?.schema && shouldValidate) {
+              try {
+                output = command.output.schema.parse(output);
+              } catch (err) {
+                console.error("RPC output did not match schema", output, err);
+                return new HttpResponse(JSON.stringify(err), {
+                  status: 500,
+                  statusText: "RPC output did not match schema",
+                });
+              }
+            }
+            return new HttpResponse(JSON.stringify(output, jsonReplacer), {
+              status: 200,
+            });
           }
-          return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: 200,
-          });
-        })
+        )
       );
     }
 
@@ -143,116 +147,67 @@ function initRouter() {
       // REST routes parse the request according to the command's path/method/params configuration
       router[method](
         path,
-        withMiddleware(async (request: HttpRequest, context) => {
-          if (command.passThrough) {
-            // if passthrough is enabled, just proxy the request-response to the handler
-            return command.handler(request, context);
-          }
-
-          // first, get the body as pure JSON - assume it's an object
-          const body = await request.tryJson();
-          let input: any = {
-            ...request.params,
-            ...(body && typeof body === "object" ? body : {}),
-          };
-
-          // parse headers/params/queries/body into the RPC interface
-          if (command.params) {
-            Object.entries(command.params).forEach(([name, spec]) => {
-              input[name] = resolveInput(name, spec);
-            });
-          }
-
-          if (command.input && shouldValidate) {
-            // validate the zod input schema if one is specified
-            input = command.input.parse(input);
-          }
-
-          // call the command RPC handler
-          let output: any = await command.handler(input, context);
-
-          if (command.output?.schema && shouldValidate) {
-            // validate the output of the command handler against the schema if it's defined
-            output = command.output.schema.parse(output);
-          }
-
-          // TODO: support mapping RPC output back to HTTP properties such as Headers
-          // TODO: support alternative status code https://github.com/functionless/eventual/issues/276
-
-          return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: command.output?.restStatusCode ?? 200,
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          function resolveInput(name: string, spec: RestParam): any {
-            if (spec === "body") {
-              return body?.[name];
-            } else if (spec === "query") {
-              return request.query?.[name];
-            } else if (spec === "header") {
-              return request.headers.get(name);
-            } else if (spec === "path") {
-              return request.params?.[name];
-            } else {
-              return resolveInput(spec.name ?? name, spec.in);
+        withMiddlewares<CommandContext, HttpResponse, HttpRequest>(
+          command.middlewares ?? [],
+          async (request: HttpRequest, context) => {
+            if (command.passThrough) {
+              // if passthrough is enabled, just proxy the request-response to the handler
+              return command.handler(request, context);
             }
-          }
-        })
-      );
-    }
 
-    /**
-     * Applies the chain of middleware callbacks to the request to build up
-     * context and pass it through the chain and finally to the handler.
-     *
-     * Each context can add to or completely replace the context. They can
-     * also break the chain at any time by returning a HttpResponse instead
-     * of calling `next`.
-     *
-     * @param handler
-     * @returns
-     */
-    function withMiddleware(
-      handler: (
-        request: HttpRequest,
-        context: CommandContext
-      ) => Promise<HttpResponse>
-    ) {
-      return async (
-        request: HttpRequest,
-        context: CommandContext
-      ): Promise<HttpResponse> => {
-        const chain = (command.middlewares ?? []).values();
+            // first, get the body as pure JSON - assume it's an object
+            const body = await request.tryJson();
+            let input: any = {
+              ...request.params,
+              ...(body && typeof body === "object" ? body : {}),
+            };
 
-        return next(request, context);
+            // parse headers/params/queries/body into the RPC interface
+            if (command.params) {
+              Object.entries(command.params).forEach(([name, spec]) => {
+                input[name] = resolveInput(name, spec);
+              });
+            }
 
-        async function next(
-          request: HttpRequest,
-          context: CommandContext
-        ): Promise<HttpResponse> {
-          let consumed = false;
-          const middleware = chain.next();
-          if (middleware.done) {
-            return handler(request, context);
-          } else {
-            return middleware.value({
-              request,
-              context,
-              next: async (context) => {
-                if (consumed) {
-                  consumed = true;
-                  throw new Error(
-                    `Middleware cannot call 'next' more than once`
-                  );
-                }
-                return next(request, context);
+            if (command.input && shouldValidate) {
+              // validate the zod input schema if one is specified
+              input = command.input.parse(input);
+            }
+
+            // call the command RPC handler
+            let output: any = await command.handler(input, context);
+
+            if (command.output?.schema && shouldValidate) {
+              // validate the output of the command handler against the schema if it's defined
+              output = command.output.schema.parse(output);
+            }
+
+            // TODO: support mapping RPC output back to HTTP properties such as Headers
+            // TODO: support alternative status code https://github.com/functionless/eventual/issues/276
+
+            return new HttpResponse(JSON.stringify(output, jsonReplacer), {
+              status: command.output?.restStatusCode ?? 200,
+              headers: {
+                "Content-Type": "application/json",
               },
             });
+
+            function resolveInput(name: string, spec: RestParam): any {
+              if (spec === "body") {
+                return body?.[name];
+              } else if (spec === "query") {
+                return request.query?.[name];
+              } else if (spec === "header") {
+                return request.headers.get(name);
+              } else if (spec === "path") {
+                return request.params?.[name];
+              } else {
+                return resolveInput(spec.name ?? name, spec.in);
+              }
+            }
           }
-        }
-      };
+        )
+      );
     }
   }
 

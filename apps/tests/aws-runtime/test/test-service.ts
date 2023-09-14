@@ -1397,13 +1397,14 @@ interface SocketMessage {
   v: number;
 }
 
-export const socket1 = socket("socket1", {
-  $connect: async ({ connectionId, query }) => {
-    console.log(query);
-    const { id, n } = (query ?? {}) as { n?: string; id?: string };
-    if (!id || !n) {
-      throw new Error("Missing ID");
-    }
+export const socket1 = socket.use(({ request: { query }, context, next }) => {
+  const { id, n } = (query ?? {}) as { n?: string; id?: string };
+  if (!id || !n) {
+    throw new Error("Missing ID");
+  }
+  return next({ ...context, id, n });
+})("socket1", {
+  $connect: async ({ connectionId }, { id, n }) => {
     console.log("sending signal to", id);
     await socketConnectSignal.sendSignal(id, {
       connectionId,

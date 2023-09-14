@@ -1,6 +1,11 @@
-import { SocketHandlerContext, SocketHandlers } from "@eventual/core";
+import {
+  SocketConnectionRequest,
+  SocketHandlerContext,
+  SocketHandlers,
+  SocketResponse,
+} from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
-import { getLazy } from "../utils.js";
+import { getLazy, withMiddlewares } from "../utils.js";
 import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
 export type SocketHandlerDependencies = WorkerIntrinsicDeps;
@@ -18,7 +23,10 @@ function isSocketHandlerEventType<Type extends keyof SocketHandlers>(
 }
 
 export interface SocketHandlerWorker {
-  (socketName: string, event: SocketHandlerWorkerEvent<any>): Promise<any>;
+  (
+    socketName: string,
+    event: SocketHandlerWorkerEvent<any>
+  ): Promise<SocketResponse>;
 }
 
 export function createSocketHandlerWorker(
@@ -40,9 +48,17 @@ export function createSocketHandlerWorker(
       };
 
       if (isSocketHandlerEventType("$connect", event)) {
-        await handlers.$connect(event.request, context);
+        return withMiddlewares<
+          SocketHandlerContext,
+          SocketResponse,
+          SocketConnectionRequest
+        >(
+          socket.connectMiddlewares,
+          async (request, context) =>
+            (await handlers.$connect(request, context)) ?? { status: 200 }
+        )(event.request, context);
       } else if (isSocketHandlerEventType("$disconnect", event)) {
-        await handlers.$disconnect(event.request, context);
+        return await handlers.$disconnect(event.request, context);
       } else if (isSocketHandlerEventType("$default", event)) {
         return handlers.$default(event.request, context);
       }
