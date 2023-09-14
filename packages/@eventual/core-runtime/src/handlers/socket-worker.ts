@@ -25,7 +25,7 @@ export function createSocketHandlerWorker(
   dependencies: SocketHandlerDependencies
 ): SocketHandlerWorker {
   return createEventualWorker(
-    { serviceType: ServiceType.QueueHandlerWorker, ...dependencies },
+    { serviceType: ServiceType.SocketWorker, ...dependencies },
     async (socketName, event) => {
       const socket = getEventualResource("Socket", socketName);
       if (!socket) throw new Error(`Socket ${socketName} does not exist`);

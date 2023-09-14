@@ -14,6 +14,7 @@ import type {
 } from "../queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
+import { Socket } from "../socket.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";
@@ -31,7 +32,7 @@ export type Call =
   | SignalHandlerCall
   | SearchCall
   | SendSignalCall
-  | SocketSendCall
+  | SocketCall
   | StartWorkflowCall
   | TaskCall
   | TaskRequestCall
@@ -51,7 +52,7 @@ export enum CallKind {
   SearchCall = 11,
   SendSignalCall = 6,
   SignalHandlerCall = 5,
-  SocketSendCall = 16,
+  SocketCall = 16,
   StartWorkflowCall = 13,
   TaskCall = 0,
   TaskRequestCall = 12,
@@ -459,12 +460,31 @@ export interface InvokeTransactionCall<Input = any>
   transactionName: string;
 }
 
-export function isSocketSendCall(a: any): a is SocketSendCall {
-  return isCallOfKind(CallKind.SocketSendCall, a);
+export type SocketMethod = Exclude<
+  {
+    [op in keyof Socket]: [Socket[op]] extends [Function] ? op : never;
+  }[keyof Socket],
+  undefined
+>;
+
+export type SocketOperation<Op extends SocketMethod = SocketMethod> = {
+  operation: Op;
+  socketName: string;
+  params: Parameters<Socket[Op]>;
+};
+
+export function isSocketCall(a: any): a is SocketCall {
+  return isCallOfKind(CallKind.SocketCall, a);
 }
 
-export interface SocketSendCall extends CallBase<CallKind.SocketSendCall, any> {
-  name: string;
-  connectionId: string;
-  input: Buffer | string;
+export interface SocketCall<Op extends SocketMethod = SocketMethod>
+  extends CallBase<CallKind.SocketCall, any> {
+  operation: SocketOperation<Op>;
+}
+
+export function isSocketCallOperation<Op extends SocketMethod>(
+  op: Op,
+  operation: SocketCall<any>
+): operation is SocketCall<Op> {
+  return operation.operation.operation === op;
 }

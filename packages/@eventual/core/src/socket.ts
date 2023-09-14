@@ -1,5 +1,10 @@
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { CallKind, createCall, type SocketSendCall } from "./internal/calls.js";
+import { CallKind, createCall, type SocketCall } from "./internal/calls.js";
+import {
+  createEventualProperty,
+  PropertyKind,
+  SocketUrlsProperty,
+} from "./internal/properties.js";
 import { registerEventualResource } from "./internal/resources.js";
 import { isSourceLocation, type SocketSpec } from "./internal/service-spec.js";
 import { parseArgs } from "./internal/util.js";
@@ -35,8 +40,11 @@ export type SocketHandlers = {
 export type Socket<Name extends string = string> = SocketSpec<Name> & {
   kind: "Socket";
   handlers: SocketHandlers;
+  wssEndpoint: string;
+  httpEndpoint: string;
 } & {
   send: (connectionId: string, input: Buffer | string) => Promise<void>;
+  delete: (connectionId: string) => Promise<void>;
 };
 
 export type SocketOptions = FunctionRuntimeProps;
@@ -55,12 +63,35 @@ export function socket<Name extends string>(
     kind: "Socket",
     handlerTimeout: options?.handlerTimeout,
     memorySize: options?.memorySize,
-    send(connectionId, input) {
+    get wssEndpoint() {
+      return getEventualHook().getEventualProperty<SocketUrlsProperty>(
+        createEventualProperty(PropertyKind.SocketUrls, { socketName: name })
+      ).wss;
+    },
+    get httpEndpoint() {
+      return getEventualHook().getEventualProperty<SocketUrlsProperty>(
+        createEventualProperty(PropertyKind.SocketUrls, { socketName: name })
+      ).http;
+    },
+    send(...params) {
       return getEventualHook().executeEventualCall(
-        createCall<SocketSendCall>(CallKind.SocketSendCall, {
-          name,
-          connectionId,
-          input,
+        createCall<SocketCall>(CallKind.SocketCall, {
+          operation: {
+            operation: "send",
+            socketName: name,
+            params,
+          },
+        })
+      );
+    },
+    delete(...params) {
+      return getEventualHook().executeEventualCall(
+        createCall<SocketCall>(CallKind.SocketCall, {
+          operation: {
+            operation: "delete",
+            socketName: name,
+            params,
+          },
         })
       );
     },

@@ -29,7 +29,7 @@ import {
 } from "./call-executor.js";
 import { EmitEventsCallExecutor } from "./call-executors/emit-events-call-executor.js";
 import { SendSignalCallExecutor } from "./call-executors/send-signal-call-executor.js";
-import { SocketSendCallExecutor } from "./call-executors/send-socket-call-executor.js";
+import { SocketCallExecutor } from "./call-executors/socket-call-executor.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
@@ -430,7 +430,7 @@ export function createTransactionCallExecutor(
     BucketCall: unsupportedExecutor,
     ConditionCall: unsupportedExecutor,
     EmitEventsCall: new EmitEventsCallExecutor(deps.eventClient),
-    SocketSendCall: new SocketSendCallExecutor(deps.socketClient),
+    SocketCall: new SocketCallExecutor(deps.socketClient),
     // the transaction execution handles this itself
     EntityCall: unsupportedExecutor,
     ExpectSignalCall: unsupportedExecutor,

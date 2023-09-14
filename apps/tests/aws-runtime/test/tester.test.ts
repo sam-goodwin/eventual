@@ -444,6 +444,16 @@ test("test service context", async () => {
   });
 });
 
+test("socket test", async () => {
+  const rpcResponse = await (
+    await fetch(`${url}/${commandRpcPath({ name: "socketTest" })}`, {
+      method: "POST",
+    })
+  ).json();
+
+  expect(rpcResponse).toEqual([3, 4]);
+});
+
 if (!process.env.TEST_LOCAL) {
   test("index.search", async () => {
     const serviceClient = new ServiceClient<typeof TestService>({

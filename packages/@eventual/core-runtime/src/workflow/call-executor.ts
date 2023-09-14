@@ -6,7 +6,6 @@ import {
   type EventualPromise,
 } from "@eventual/core/internal";
 import { EmitEventsCallExecutor } from "../call-executors/emit-events-call-executor.js";
-import { SocketSendCallExecutor } from "../call-executors/send-socket-call-executor.js";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
@@ -26,6 +25,7 @@ import { NoOpWorkflowExecutor } from "./call-executors-and-factories/no-op-call-
 import { createSearchWorkflowQueueExecutor } from "./call-executors-and-factories/open-search-client-call.js";
 import { createQueueCallWorkflowCallExecutor } from "./call-executors-and-factories/queue-call.js";
 import { SendSignalWorkflowCallExecutor } from "./call-executors-and-factories/send-signal-call.js";
+import { createSocketWorkflowQueueExecutor } from "./call-executors-and-factories/send-socket-call.js";
 import { SimpleWorkflowExecutorAdaptor } from "./call-executors-and-factories/simple-workflow-executor-adaptor.js";
 import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-call.js";
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";
@@ -65,8 +65,9 @@ export function createDefaultWorkflowCallExecutor(
     EmitEventsCall: new SimpleWorkflowExecutorAdaptor(
       new EmitEventsCallExecutor(deps.eventClient)
     ),
-    SocketSendCall: new SimpleWorkflowExecutorAdaptor(
-      new SocketSendCallExecutor(deps.socketClient)
+    SocketCall: createSocketWorkflowQueueExecutor(
+      deps.socketClient,
+      deps.executionQueueClient
     ),
     EntityCall: createEntityWorkflowQueueExecutor(
       deps.entityStore,

@@ -1,28 +1,28 @@
-import { IWebSocketApi, WebSocketApi } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { WebSocketLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import {
-  ENV_NAMES,
-  socketServiceSocketName,
-  socketServiceSocketSuffix,
-} from "@eventual/aws-runtime";
+  IWebSocketApi,
+  IWebSocketStage,
+  WebSocketApi,
+  WebSocketNoneAuthorizer,
+  WebSocketStage,
+} from "@aws-cdk/aws-apigatewayv2-alpha";
+import { WebSocketLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { ENV_NAMES, socketServiceSocketName } from "@eventual/aws-runtime";
 import { SocketFunction } from "@eventual/core-runtime";
 import { SocketUrls } from "@eventual/core/internal/index.js";
-import {
-  Effect,
-  IGrantable,
-  IPrincipal,
-  PolicyStatement,
-} from "aws-cdk-lib/aws-iam";
+import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
-import { Duration, Stack } from "aws-cdk-lib/core";
+import { Duration } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { SpecHttpApiProps } from "./constructs/spec-http-api.js";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventualResource } from "./resource.js";
-import { WorkerServiceConstructProps } from "./service-common.js";
+import {
+  WorkerServiceConstructProps,
+  configureWorkerCalls,
+} from "./service-common.js";
 import { ServiceFunction } from "./service-function.js";
 import { ServiceLocal } from "./service.js";
-import { ServiceEntityProps, serviceApiArn } from "./utils.js";
+import { ServiceEntityProps } from "./utils.js";
 
 export type ApiOverrides = Omit<SpecHttpApiProps, "apiDefinition">;
 
@@ -51,12 +51,12 @@ export class SocketService<Service = any> {
    */
   public readonly sockets: Sockets<Service>;
 
-  constructor(private props: SocketsProps<Service>) {
+  constructor(props: SocketsProps<Service>) {
     const socketsScope = new Construct(props.serviceScope, "Sockets");
 
     this.sockets = Object.fromEntries(
-      Object.entries(props.build.sockets).map(([name, socket]) => [
-        name,
+      props.build.sockets.map((socket) => [
+        socket.spec.name,
         new Socket(socketsScope, {
           serviceProps: props,
           socketService: this,
@@ -76,8 +76,8 @@ export class SocketService<Service = any> {
               [
                 name,
                 {
-                  http: socket.gateway.apiEndpoint,
-                  wss: socket.gateway.apiEndpoint.replace("https://", "wss://"),
+                  http: socket.gatewayStage.url.replace("wss://", "https://"),
+                  wss: socket.gatewayStage.url,
                 } satisfies SocketUrls,
               ] as const
           )
@@ -95,24 +95,10 @@ export class SocketService<Service = any> {
   }
 
   public grantInvokeSocketEndpoints(grantable: IGrantable) {
-    grantable.grantPrincipal.addToPrincipalPolicy(
-      this.executeApiPolicyStatement()
+    // generally we want to compute the grants, but apigateway urls use the generated appid and not the name
+    Object.values<Socket>(this.sockets).map((s) =>
+      s.gateway.grantManageConnections(grantable)
     );
-  }
-
-  private executeApiPolicyStatement() {
-    return new PolicyStatement({
-      actions: ["execute-api:*"],
-      effect: Effect.ALLOW,
-      resources: [
-        serviceApiArn(
-          this.props.serviceName,
-          Stack.of(this.props.serviceScope),
-          socketServiceSocketSuffix("*"),
-          false
-        ),
-      ],
-    });
   }
 }
 
@@ -131,7 +117,8 @@ export interface ISocket {
 
 class Socket extends Construct implements EventualResource, ISocket {
   public grantPrincipal: IPrincipal;
-  public gateway: IWebSocketApi;
+  public gateway: WebSocketApi;
+  public gatewayStage: IWebSocketStage;
   public handler: Function;
 
   constructor(scope: Construct, props: SocketProps) {
@@ -155,7 +142,7 @@ class Socket extends Construct implements EventualResource, ISocket {
       overrides: props.serviceProps.overrides?.[socketName],
     });
 
-    const integration = new WebSocketLambdaIntegration("default", this.handler);
+    configureWorkerCalls(props.serviceProps, this.handler);
 
     this.gateway = new WebSocketApi(this, "Gateway", {
       apiName: socketServiceSocketName(
@@ -163,14 +150,23 @@ class Socket extends Construct implements EventualResource, ISocket {
         socketName
       ),
       defaultRouteOptions: {
-        integration,
+        // https://stackoverflow.com/a/72716478
+        // must create one integration per...
+        integration: new WebSocketLambdaIntegration("default", this.handler),
       },
       connectRouteOptions: {
-        integration,
+        integration: new WebSocketLambdaIntegration("Connect", this.handler),
+        authorizer: new WebSocketNoneAuthorizer(),
       },
       disconnectRouteOptions: {
-        integration,
+        integration: new WebSocketLambdaIntegration("Disconnect", this.handler),
       },
+    });
+
+    this.gatewayStage = new WebSocketStage(this, "Stage", {
+      stageName: "default",
+      webSocketApi: this.gateway,
+      autoDeploy: true,
     });
 
     this.grantPrincipal = props.local

@@ -139,7 +139,7 @@ export const createApiGatewayManagementClient = /* @__PURE__ */ memoize(
 export const createSocketClient = /* @__PURE__ */ memoize(() => {
   return new AWSSocketClient({
     socketUrls,
-    apiGatewayManagementClientFactory: (url) =>
+    apiGatewayManagementClientRetriever: (url) =>
       createApiGatewayManagementClient({ socketUrl: url }),
   });
 });

@@ -1,14 +1,19 @@
 import {
-  ApiGatewayManagementApiClient,
+  DeleteConnectionCommand,
   PostToConnectionCommand,
+  type ApiGatewayManagementApiClient,
 } from "@aws-sdk/client-apigatewaymanagementapi";
-import { LazyValue, SocketClient, getLazy } from "@eventual/core-runtime";
+import {
+  getLazy,
+  type LazyValue,
+  type SocketClient,
+} from "@eventual/core-runtime";
 import type { SocketUrls } from "@eventual/core/internal";
 
 export type SocketEndpoints = Record<string, SocketUrls>;
 
 export interface AWSSocketClientProps {
-  apiGatewayManagementClientFactory: (
+  apiGatewayManagementClientRetriever: (
     socketUrl: string
   ) => ApiGatewayManagementApiClient;
   socketUrls: LazyValue<SocketEndpoints>;
@@ -22,7 +27,7 @@ export class AWSSocketClient implements SocketClient {
     connectionId: string,
     input: string | Buffer
   ): Promise<void> {
-    const client = this.props.apiGatewayManagementClientFactory(
+    const client = this.props.apiGatewayManagementClientRetriever(
       this.socketUrls(socketName).http
     );
 
@@ -31,6 +36,16 @@ export class AWSSocketClient implements SocketClient {
         ConnectionId: connectionId,
         Data: Buffer.from(input),
       })
+    );
+  }
+
+  public async delete(socketName: string, connectionId: string): Promise<void> {
+    const client = this.props.apiGatewayManagementClientRetriever(
+      this.socketUrls(socketName).http
+    );
+
+    await client.send(
+      new DeleteConnectionCommand({ ConnectionId: connectionId })
     );
   }
 

@@ -10,6 +10,10 @@ export class LocalSocketClient implements SocketClient {
     throw new Error("Method not implemented.");
   }
 
+  public delete(_socketName: string, _connectionId: string): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+
   public socketUrls(_socketName: string): SocketUrls {
     throw new Error("Method not implemented.");
   }

@@ -140,6 +140,7 @@ export function serviceApiArn(
     resource: sanitized
       ? socketServiceSocketName(serviceName, nameSuffix)
       : `${serviceName}-${nameSuffix}`,
+    resourceName: "*/*/*/*",
     arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
   });
 }

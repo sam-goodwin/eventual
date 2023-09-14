@@ -10,7 +10,7 @@ import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
 import { QueueCallExecutor } from "../call-executors/queue-call-executor.js";
 import { SearchCallExecutor } from "../call-executors/search-call-executor.js";
-import { SocketSendCallExecutor } from "../call-executors/send-socket-call-executor.js";
+import { SocketCallExecutor } from "../call-executors/socket-call-executor.js";
 import { ServiceClientExecutor } from "../call-executors/service-client-executor.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
 import type { QueueClient } from "../clients/queue-client.js";
@@ -92,7 +92,7 @@ export function createEventualWorker<Input extends any[], Output>(
     : unsupportedProperty;
   const [socketCallExecutor, socketUrlPropertyRetriever] = props.socketClient
     ? [
-        new SocketSendCallExecutor(props.socketClient),
+        new SocketCallExecutor(props.socketClient),
         new SocketUrlPropertyRetriever(props.socketClient),
       ]
     : [unsupportedExecutor, unsupportedProperty];
@@ -143,7 +143,7 @@ export function createEventualWorker<Input extends any[], Output>(
         SignalHandlerCall: unsupportedExecutor,
         SearchCall: openSearchExecutor,
         SendSignalCall: serviceClientExecutor,
-        SocketSendCall: socketCallExecutor,
+        SocketCall: socketCallExecutor,
         StartWorkflowCall: serviceClientExecutor,
         // directly calling a task does not work outside of a workflow
         TaskCall: unsupportedExecutor,

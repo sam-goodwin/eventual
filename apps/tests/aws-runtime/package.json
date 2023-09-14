@@ -21,6 +21,7 @@
     "@eventual/cli": "workspace:^",
     "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
+    "ws": "^8.14.1",
     "zod": "^3.21.4"
   },
   "devDependencies": {
@@ -30,6 +31,7 @@
     "@types/aws-lambda": "^8.10.115",
     "@types/jest": "^29.5.1",
     "@types/node": "^18",
+    "@types/ws": "^8.5.5",
     "aws-cdk": "^2.80.0",
     "esbuild": "^0.17.4",
     "jest": "^29",

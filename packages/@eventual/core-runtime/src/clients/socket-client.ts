@@ -1,10 +1,11 @@
-import { SocketUrls } from "@eventual/core/internal";
+import { Socket } from "@eventual/core";
+import { SocketMethod, SocketUrls } from "@eventual/core/internal";
 
-export interface SocketClient {
-  send(
+export type SocketClient = {
+  [K in keyof Pick<Socket, SocketMethod>]: (
     socketName: string,
-    connectionId: string,
-    input: Buffer | string
-  ): Promise<void>;
+    ...args: Parameters<Socket[K]>
+  ) => ReturnType<Socket[K]>;
+} & {
   socketUrls(socketName: string): SocketUrls;
-}
+};

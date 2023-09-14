@@ -1,3 +1,7 @@
+import serviceSpec from "@eventual/injected/spec";
+// the user's entry point will register streams as a side effect.
+import "@eventual/injected/entry";
+
 import {
   SocketHandlerWorkerEvent,
   createSocketHandlerWorker,
@@ -17,7 +21,6 @@ import {
   createSocketClient,
 } from "../create.js";
 import { serviceName, serviceUrl, socketName } from "../env.js";
-import serviceSpec from "../injected/service-spec.js";
 
 const worker = createSocketHandlerWorker({
   bucketStore: createBucketStore(),
@@ -72,5 +75,7 @@ export default async (
     };
   }
 
-  return undefined;
+  return {
+    statusCode: 200,
+  };
 };

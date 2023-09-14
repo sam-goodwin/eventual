@@ -9,6 +9,7 @@ import {
   isEntityRequest,
   isSignalReceived,
   isSignalSent,
+  isSocketRequest,
   isTaskScheduled,
   isTransactionRequest,
   type BucketRequest,
@@ -35,6 +36,19 @@ export function displayEvent(event: WorkflowEvent) {
     }`,
     ...(isCallEvent(event)
       ? [
+          ...("operation" in event.event
+            ? typeof event.event.operation === "object" &&
+              "operation" in event.event.operation
+              ? [`Operation: ${event.event.operation.operation}`]
+              : [`Operation: ${event.event.operation}`]
+            : []),
+          ...(isSocketRequest(event.event)
+            ? [`Socket: ${event.event.operation.socketName}`]
+            : []),
+          ...(isSocketRequest(event.event) &&
+          event.event.operation.operation === "send"
+            ? [`Input: ${event.event.operation.input}`]
+            : []),
           ...(isChildWorkflowScheduled(event.event) ||
           isTaskScheduled(event.event)
             ? [`Task Name: ${JSON.stringify(event.event.name)}`]
@@ -42,7 +56,9 @@ export function displayEvent(event: WorkflowEvent) {
           ...(isTransactionRequest(event.event)
             ? [`Transaction Name: ${event.event.transactionName}`]
             : []),
-          ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
+          ...("signalId" in event.event
+            ? [`Signal Id: ${event.event.signalId}`]
+            : []),
           ...((isChildWorkflowScheduled(event.event) ||
             isTransactionRequest(event.event) ||
             isTaskScheduled(event.event)) &&
@@ -63,6 +79,7 @@ export function displayEvent(event: WorkflowEvent) {
     ...(isSignalReceived(event) && event.payload
       ? [`Payload: ${JSON.stringify(event.payload)}`]
       : []),
+    ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
     ...("result" in event ? [`Result: ${JSON.stringify(event.result)}`] : []),
     ...("output" in event ? [`Output: ${JSON.stringify(event.output)}`] : []),
     ...("error" in event

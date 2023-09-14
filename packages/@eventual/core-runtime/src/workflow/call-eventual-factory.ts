@@ -81,7 +81,7 @@ export function createDefaultEventualFactory(): AllWorkflowEventualFactory {
     SearchCall: new SearchCallEventualFactory(),
     SendSignalCall: new SendSignalEventualFactory(),
     SignalHandlerCall: new RegisterSignalHandlerCallFactory(),
-    SocketSendCall: new SendSocketCallEventualFactory(),
+    SocketCall: new SendSocketCallEventualFactory(),
     StartWorkflowCall: unsupportedFactory,
     TaskCall: new TaskCallEventualFactory(),
     TaskRequestCall: unsupportedFactory, // TODO: support task requests (succeed, fail, heartbeat)
