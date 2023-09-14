@@ -42,11 +42,16 @@ var CallKind;
   CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
   CallKind2[CallKind2["SendSignalCall"] = 6] = "SendSignalCall";
   CallKind2[CallKind2["SignalHandlerCall"] = 5] = "SignalHandlerCall";
-  CallKind2[CallKind2["SocketSendCall"] = 16] = "SocketSendCall";
+  CallKind2[CallKind2["SocketCall"] = 16] = "SocketCall";
   CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
   CallKind2[CallKind2["TaskCall"] = 0] = "TaskCall";
   CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
 })(CallKind || (CallKind = {}));
+var CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
+function createCall(kind, e2) {
+  e2[CallSymbol] = kind;
+  return e2;
+}
 
 var Schedule = {
   duration(dur, unit = "seconds") {
@@ -77,6 +82,11 @@ var PropertyKind;
   PropertyKind2[PropertyKind2["SocketUrls"] = 8] = "SocketUrls";
   PropertyKind2[PropertyKind2["TaskToken"] = 9] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
+var PropertySymbol = /* @__PURE__ */ Symbol.for("eventual:EventualProperty");
+function createEventualProperty(kind, e2) {
+  e2[PropertySymbol] = kind;
+  return e2;
+}
 
 globalThis._eventual ??= { resources: {} };
 function registerEventualResource(resourceKind, resource) {
@@ -301,6 +311,58 @@ globalThis.getEventualHook ??= () => {
 globalThis.tryGetEventualHook ??= () => {
   return void 0;
 };
+
+function createSocketBuilder(middlewares) {
+  const socketFunction = (...args) => {
+    const { sourceLocation, name, options, handlers } = parseSocketArgs(args);
+    const socket2 = {
+      connectMiddlewares: middlewares,
+      name,
+      handlers,
+      sourceLocation,
+      kind: "Socket",
+      handlerTimeout: options?.handlerTimeout,
+      memorySize: options?.memorySize,
+      get wssEndpoint() {
+        return getEventualHook().getEventualProperty(createEventualProperty(PropertyKind.SocketUrls, { socketName: name })).wss;
+      },
+      get httpEndpoint() {
+        return getEventualHook().getEventualProperty(createEventualProperty(PropertyKind.SocketUrls, { socketName: name })).http;
+      },
+      send(...params) {
+        return getEventualHook().executeEventualCall(createCall(CallKind.SocketCall, {
+          operation: {
+            operation: "send",
+            socketName: name,
+            params
+          }
+        }));
+      },
+      disconnect(...params) {
+        return getEventualHook().executeEventualCall(createCall(CallKind.SocketCall, {
+          operation: {
+            operation: "disconnect",
+            socketName: name,
+            params
+          }
+        }));
+      }
+    };
+    return registerEventualResource("Socket", socket2);
+  };
+  const useFunction = (socketMiddleware) => createSocketBuilder([...middlewares, socketMiddleware]);
+  socketFunction.use = useFunction;
+  return socketFunction;
+}
+var socket = createSocketBuilder([]);
+function parseSocketArgs(args) {
+  return parseArgs(args, {
+    sourceLocation: isSourceLocation,
+    name: (a) => typeof a === "string",
+    options: (a) => typeof a === "object" && !isSourceLocation(a) && !("$connect" in a),
+    handlers: (a) => typeof a === "object" && !isSourceLocation(a) && "$connect" in a
+  });
+}
 
 var myHandler = api.get("/", async () => {
   return new HttpResponse();
