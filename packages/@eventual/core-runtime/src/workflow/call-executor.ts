@@ -25,7 +25,7 @@ import { NoOpWorkflowExecutor } from "./call-executors-and-factories/no-op-call-
 import { createSearchWorkflowQueueExecutor } from "./call-executors-and-factories/open-search-client-call.js";
 import { createQueueCallWorkflowCallExecutor } from "./call-executors-and-factories/queue-call.js";
 import { SendSignalWorkflowCallExecutor } from "./call-executors-and-factories/send-signal-call.js";
-import { createSocketWorkflowQueueExecutor } from "./call-executors-and-factories/send-socket-call.js";
+import { createSocketWorkflowQueueExecutor } from "./call-executors-and-factories/socket-call.js";
 import { SimpleWorkflowExecutorAdaptor } from "./call-executors-and-factories/simple-workflow-executor-adaptor.js";
 import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-call.js";
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";

@@ -1495,7 +1495,7 @@ export const socketWorkflow = workflow(
     // close the connections
     await Promise.all(
       Object.entries(connections).map(async ([connectionId]) => {
-        await socket1.delete(connectionId);
+        await socket1.disconnect(connectionId);
       })
     );
   }

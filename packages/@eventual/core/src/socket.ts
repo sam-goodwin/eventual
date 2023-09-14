@@ -44,7 +44,7 @@ export type Socket<Name extends string = string> = SocketSpec<Name> & {
   httpEndpoint: string;
 } & {
   send: (connectionId: string, input: Buffer | string) => Promise<void>;
-  delete: (connectionId: string) => Promise<void>;
+  disconnect: (connectionId: string) => Promise<void>;
 };
 
 export type SocketOptions = FunctionRuntimeProps;
@@ -84,11 +84,11 @@ export function socket<Name extends string>(
         })
       );
     },
-    delete(...params) {
+    disconnect(...params) {
       return getEventualHook().executeEventualCall(
         createCall<SocketCall>(CallKind.SocketCall, {
           operation: {
-            operation: "delete",
+            operation: "disconnect",
             socketName: name,
             params,
           },

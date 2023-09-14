@@ -39,7 +39,10 @@ export class AWSSocketClient implements SocketClient {
     );
   }
 
-  public async delete(socketName: string, connectionId: string): Promise<void> {
+  public async disconnect(
+    socketName: string,
+    connectionId: string
+  ): Promise<void> {
     const client = this.props.apiGatewayManagementClientRetriever(
       this.socketUrls(socketName).http
     );
