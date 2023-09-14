@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.53.0 (2023-09-14)
+
+### Features
+
+- socket ([#445](https://github.com/functionless/eventual/issues/445)) ([2b91cda](https://github.com/functionless/eventual/commit/2b91cda2962fd91d47fda232d6c22e55a26e24c2))
+
 # 0.52.0 (2023-09-13)
 
 ### Features
