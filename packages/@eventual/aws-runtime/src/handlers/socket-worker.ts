@@ -2,12 +2,8 @@ import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
-import {
-  SocketHandlerWorkerEvent,
-  createSocketHandlerWorker,
-  getLazy,
-} from "@eventual/core-runtime";
-import {
+import { createSocketHandlerWorker, getLazy } from "@eventual/core-runtime";
+import type {
   APIGatewayEventWebsocketRequestContextV2,
   APIGatewayProxyEventV2WithRequestContext,
   APIGatewayProxyResultV2,
@@ -39,27 +35,25 @@ export default async (
 ): Promise<APIGatewayProxyResultV2<never> | undefined> => {
   const workerEvent =
     event.requestContext.routeKey === "$connect"
-      ? ({
-          type: "$connect",
-          request: {
-            connectionId: event.requestContext.connectionId,
-            query: event.queryStringParameters,
-            headers: event.headers,
-          },
-        } satisfies SocketHandlerWorkerEvent<"$connect">)
+      ? {
+          type: "connect" as const,
+          connectionId: event.requestContext.connectionId,
+          query: event.queryStringParameters,
+          headers: event.headers,
+        }
       : event.requestContext.routeKey === "$disconnect"
-      ? ({
-          type: "$disconnect",
-          request: { connectionId: event.requestContext.connectionId },
-        } satisfies SocketHandlerWorkerEvent<"$disconnect">)
-      : ({
-          type: "$default",
-          request: {
-            body: event.body,
-            connectionId: event.requestContext.connectionId,
-            headers: event.headers,
-          },
-        } satisfies SocketHandlerWorkerEvent<"$default">);
+      ? {
+          type: "disconnect" as const,
+          connectionId: event.requestContext.connectionId,
+        }
+      : {
+          type: "message" as const,
+          body:
+            event.isBase64Encoded && event.body
+              ? Buffer.from(event.body, "base64")
+              : event.body,
+          connectionId: event.requestContext.connectionId,
+        };
 
   const result = await worker(getLazy(socketName), workerEvent);
 

@@ -9,7 +9,20 @@ import { registerEventualResource } from "../internal/resources.js";
 import { isSourceLocation, type SocketSpec } from "../internal/service-spec.js";
 import { parseArgs } from "../internal/util.js";
 import type { ServiceContext } from "../service.js";
-import type { SocketMiddleware } from "./middleware.js";
+import type {
+  SocketMiddleware,
+  SocketMiddlewareFunction,
+} from "./middleware.js";
+
+export interface SocketContext<
+  ConnectContext extends SocketHandlerContext = SocketHandlerContext,
+  DisconnectContext extends SocketHandlerContext = SocketHandlerContext,
+  MessageContext extends SocketHandlerContext = SocketHandlerContext
+> {
+  connect: ConnectContext;
+  disconnect: DisconnectContext;
+  message: MessageContext;
+}
 
 export interface SocketHandlerContext {
   socket: { socketName: string };
@@ -18,10 +31,27 @@ export interface SocketHandlerContext {
 
 export type SocketHeaders = Record<string, string | undefined>;
 export type SocketQuery = Record<string, string | undefined>;
-export interface SocketConnectionRequest {
+export type SocketRequest =
+  | SocketConnectRequest
+  | SocketDisconnectRequest
+  | SocketMessageRequest;
+
+export interface SocketConnectRequest {
+  type: "connect";
   connectionId: string;
   query?: SocketQuery;
   headers: SocketHeaders;
+}
+
+export interface SocketDisconnectRequest {
+  type: "disconnect";
+  connectionId: string;
+}
+
+export interface SocketMessageRequest {
+  type: "message";
+  connectionId: string;
+  body?: string | Buffer;
 }
 
 export interface SocketResponse {
@@ -29,24 +59,18 @@ export interface SocketResponse {
   message?: string | Buffer | any;
 }
 
-export type SocketHandlers<
-  ConnectContext extends SocketHandlerContext = SocketHandlerContext
-> = {
+export type SocketHandlers<Context extends SocketContext = SocketContext> = {
   $connect: (
-    request: SocketConnectionRequest,
-    context: ConnectContext
+    request: SocketConnectRequest,
+    context: Context["connect"]
   ) => Promise<SocketResponse | void> | SocketResponse | void;
   $disconnect: (
-    request: { connectionId: string },
-    context: SocketHandlerContext
+    request: SocketDisconnectRequest,
+    context: Context["disconnect"]
   ) => Promise<SocketResponse | void> | SocketResponse | void;
   $default: (
-    request: {
-      connectionId: string;
-      body?: string;
-      headers?: SocketHeaders;
-    },
-    context: SocketHandlerContext
+    request: SocketMessageRequest,
+    context: Context["message"]
   ) =>
     | Promise<SocketResponse | string | Buffer | any | void>
     | SocketResponse
@@ -58,13 +82,13 @@ export type SocketHandlers<
 
 export type Socket<
   Name extends string = string,
-  ConnectContext extends SocketHandlerContext = SocketHandlerContext
+  Context extends SocketContext = SocketContext
 > = SocketSpec<Name> & {
   kind: "Socket";
-  handlers: SocketHandlers<ConnectContext>;
+  handlers: SocketHandlers<Context>;
   wssEndpoint: string;
   httpEndpoint: string;
-  connectMiddlewares: SocketMiddleware<any, any>[];
+  middlewares: SocketMiddleware[];
 } & {
   send: (connectionId: string, input: Buffer | string) => Promise<void>;
   disconnect: (connectionId: string) => Promise<void>;
@@ -72,13 +96,30 @@ export type Socket<
 
 export type SocketOptions = FunctionRuntimeProps;
 
-export interface socket<
-  Context extends SocketHandlerContext = SocketHandlerContext
-> {
-  middlewares: SocketMiddleware<any, any>[];
-  use<NextContext extends Context = Context>(
-    socketMiddleware: SocketMiddleware<Context, NextContext>
-  ): socket<NextContext>;
+export interface socket<Context extends SocketContext = SocketContext> {
+  middlewares: SocketMiddleware[];
+  use<
+    NextConnectContext extends SocketHandlerContext = Context["connect"],
+    NextDisconnectContext extends SocketHandlerContext = Context["disconnect"],
+    NextMessageContext extends SocketHandlerContext = Context["message"]
+  >(
+    socketMiddleware:
+      | SocketMiddleware<
+          Context,
+          SocketContext<
+            NextConnectContext,
+            NextDisconnectContext,
+            NextMessageContext
+          >
+        >
+      | SocketMiddlewareFunction<
+          SocketConnectRequest,
+          Context["connect"],
+          NextConnectContext
+        >
+  ): socket<
+    SocketContext<NextConnectContext, NextDisconnectContext, NextMessageContext>
+  >;
   <Name extends string>(
     name: Name,
     options: SocketOptions,
@@ -90,18 +131,18 @@ export interface socket<
   >;
 }
 
-function createSocketBuilder<
-  Context extends SocketHandlerContext = SocketHandlerContext
->(middlewares: SocketMiddleware<any, any>[]): socket<Context> {
+function createSocketBuilder<Context extends SocketContext = SocketContext>(
+  middlewares: SocketMiddleware[]
+): socket<Context> {
   const socketFunction = <Name extends string>(
     ...args:
-      | [name: Name, options: SocketOptions, handlers: SocketHandlers]
-      | [name: Name, handlers: SocketHandlers]
+      | [name: Name, options: SocketOptions, handlers: SocketHandlers<Context>]
+      | [name: Name, handlers: SocketHandlers<Context>]
   ): Socket<Name> => {
     const { sourceLocation, name, options, handlers } =
       parseSocketArgs<Name>(args);
     const socket = {
-      connectMiddlewares: middlewares,
+      middlewares,
       name,
       handlers,
       sourceLocation,
@@ -144,10 +185,24 @@ function createSocketBuilder<
 
     return registerEventualResource("Socket", socket as any) as Socket<Name>;
   };
-  const useFunction: socket<Context>["use"] = <NextContext extends Context>(
-    socketMiddleware: SocketMiddleware<Context, NextContext>
-  ) => createSocketBuilder<NextContext>([...middlewares, socketMiddleware]);
-  (socketFunction as socket).use = useFunction;
+  const useFunction: socket<Context>["use"] = <
+    NextContext extends SocketContext = Context
+  >(
+    socketMiddleware:
+      | SocketMiddleware<Context, NextContext>
+      | SocketMiddlewareFunction<
+          SocketConnectRequest,
+          Context["connect"],
+          NextContext["connect"]
+        >
+  ) => {
+    const middleware: SocketMiddleware =
+      typeof socketMiddleware === "function"
+        ? { connect: socketMiddleware }
+        : socketMiddleware;
+    return createSocketBuilder<NextContext>([...middlewares, middleware]);
+  };
+  (socketFunction as unknown as socket<Context>).use = useFunction;
 
   return socketFunction as unknown as socket<Context>;
 }

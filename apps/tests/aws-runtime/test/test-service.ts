@@ -1397,8 +1397,24 @@ interface SocketMessage {
   v: number;
 }
 
-export const socket1 = socket.use(({ request: { query }, context, next }) => {
-  const { id, n } = (query ?? {}) as { n?: string; id?: string };
+const jsonSocket = socket.use({
+  message: ({ request: { body }, context, next }) => {
+    console.log(body);
+    const data = body
+      ? body instanceof Buffer
+        ? (JSON.parse(body.toString("utf-8")) as SocketMessage)
+        : (JSON.parse(body) as SocketMessage)
+      : undefined;
+    console.log("data", data);
+    if (!data) {
+      throw new Error("Expected data");
+    }
+    return next({ ...context, data });
+  },
+});
+
+export const socket1 = jsonSocket.use(({ request, context, next }) => {
+  const { id, n } = (request.query ?? {}) as { n?: string; id?: string };
   if (!id || !n) {
     throw new Error("Missing ID");
   }
@@ -1413,13 +1429,7 @@ export const socket1 = socket.use(({ request: { query }, context, next }) => {
     console.log("signal sent to", id);
   },
   $disconnect: async () => undefined,
-  $default: async ({ connectionId, body }) => {
-    console.log(body);
-    const data = body ? (JSON.parse(body) as SocketMessage) : undefined;
-    console.log("data", data);
-    if (!data) {
-      throw new Error("Expected data");
-    }
+  $default: async ({ connectionId }, { data }) => {
     console.log("sending signal to", data.id);
     await socketMessageSignal.sendSignal(data.id, {
       ...data,

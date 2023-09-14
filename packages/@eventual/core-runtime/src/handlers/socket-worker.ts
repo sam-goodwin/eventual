@@ -1,7 +1,10 @@
 import {
-  SocketConnectionRequest,
+  SocketConnectRequest,
+  SocketDisconnectRequest,
   SocketHandlerContext,
-  SocketHandlers,
+  SocketMessageRequest,
+  SocketMiddleware,
+  SocketRequest,
   SocketResponse,
 } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
@@ -10,23 +13,15 @@ import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
 export type SocketHandlerDependencies = WorkerIntrinsicDeps;
 
-export interface SocketHandlerWorkerEvent<Type extends keyof SocketHandlers> {
-  type: Type;
-  request: Parameters<SocketHandlers[Type]>[0];
-}
-
-function isSocketHandlerEventType<Type extends keyof SocketHandlers>(
+function isSocketRequestType<Type extends SocketRequest["type"]>(
   type: Type,
-  event: SocketHandlerWorkerEvent<any>
-): event is SocketHandlerWorkerEvent<Type> {
-  return event.type === type;
+  request: SocketRequest
+): request is SocketRequest & { type: Type } {
+  return request.type === type;
 }
 
 export interface SocketHandlerWorker {
-  (
-    socketName: string,
-    event: SocketHandlerWorkerEvent<any>
-  ): Promise<SocketResponse>;
+  (socketName: string, request: SocketRequest): Promise<SocketResponse>;
 }
 
 export function createSocketHandlerWorker(
@@ -34,7 +29,7 @@ export function createSocketHandlerWorker(
 ): SocketHandlerWorker {
   return createEventualWorker(
     { serviceType: ServiceType.SocketWorker, ...dependencies },
-    async (socketName, event) => {
+    async (socketName, request) => {
       const socket = getEventualResource("Socket", socketName);
       if (!socket) throw new Error(`Socket ${socketName} does not exist`);
       const handlers = socket.handlers;
@@ -47,21 +42,40 @@ export function createSocketHandlerWorker(
         },
       };
 
-      if (isSocketHandlerEventType("$connect", event)) {
-        return withMiddlewares<
-          SocketHandlerContext,
-          SocketResponse,
-          SocketConnectionRequest
-        >(
-          socket.connectMiddlewares,
+      if (isSocketRequestType("connect", request)) {
+        return withMiddlewares<SocketHandlerContext, any, SocketConnectRequest>(
+          getSocketMiddlewaresWithFunction("connect", socket.middlewares),
           async (request, context) =>
             (await handlers.$connect(request, context)) ?? { status: 200 }
-        )(event.request, context);
-      } else if (isSocketHandlerEventType("$disconnect", event)) {
-        return await handlers.$disconnect(event.request, context);
-      } else if (isSocketHandlerEventType("$default", event)) {
-        return handlers.$default(event.request, context);
+        )(request, context);
+      } else if (isSocketRequestType("disconnect", request)) {
+        return withMiddlewares<
+          SocketHandlerContext,
+          any,
+          SocketDisconnectRequest
+        >(
+          getSocketMiddlewaresWithFunction("disconnect", socket.middlewares),
+          async (request, context) =>
+            (await handlers.$disconnect(request, context)) ?? { status: 200 }
+        )(request, context);
+      } else if (isSocketRequestType("message", request)) {
+        return withMiddlewares<SocketHandlerContext, any, SocketMessageRequest>(
+          getSocketMiddlewaresWithFunction("message", socket.middlewares),
+          async (request, context) =>
+            (await handlers.$default(request, context)) ?? { status: 200 }
+        )(request, context);
       }
     }
   );
+}
+
+function getSocketMiddlewaresWithFunction<
+  Fn extends Exclude<keyof SocketMiddleware, symbol>
+>(
+  fn: Fn,
+  middlewares: SocketMiddleware[]
+): Exclude<SocketMiddleware[Fn], undefined>[] {
+  return middlewares
+    .map((m) => m[fn])
+    .filter((m): m is Exclude<typeof m, undefined> => !!m);
 }
