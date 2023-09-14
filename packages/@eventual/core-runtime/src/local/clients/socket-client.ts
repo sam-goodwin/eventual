@@ -1,20 +1,26 @@
-import type { SocketUrls } from "@eventual/core/internal";
+import { type SocketUrls } from "@eventual/core/internal";
 import type { SocketClient } from "../../clients/socket-client.js";
+import { WebSocketContainer } from "../web-socket-container.js";
 
 export class LocalSocketClient implements SocketClient {
-  public send(
-    _socketName: string,
-    _connectionId: string,
-    _input: string | Buffer
+  constructor(private wsContainer: WebSocketContainer) {}
+
+  public async send(
+    socketName: string,
+    connectionId: string,
+    input: string | Buffer
   ): Promise<void> {
-    throw new Error("Method not implemented.");
+    this.wsContainer.send(socketName, connectionId, input);
   }
 
-  public disconnect(_socketName: string, _connectionId: string): Promise<void> {
-    throw new Error("Method not implemented.");
+  public async disconnect(
+    socketName: string,
+    connectionId: string
+  ): Promise<void> {
+    this.wsContainer.disconnect(socketName, connectionId);
   }
 
-  public socketUrls(_socketName: string): SocketUrls {
-    throw new Error("Method not implemented.");
+  public socketUrls(socketName: string): SocketUrls {
+    return this.wsContainer.urls(socketName);
   }
 }

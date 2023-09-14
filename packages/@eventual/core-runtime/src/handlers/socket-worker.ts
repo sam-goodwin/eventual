@@ -11,7 +11,7 @@ import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { getLazy, withMiddlewares } from "../utils.js";
 import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
-export type SocketHandlerDependencies = WorkerIntrinsicDeps;
+export type SocketWorkerDependencies = WorkerIntrinsicDeps;
 
 function isSocketRequestType<Type extends SocketRequest["type"]>(
   type: Type,
@@ -20,13 +20,13 @@ function isSocketRequestType<Type extends SocketRequest["type"]>(
   return request.type === type;
 }
 
-export interface SocketHandlerWorker {
+export interface SocketWorker {
   (socketName: string, request: SocketRequest): Promise<SocketResponse>;
 }
 
-export function createSocketHandlerWorker(
-  dependencies: SocketHandlerDependencies
-): SocketHandlerWorker {
+export function createSocketWorker(
+  dependencies: SocketWorkerDependencies
+): SocketWorker {
   return createEventualWorker(
     { serviceType: ServiceType.SocketWorker, ...dependencies },
     async (socketName, request) => {

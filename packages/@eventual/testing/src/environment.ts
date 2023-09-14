@@ -42,6 +42,7 @@ import {
 import { ulid } from "ulidx";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
+import { TestWebSocketContainer } from "./web-socket-container.js";
 
 export interface TestEnvironmentProps {
   /**
@@ -116,6 +117,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       serviceUrl,
       taskProvider,
       subscriptionProvider,
+      webSocketContainer: new TestWebSocketContainer(),
     });
 
     super({

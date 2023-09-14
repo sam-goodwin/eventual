@@ -11,7 +11,6 @@ import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { LogsClient } from "../clients/logs-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
-import type { SocketClient } from "../clients/socket-client.js";
 import { TaskClient, TaskWorkerRequest } from "../clients/task-client.js";
 import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { TransactionClient } from "../clients/transaction-client.js";
@@ -33,6 +32,10 @@ import {
   QueueHandlerWorker,
   createQueueHandlerWorker,
 } from "../handlers/queue-handler-worker.js";
+import {
+  createSocketWorker,
+  type SocketWorker,
+} from "../handlers/socket-worker.js";
 import {
   SubscriptionWorker,
   createSubscriptionWorker,
@@ -98,6 +101,7 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
+import type { WebSocketContainer } from "./web-socket-container.js";
 
 export type LocalEvent =
   | WorkflowTask
@@ -151,6 +155,7 @@ export interface LocalContainerProps {
   serviceName: string;
   serviceUrl: string;
   subscriptionProvider?: SubscriptionProvider;
+  webSocketContainer: WebSocketContainer;
 }
 
 export class LocalContainer {
@@ -158,6 +163,7 @@ export class LocalContainer {
   public commandWorker: CommandWorker;
   public timerHandler: TimerHandler;
   public taskWorker: TaskWorker;
+  public socketWorker: SocketWorker;
   public bucketHandlerWorker: BucketNotificationHandlerWorker;
   public entityStreamWorker: EntityStreamWorker;
   public subscriptionWorker: SubscriptionWorker;
@@ -170,7 +176,7 @@ export class LocalContainer {
   public metricsClient: MetricsClient;
   public queueClient: LocalQueueClient;
   public serviceClient: EventualServiceClient;
-  public socketClient: SocketClient;
+  public socketClient: LocalSocketClient;
   public taskClient: TaskClient;
   public timerClient: TimerClient;
   public transactionClient: TransactionClient;
@@ -241,7 +247,7 @@ export class LocalContainer {
       this.localConnector
     );
 
-    this.socketClient = new LocalSocketClient();
+    this.socketClient = new LocalSocketClient(props.webSocketContainer);
 
     this.transactionWorker = createTransactionWorker({
       entityStore,
@@ -354,6 +360,18 @@ export class LocalContainer {
     });
 
     this.queueHandlerWorker = createQueueHandlerWorker({
+      openSearchClient,
+      bucketStore,
+      entityStore,
+      queueClient: this.queueClient,
+      serviceClient: this.serviceClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
+      socketClient: this.socketClient,
+    });
+
+    this.socketWorker = createSocketWorker({
       openSearchClient,
       bucketStore,
       entityStore,

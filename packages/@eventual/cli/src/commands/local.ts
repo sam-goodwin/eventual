@@ -1,14 +1,18 @@
 import { inferFromMemory } from "@eventual/compiler";
-import { HttpMethod, HttpRequest } from "@eventual/core";
+import { HttpMethod, HttpRequest, SocketQuery } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import { ServiceSpec } from "@eventual/core/internal";
 import { EventualConfig, discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
-import express from "express";
+import express, { RequestHandler } from "express";
+import http from "http";
 import ora, { Ora } from "ora";
 import path from "path";
 import { promisify } from "util";
+import { v4 as uuidv4 } from "uuid";
+import { WebSocketServer } from "ws";
 import { Argv } from "yargs";
+import { LocalWebSocketContainer } from "../local/web-socket-container.js";
 import { assumeCliRole } from "../role.js";
 import { setServiceOptions } from "../service-action.js";
 import {
@@ -20,6 +24,7 @@ import {
   tryGetBuildManifest,
   tryResolveDefaultService,
 } from "../service-data.js";
+
 const execPromise = promisify(_exec);
 
 export const local = (yargs: Argv) =>
@@ -113,8 +118,6 @@ export const local = (yargs: Argv) =>
       await import(path.resolve(buildManifest.entry));
 
       const port = userPort;
-      const app = express();
-
       const url = `http://localhost:${port}`;
 
       // get the stored spec file to load values from synth
@@ -127,35 +130,49 @@ export const local = (yargs: Argv) =>
         storedServiceSpec.openApi
       );
 
+      const webSocketContainer = new LocalWebSocketContainer(
+        `localhost:${port}`
+      );
+
       // TODO: should the loading be done by the local env?
-      const localEnv = new LocalEnvironment({
-        serviceSpec,
-        serviceUrl: url,
-        serviceName: buildManifest.serviceName,
-      });
+      const localEnv = new LocalEnvironment(
+        {
+          serviceSpec,
+          serviceUrl: url,
+          serviceName: buildManifest.serviceName,
+        },
+        webSocketContainer
+      );
 
-      app.use(express.json({ strict: false, limit: maxBodySize }));
-      // CORS for local
-      app.use((req, res, next) => {
-        next();
+      const app = express();
+      const server = http.createServer(app);
 
-        const headers = res.getHeaders();
-        if (!headers["Access-Control-Allow-Origin"]) {
-          res.header("Access-Control-Allow-Origin", req.headers.origin ?? "*");
-        }
-        if (!headers["Access-Control-Allow-Methods"]) {
-          res.header("Access-Control-Allow-Methods", "*");
-        }
-        if (!headers["Access-Control-Allow-Headers"]) {
-          res.header("Access-Control-Allow-Headers", "*");
-        }
-        if (!headers["Access-Control-Allow-Credentials"]) {
-          res.header("Access-Control-Allow-Credentials", "true");
-        }
-      });
+      const apiMiddleware: RequestHandler[] = [
+        express.json({ strict: false, limit: maxBodySize }),
+        (req, res, next) => {
+          next();
+
+          const headers = res.getHeaders();
+          if (!headers["Access-Control-Allow-Origin"]) {
+            res.header(
+              "Access-Control-Allow-Origin",
+              req.headers.origin ?? "*"
+            );
+          }
+          if (!headers["Access-Control-Allow-Methods"]) {
+            res.header("Access-Control-Allow-Methods", "*");
+          }
+          if (!headers["Access-Control-Allow-Headers"]) {
+            res.header("Access-Control-Allow-Headers", "*");
+          }
+          if (!headers["Access-Control-Allow-Credentials"]) {
+            res.header("Access-Control-Allow-Credentials", "true");
+          }
+        },
+      ];
 
       // open up all of the user and service commands to the service.
-      app.all("/*", async (req, res) => {
+      app.all("/*", ...apiMiddleware, async (req, res) => {
         const request = new HttpRequest(`${url}${req.originalUrl}`, {
           method: req.method as HttpMethod,
           body: req.body ? JSON.stringify(req.body) : undefined,
@@ -170,11 +187,112 @@ export const local = (yargs: Argv) =>
         res.send(resp.body);
       });
 
+      const hasSockets = serviceSpec.sockets.length > 0;
+
+      if (hasSockets) {
+        const wss = new WebSocketServer({ server });
+
+        server.on("upgrade", (request, socket, head) => {
+          if (request.url?.startsWith("/__ws/")) {
+            const [, , socketName] = request.url.split("/");
+            if (!socketName) {
+              socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+              socket.destroy();
+              return;
+            }
+            const query: SocketQuery = {};
+            new URL(request.url).searchParams.forEach(
+              (value, name) => (query[name] = value)
+            );
+            const headers = Object.fromEntries(
+              Object.entries(request.headers).map(([name, value]) => [
+                name,
+                value && Array.isArray(value) ? value.join(",") : value,
+              ])
+            );
+            const connectionId = uuidv4();
+            localEnv
+              .sendSocketRequest(socketName, {
+                type: "connect",
+                headers,
+                query,
+                connectionId,
+              })
+              .then((result) => {
+                if (result) {
+                  if (result.status < 200 || result.status >= 300) {
+                    socket.write(
+                      `HTTP/1.1 ${result.status} ${result.message}\r\n\r\n`
+                    );
+                    socket.destroy();
+                  }
+                }
+                wss.handleUpgrade(request, socket, head, (ws) => {
+                  wss.emit("connection", ws, request, {
+                    connectionId,
+                    socketName,
+                  });
+                });
+              })
+              .catch(() => {
+                socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+                socket.destroy();
+              });
+          } else {
+            socket.destroy();
+          }
+        });
+
+        wss.on(
+          "connection",
+          (ws, _, ...args: [{ connectionId: string; socketName: string }]) => {
+            const [{ connectionId, socketName }] = args;
+            ws.on("message", (message) => {
+              localEnv
+                .sendSocketRequest(socketName, {
+                  type: "message",
+                  connectionId,
+                  body: Array.isArray(message)
+                    ? Buffer.concat(message)
+                    : message instanceof ArrayBuffer
+                    ? Buffer.from(message)
+                    : message,
+                })
+                .then((res) => {
+                  if (res) {
+                    ws.send(res.message);
+                  }
+                });
+            });
+            ws.on("close", () => {
+              localEnv.sendSocketRequest(socketName, {
+                type: "disconnect",
+                connectionId,
+              });
+            });
+            webSocketContainer.connect(socketName, connectionId, ws);
+          }
+        );
+      }
+
       app.listen(port, () => {
         process.send?.("ready");
       });
 
-      spinner.succeed(`Eventual Dev Server running on ${url}`);
+      spinner.succeed(
+        `Eventual Dev Server running on ${url}. ${
+          hasSockets
+            ? `\n Sockets are available at: \n\t${serviceSpec.sockets
+                .map(
+                  (socket) =>
+                    `${socket.name} - ${url.replace("http", "ws")}/__ws/${
+                      socket.name
+                    }`
+                )
+                .join("\n")}`
+            : ""
+        }`
+      );
     }
   );
 

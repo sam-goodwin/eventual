@@ -634,9 +634,15 @@ importers:
       ts-node:
         specifier: ^10.9.1
         version: 10.9.1(@swc/core@1.3.19)(@types/node@18.0.0)(typescript@5.0.4)
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
       vite:
         specifier: ^3.2.3
         version: 3.2.3(@types/node@18.0.0)
+      ws:
+        specifier: ^8.14.1
+        version: 8.14.1
       yargs:
         specifier: ^17.6.2
         version: 17.6.2
@@ -662,6 +668,12 @@ importers:
       '@types/serve-static':
         specifier: ^1.15.1
         version: 1.15.1
+      '@types/uuid':
+        specifier: ^9.0.4
+        version: 9.0.4
+      '@types/ws':
+        specifier: ^8.5.5
+        version: 8.5.5
       '@types/yargs':
         specifier: ^17.0.24
         version: 17.0.24
@@ -5864,6 +5876,10 @@ packages:
 
   /@types/tsscmp@1.0.0:
     resolution: {integrity: sha512-rj18XR6c4Ohds86Lq8MI1NMRrXes4eLo4H06e5bJyKucE1rXGsfBBbFGD2oDC+DSufQCpnU3TTW7QAiwLx+7Yw==}
+
+  /@types/uuid@9.0.4:
+    resolution: {integrity: sha512-zAuJWQflfx6dYJM62vna+Sn5aeSWhh3OB+wfUEACNcqUSc0AGc5JKl+ycL1vrH7frGTXhJchYjE1Hak8L819dA==}
+    dev: true
 
   /@types/ws@7.4.7:
     resolution: {integrity: sha512-JQbbmxZTZehdc2iszGKs5oC3NFnjeay7mtAWrdt7qNtAVK0g19muApzAy4bm9byz79xa2ZnO/BOBC2R8RC5Lww==}
@@ -14376,6 +14392,11 @@ packages:
   /uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
+
+  /uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    hasBin: true
+    dev: false
 
   /v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}

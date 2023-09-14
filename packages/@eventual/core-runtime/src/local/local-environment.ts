@@ -1,4 +1,12 @@
-import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
+import {
+  EntityStreamItem,
+  HttpRequest,
+  HttpResponse,
+  SocketConnectRequest,
+  SocketDisconnectRequest,
+  SocketMessageRequest,
+  SocketResponse,
+} from "@eventual/core";
 import {
   getEventualResources,
   type ServiceSpec,
@@ -22,6 +30,7 @@ import {
   isLocalQueuePollEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
+import { WebSocketContainer } from "./web-socket-container.js";
 
 export interface EnvironmentManifest {
   serviceName: string;
@@ -35,7 +44,10 @@ export class LocalEnvironment {
   private running = false;
   private localContainer: LocalContainer;
 
-  constructor(private environmentManifest: EnvironmentManifest) {
+  constructor(
+    private environmentManifest: EnvironmentManifest,
+    webSocketContainer: WebSocketContainer
+  ) {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
@@ -59,6 +71,7 @@ export class LocalEnvironment {
     this.localContainer = new LocalContainer(this.localConnector, {
       serviceName: environmentManifest.serviceName,
       serviceUrl: environmentManifest.serviceUrl,
+      webSocketContainer,
     });
 
     this.start();
@@ -223,5 +236,15 @@ export class LocalEnvironment {
         serviceName: this.environmentManifest.serviceName,
       },
     });
+  }
+
+  public async sendSocketRequest(
+    socketName: string,
+    request:
+      | SocketDisconnectRequest
+      | SocketMessageRequest
+      | SocketConnectRequest
+  ): Promise<SocketResponse | void> {
+    return this.localContainer.socketWorker(socketName, request);
   }
 }

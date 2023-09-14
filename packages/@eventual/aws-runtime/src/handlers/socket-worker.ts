@@ -2,7 +2,7 @@ import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
-import { createSocketHandlerWorker, getLazy } from "@eventual/core-runtime";
+import { createSocketWorker, getLazy } from "@eventual/core-runtime";
 import type {
   APIGatewayEventWebsocketRequestContextV2,
   APIGatewayProxyEventV2WithRequestContext,
@@ -18,7 +18,7 @@ import {
 } from "../create.js";
 import { serviceName, serviceUrl, socketName } from "../env.js";
 
-const worker = createSocketHandlerWorker({
+const worker = createSocketWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
   openSearchClient: await createOpenSearchClient(serviceSpec),
