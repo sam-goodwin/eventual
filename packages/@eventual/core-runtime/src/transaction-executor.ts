@@ -14,22 +14,26 @@ import {
   type TransactionFunction,
 } from "@eventual/core";
 import {
+  Call,
   EventualPromise,
   EventualPromiseSymbol,
-  SignalTargetType,
   assertNever,
-  isEmitEventsCall,
   isEntityCall,
   isEntityOperationOfType,
-  isSendSignalCall,
-  type EmitEventsCall,
   type EntityOperation,
-  type SendSignalCall,
 } from "@eventual/core/internal";
-import { CallExecutor } from "./call-executor.js";
+import {
+  AllCallExecutor,
+  CallExecutor,
+  UnsupportedCallExecutor,
+} from "./call-executor.js";
+import { EmitEventsCallExecutor } from "./call-executors/emit-events-call-executor.js";
+import { SendSignalCallExecutor } from "./call-executors/send-signal-call-executor.js";
+import { SocketCallExecutor } from "./call-executors/socket-call-executor.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
+import { SocketClient } from "./index.js";
 import { type PropertyRetriever } from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { Result, isResolved } from "./result.js";
@@ -104,8 +108,7 @@ interface TransactionEntityState {
 export function createTransactionExecutor(
   entityStore: EntityStore,
   entityProvider: EntityProvider,
-  executionQueueClient: ExecutionQueueClient,
-  eventClient: EventClient,
+  callExecutor: AllCallExecutor,
   propertyRetriever: PropertyRetriever
 ): TransactionExecutor {
   return async function <Input, Output>(
@@ -143,8 +146,8 @@ export function createTransactionExecutor(
     > {
       // a map of the keys of all mutable entity calls that have been made to the request
       const entityCalls = new Map<string, EntityOperation<"put" | "delete">>();
-      // store all of the event and signal calls to execute after the transaction completes
-      const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
+      // store all of the calls to execute after the transaction completes
+      const eventCalls: Call[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<string, TransactionEntityState>();
@@ -242,15 +245,12 @@ export function createTransactionExecutor(
                 return assertNever(operation);
               });
             }
-          } else if (isEmitEventsCall(eventual)) {
-            eventCalls.push(eventual);
-            return createResolvedEventualPromise(Result.resolved(undefined));
-          } else if (isSendSignalCall(eventual)) {
+          } else if (!callExecutor.isUnsupported(eventual)) {
             eventCalls.push(eventual);
             return createResolvedEventualPromise(Result.resolved(undefined));
           }
           throw new Error(
-            `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
+            `Unsupported eventual call type. Only Entity requests, emit events, socket send message, and send signals are supported.`
           );
         },
       };
@@ -359,20 +359,7 @@ export function createTransactionExecutor(
        */
       await Promise.allSettled(
         eventCalls.map(async (call) => {
-          if (isEmitEventsCall(call)) {
-            await eventClient.emitEvents(...call.events);
-          } else if (call) {
-            // shouldn't happen
-            if (call.target.type === SignalTargetType.ChildExecution) {
-              return;
-            }
-            await executionQueueClient.sendSignal({
-              execution: call.target.executionId,
-              signal: call.signalId,
-              payload: call.payload,
-              id: call.id,
-            });
-          }
+          await callExecutor.execute(call);
         })
       );
 
@@ -417,4 +404,45 @@ export function createTransactionExecutor(
       }
     }
   };
+}
+
+export interface TransactionCallExecutorDependencies {
+  eventClient: EventClient;
+  executionQueueClient: ExecutionQueueClient;
+  socketClient: SocketClient;
+}
+
+const unsupportedExecutor = new UnsupportedCallExecutor("Transaction Worker");
+
+/**
+ * Calls that the transaction worker supports.
+ *
+ * The general rules is that, other than Entity calls, the transaction worker support calls that return Promise<void> | void.
+ * This is because the calls will not be executed unless the transaction succeeds, thus cannot return values that impact the transaction.
+ *
+ * Entity calls are currently handled directly with the client.
+ */
+export function createTransactionCallExecutor(
+  deps: TransactionCallExecutorDependencies
+) {
+  return new AllCallExecutor({
+    AwaitTimerCall: unsupportedExecutor,
+    BucketCall: unsupportedExecutor,
+    ConditionCall: unsupportedExecutor,
+    EmitEventsCall: new EmitEventsCallExecutor(deps.eventClient),
+    SocketCall: new SocketCallExecutor(deps.socketClient),
+    // the transaction execution handles this itself
+    EntityCall: unsupportedExecutor,
+    ExpectSignalCall: unsupportedExecutor,
+    InvokeTransactionCall: unsupportedExecutor,
+    QueueCall: unsupportedExecutor,
+    SearchCall: unsupportedExecutor,
+    SendSignalCall: new SendSignalCallExecutor(deps.executionQueueClient),
+    SignalHandlerCall: unsupportedExecutor,
+    TaskCall: unsupportedExecutor,
+    TaskRequestCall: unsupportedExecutor,
+    ChildWorkflowCall: unsupportedExecutor,
+    GetExecutionCall: unsupportedExecutor,
+    StartWorkflowCall: unsupportedExecutor,
+  });
 }

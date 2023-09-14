@@ -13,13 +13,14 @@ import { EmitEventsCallEventualFactory } from "./call-executors-and-factories/em
 import { EntityCallEventualFactory } from "./call-executors-and-factories/entity-call.js";
 import { ExpectSignalFactory } from "./call-executors-and-factories/expect-signal-call.js";
 import { SearchCallEventualFactory } from "./call-executors-and-factories/open-search-client-call.js";
+import { QueueCallEventualFactory } from "./call-executors-and-factories/queue-call.js";
 import { SendSignalEventualFactory } from "./call-executors-and-factories/send-signal-call.js";
+import { SendSocketCallEventualFactory } from "./call-executors-and-factories/socket-call.js";
 import { RegisterSignalHandlerCallFactory } from "./call-executors-and-factories/signal-handler-call.js";
 import { TaskCallEventualFactory } from "./call-executors-and-factories/task-call.js";
 import { TransactionCallEventualFactory } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedEventualFactory } from "./call-executors-and-factories/unsupported.js";
 import type { EventualDefinition } from "./eventual-definition.js";
-import { QueueCallEventualFactory } from "./call-executors-and-factories/queue-call.js";
 
 export interface ResolveEventualFunction {
   (seq: number, result: Result): void;
@@ -80,6 +81,7 @@ export function createDefaultEventualFactory(): AllWorkflowEventualFactory {
     SearchCall: new SearchCallEventualFactory(),
     SendSignalCall: new SendSignalEventualFactory(),
     SignalHandlerCall: new RegisterSignalHandlerCallFactory(),
+    SocketCall: new SendSocketCallEventualFactory(),
     StartWorkflowCall: unsupportedFactory,
     TaskCall: new TaskCallEventualFactory(),
     TaskRequestCall: unsupportedFactory, // TODO: support task requests (succeed, fail, heartbeat)

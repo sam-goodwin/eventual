@@ -12,6 +12,7 @@ export enum PropertyKind {
   ServiceSpec,
   ServiceType,
   ServiceUrl,
+  SocketUrls,
   TaskToken,
 }
 
@@ -28,6 +29,7 @@ export type Property =
   | ServiceSpecProperty
   | ServiceTypeProperty
   | ServiceUrlProperty
+  | SocketUrlsProperty
   | TaskTokenProperty;
 
 export type PropertyType<E extends Property> = E extends PropertyBase<
@@ -65,6 +67,16 @@ export interface BucketPhysicalName
 export interface QueuePhysicalName
   extends PropertyBase<PropertyKind.QueuePhysicalName, string> {
   queueName: string;
+}
+
+export interface SocketUrls {
+  http: string;
+  wss: string;
+}
+
+export interface SocketUrlsProperty
+  extends PropertyBase<PropertyKind.SocketUrls, SocketUrls> {
+  socketName: string;
 }
 
 export type OpenSearchClientProperty = PropertyBase<

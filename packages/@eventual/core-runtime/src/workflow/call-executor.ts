@@ -10,6 +10,7 @@ import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
 import type { QueueClient } from "../clients/queue-client.js";
+import type { SocketClient } from "../clients/socket-client.js";
 import type { TaskClient } from "../clients/task-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { TransactionClient } from "../clients/transaction-client.js";
@@ -24,18 +25,20 @@ import { NoOpWorkflowExecutor } from "./call-executors-and-factories/no-op-call-
 import { createSearchWorkflowQueueExecutor } from "./call-executors-and-factories/open-search-client-call.js";
 import { createQueueCallWorkflowCallExecutor } from "./call-executors-and-factories/queue-call.js";
 import { SendSignalWorkflowCallExecutor } from "./call-executors-and-factories/send-signal-call.js";
+import { createSocketWorkflowQueueExecutor } from "./call-executors-and-factories/socket-call.js";
 import { SimpleWorkflowExecutorAdaptor } from "./call-executors-and-factories/simple-workflow-executor-adaptor.js";
 import { TaskCallWorkflowExecutor } from "./call-executors-and-factories/task-call.js";
 import { createTransactionWorkflowQueueExecutor } from "./call-executors-and-factories/transaction-call.js";
 import { UnsupportedWorkflowCallExecutor } from "./call-executors-and-factories/unsupported.js";
 
-interface WorkflowCallExecutorDependencies {
+export interface WorkflowCallExecutorDependencies {
   bucketStore: BucketStore;
   entityStore: EntityStore;
   eventClient: EventClient;
   openSearchClient?: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
   queueClient: QueueClient;
+  socketClient: SocketClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
   transactionClient: TransactionClient;
@@ -61,6 +64,10 @@ export function createDefaultWorkflowCallExecutor(
     ConditionCall: noOpExecutor, // conditions do not generate events
     EmitEventsCall: new SimpleWorkflowExecutorAdaptor(
       new EmitEventsCallExecutor(deps.eventClient)
+    ),
+    SocketCall: createSocketWorkflowQueueExecutor(
+      deps.socketClient,
+      deps.executionQueueClient
     ),
     EntityCall: createEntityWorkflowQueueExecutor(
       deps.entityStore,

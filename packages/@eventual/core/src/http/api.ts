@@ -57,7 +57,7 @@ function createRouter<Context extends CommandContext>(
             createRouter([...(middlewares ?? []), middleware]);
         } else if (method === "command") {
           return (...args: any[]) => {
-            const [sourceLocation, name, options, handler] =
+            const { sourceLocation, name, options, handler } =
               parseCommandArgs(args);
             return (command as any)(
               sourceLocation,

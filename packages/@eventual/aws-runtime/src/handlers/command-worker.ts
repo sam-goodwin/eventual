@@ -8,6 +8,7 @@ import {
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
+  createSocketClient,
   createTransactionClient,
 } from "../create.js";
 import { serviceName } from "../env.js";
@@ -34,4 +35,5 @@ export default createApiGCommandWorker({
     }),
   serviceName,
   serviceSpec,
+  socketClient: createSocketClient(),
 });

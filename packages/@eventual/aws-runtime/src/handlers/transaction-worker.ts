@@ -9,6 +9,7 @@ import {
   createEntityStore,
   createEventClient,
   createExecutionQueueClient,
+  createSocketClient,
 } from "../create.js";
 import { serviceName } from "../env.js";
 
@@ -18,4 +19,5 @@ export default createTransactionWorker({
   eventClient: createEventClient(),
   executionQueueClient: createExecutionQueueClient(),
   serviceName,
+  socketClient: createSocketClient(),
 });

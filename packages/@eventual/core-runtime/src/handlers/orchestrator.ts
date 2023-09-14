@@ -9,7 +9,6 @@ import {
   type Workflow,
 } from "@eventual/core";
 import {
-  ServiceType,
   WorkflowEventType,
   isCallEvent,
   isTimerCompleted,
@@ -42,11 +41,7 @@ import {
 import type { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
-import {
-  AllPropertyRetriever,
-  UnsupportedPropertyRetriever,
-} from "../property-retriever.js";
-import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
+import type { AllPropertyRetriever } from "../property-retriever.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
 import {
@@ -57,16 +52,21 @@ import {
   resultToString,
 } from "../result.js";
 import { computeScheduleDate } from "../schedule.js";
-import type { BucketStore } from "../stores/bucket-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
-import { WorkflowCallExecutor } from "../workflow/call-executor.js";
+import {
+  createDefaultWorkflowCallExecutor,
+  type WorkflowCallExecutor,
+  type WorkflowCallExecutorDependencies,
+} from "../workflow/call-executor.js";
 import { createEvent } from "../workflow/events.js";
 import { isExecutionId, parseWorkflowName } from "../workflow/execution.js";
+import {
+  createDefaultWorkflowPropertyRetriever,
+  type WorkflowPropertyRetrieverDeps,
+} from "../workflow/property-retriever.js";
 import { WorkflowExecutor } from "../workflow/workflow-executor.js";
-import { QueuePhysicalNamePropertyRetriever } from "../property-retrievers/queue-name-property-retriever.js";
-import { QueueClient } from "../clients/queue-client.js";
 
 export interface OrchestratorResult {
   /**
@@ -86,39 +86,31 @@ export interface ExecutorRunContext {
   runTimestamp: number | undefined;
 }
 
+interface OrchestratorDependencies
+  extends WorkflowCallExecutorDependencies,
+    WorkflowPropertyRetrieverDeps,
+    OrchestrateExecutionDeps {}
+
 export function createOrchestrator(
   deps: OrchestratorDependencies
 ): Orchestrator {
-  const unsupportedProperty = new UnsupportedPropertyRetriever(
-    "Workflow Orchestrator"
-  );
   // TODO: load these from history when running past executions https://github.com/functionless/eventual/issues/416
-  const propertyRetriever = new AllPropertyRetriever({
-    BucketPhysicalName: new BucketPhysicalNamePropertyRetriever(
-      deps.bucketStore
-    ),
-    OpenSearchClient: unsupportedProperty,
-    QueuePhysicalName: new QueuePhysicalNamePropertyRetriever(deps.queueClient),
-    ServiceClient: unsupportedProperty,
-    ServiceName: deps.serviceName,
-    ServiceSpec: unsupportedProperty,
-    ServiceType: ServiceType.OrchestratorWorker,
-    ServiceUrl: unsupportedProperty,
-    TaskToken: unsupportedProperty,
-  });
+  const propertyRetriever = createDefaultWorkflowPropertyRetriever(deps);
+  const callExecutor = createDefaultWorkflowCallExecutor(deps);
 
   return async (workflowTasks, baseTime = () => new Date()) => {
     const result = await runExecutions(
       workflowTasks,
       (workflowName, executionId, events) => {
-        return orchestrateExecution(
+        return orchestrateExecution({
+          callExecutor,
           workflowName,
           executionId,
           events,
-          baseTime(),
+          executionTime: baseTime(),
           deps,
-          propertyRetriever
-        );
+          propertyRetriever,
+        });
       }
     );
 
@@ -131,35 +123,40 @@ export function createOrchestrator(
   };
 }
 
-interface OrchestratorDependencies {
-  /**
-   * Supports retrieval of the bucket physical name from within the workflow.
-   */
-  bucketStore: BucketStore;
-  callExecutor: WorkflowCallExecutor;
+export interface ExecutorContext {
+  date: number;
+}
+
+export interface OrchestrateExecutionDeps {
   executionHistoryStore: ExecutionHistoryStore;
   executorProvider: ExecutorProvider<ExecutorRunContext>;
-  logAgent?: LogAgent;
   metricsClient?: MetricsClient;
-  queueClient: QueueClient;
+  logAgent?: LogAgent;
   serviceName: string;
   timerClient: TimerClient;
   workflowClient: WorkflowClient;
   workflowProvider: WorkflowProvider;
 }
 
-export interface ExecutorContext {
-  date: number;
+export interface OrchestrateExecutionRequest {
+  callExecutor: WorkflowCallExecutor;
+  deps: OrchestrateExecutionDeps;
+  executionId: ExecutionID;
+  events: WorkflowInputEvent[];
+  executionTime: Date;
+  propertyRetriever: AllPropertyRetriever;
+  workflowName: string;
 }
 
-export async function orchestrateExecution(
-  workflowName: string,
-  executionId: ExecutionID,
-  events: WorkflowInputEvent[],
-  executionTime: Date,
-  deps: OrchestratorDependencies,
-  propertyRetriever: AllPropertyRetriever
-) {
+export async function orchestrateExecution({
+  callExecutor,
+  deps,
+  executionId,
+  events,
+  executionTime,
+  propertyRetriever,
+  workflowName,
+}: OrchestrateExecutionRequest) {
   const metrics = initializeMetrics(
     deps.serviceName,
     workflowName,
@@ -268,7 +265,7 @@ export async function orchestrateExecution(
         await timed(metrics, OrchestratorMetrics.InvokeCallsDuration, () =>
           Promise.all(
             calls.map((call) =>
-              deps.callExecutor.executeForWorkflow(call.call, {
+              callExecutor.executeForWorkflow(call.call, {
                 executionId,
                 executionTime,
                 seq: call.seq,

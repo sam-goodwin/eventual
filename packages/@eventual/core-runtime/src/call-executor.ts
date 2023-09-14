@@ -18,7 +18,7 @@ export type AllCallExecutors = {
   >;
 };
 
-export class UnsupportedExecutor<E extends Call = Call>
+export class UnsupportedCallExecutor<E extends Call = Call>
   implements CallExecutor<E>
 {
   constructor(private name: string) {}
@@ -37,15 +37,27 @@ export class UnsupportedExecutor<E extends Call = Call>
 export class AllCallExecutor implements CallExecutor {
   constructor(private executors: AllCallExecutors) {}
   public execute<E extends Call>(call: E) {
-    const kind = call[CallSymbol];
-    const executor = this.executors[CallKind[kind] as keyof typeof CallKind] as
-      | CallExecutor
-      | undefined;
-
+    const kind = this.getCallKindName(call);
+    const executor = this.executors[kind] as CallExecutor<E> | undefined;
     if (executor) {
       return executor.execute(call) as unknown as EventualPromise<any>;
     }
 
     throw new Error(`Missing Executor for ${CallKind[kind]}`);
+  }
+
+  public isUnsupported<E extends Call>(call: E): boolean {
+    const kind = this.getCallKindName(call);
+    const executor = this.executors[kind] as CallExecutor<E> | undefined;
+    return (
+      !executor ||
+      this.executors[this.getCallKindName(call)] instanceof
+        UnsupportedCallExecutor
+    );
+  }
+
+  private getCallKindName<E extends Call>(call: E): keyof typeof CallKind {
+    const kind = call[CallSymbol];
+    return CallKind[kind] as keyof typeof CallKind;
   }
 }

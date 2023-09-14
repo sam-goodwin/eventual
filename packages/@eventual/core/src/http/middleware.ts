@@ -42,7 +42,7 @@ export type Middleware<In, Out> = (
 export function middleware<
   PrevContext extends CommandContext = CommandContext,
   OutContext extends CommandContext = CommandContext
->(fn: (input: MiddlewareInput<any>) => MiddlewareOutput<OutContext>) {
+>(fn: Middleware<PrevContext, OutContext>) {
   return async <In extends PrevContext>(input: MiddlewareInput<In>) =>
     fn({
       ...input,

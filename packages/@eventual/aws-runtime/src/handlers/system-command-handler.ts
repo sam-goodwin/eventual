@@ -23,6 +23,7 @@ import {
   createExecutionQueueClient,
   createExecutionStore,
   createQueueClient,
+  createSocketClient,
   createTaskClient,
   createTransactionClient,
   createWorkflowClient,
@@ -35,11 +36,12 @@ function systemCommandWorker(
 ): APIGatewayProxyHandlerV2<Response> {
   return createApiGCommandWorker({
     bucketStore: createBucketStore(),
-    queueClient: createQueueClient(),
     entityStore: undefined,
     openSearchClient: undefined,
+    queueClient: createQueueClient(),
     serviceSpec,
     serviceName,
+    socketClient: createSocketClient(),
   });
 }
 

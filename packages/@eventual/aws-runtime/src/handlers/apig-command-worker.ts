@@ -52,6 +52,7 @@ export function createApiGCommandWorker({
       serviceSpec,
       serviceName,
       serviceUrl,
+      socketClient: deps.socketClient,
     });
 
     const requestBody = event.body

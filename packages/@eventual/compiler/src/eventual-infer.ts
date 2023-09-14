@@ -32,7 +32,8 @@ import {
   isCommandCall,
   isEntityStreamMemberCall,
   isOnEventCall,
-  isQueueHandlerForEachMemberCall,
+  isQueueResourceCall,
+  isSocketResourceCall,
   isSubscriptionCall,
   isTaskCall,
 } from "./ast-util.js";
@@ -185,6 +186,12 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
           visibilityTimeout: q.visibilityTimeout,
         } satisfies QueueSpec)
     ),
+    sockets: Array.from(getEventualResources("Socket").values()).map((s) => ({
+      name: s.name,
+      handlerTimeout: s.handlerTimeout,
+      memorySize: s.memorySize,
+      sourceLocation: s.sourceLocation,
+    })),
   };
 }
 
@@ -270,7 +277,8 @@ export class InferVisitor extends Visitor {
         isTaskCall,
         isEntityStreamMemberCall,
         isBucketHandlerMemberCall,
-        isQueueHandlerForEachMemberCall,
+        isQueueResourceCall,
+        isSocketResourceCall,
       ].some((op) => op(call))
     ) {
       this.didMutate = true;

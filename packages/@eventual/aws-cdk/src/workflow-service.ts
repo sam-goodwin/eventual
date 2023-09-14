@@ -37,6 +37,7 @@ import type { TaskService } from "./task-service.js";
 import type { SearchService } from "./search/search-service";
 import { ServiceConstructProps } from "./service-common";
 import { QueueService } from "./queue-service";
+import { SocketService } from "./socket-service";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
@@ -45,6 +46,7 @@ export interface WorkflowsProps extends ServiceConstructProps {
   eventService: EventService;
   overrides?: WorkflowServiceOverrides;
   schedulerService: LazyInterface<SchedulerService>;
+  socketService: LazyInterface<SocketService>;
   taskService: LazyInterface<TaskService>;
   queueService: LazyInterface<QueueService<any>>;
 }
@@ -488,6 +490,10 @@ export class WorkflowService {
      * Queue Calls
      */
     this.props.queueService.configureSendMessage(this.orchestrator);
+    /**
+     * Socket Calls
+     */
+    this.props.socketService.configureInvokeSocketEndpoints(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

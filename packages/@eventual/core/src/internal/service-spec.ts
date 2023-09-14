@@ -29,6 +29,7 @@ export interface ServiceSpec {
   transactions: TransactionSpec[];
   tasks: TaskSpec[];
   commands: CommandSpec<any, any, any, any>[];
+  sockets: SocketSpec<any>[];
   /**
    * Open API 3 schema definitions for all known Events in this Service.
    */
@@ -325,4 +326,10 @@ export interface QueueSpec<Name extends string = string> {
   handler: QueueHandlerSpec;
   name: Name;
   visibilityTimeout?: DurationSchedule;
+}
+
+export interface SocketSpec<Name extends string = string>
+  extends FunctionRuntimeProps {
+  name: Name;
+  sourceLocation?: SourceLocation;
 }

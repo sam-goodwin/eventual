@@ -3,16 +3,18 @@ import { ServiceType, type ServiceSpec } from "@eventual/core/internal";
 import {
   AllCallExecutor,
   AllCallExecutors,
-  UnsupportedExecutor,
+  UnsupportedCallExecutor,
 } from "../call-executor.js";
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
 import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
 import { QueueCallExecutor } from "../call-executors/queue-call-executor.js";
 import { SearchCallExecutor } from "../call-executors/search-call-executor.js";
+import { SocketCallExecutor } from "../call-executors/socket-call-executor.js";
 import { ServiceClientExecutor } from "../call-executors/service-client-executor.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
 import type { QueueClient } from "../clients/queue-client.js";
+import type { SocketClient } from "../clients/socket-client.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import {
   AllPropertyRetriever,
@@ -22,6 +24,7 @@ import {
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
 import { QueuePhysicalNamePropertyRetriever } from "../property-retrievers/queue-name-property-retriever.js";
+import { SocketUrlPropertyRetriever } from "../property-retrievers/socket-url-property-retriever.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import type { LazyValue } from "../utils.js";
@@ -35,6 +38,7 @@ export interface WorkerIntrinsicDeps {
   serviceName: string | LazyValue<string>;
   serviceSpec: ServiceSpec | undefined;
   serviceUrl: string | LazyValue<string>;
+  socketClient: SocketClient | undefined;
 }
 
 type AllExecutorOverrides<Input extends any[]> = {
@@ -58,7 +62,7 @@ export function createEventualWorker<Input extends any[], Output>(
   },
   worker: (...input: Input) => Promise<Output>
 ): (...input: Input) => Promise<Awaited<Output>> {
-  const unsupportedExecutor = new UnsupportedExecutor("Eventual Worker");
+  const unsupportedExecutor = new UnsupportedCallExecutor("Eventual Worker");
   const unsupportedProperty = new UnsupportedPropertyRetriever(
     "Eventual Worker"
   );
@@ -86,6 +90,12 @@ export function createEventualWorker<Input extends any[], Output>(
   const queuePhysicalNamePropertyRetriever = props.queueClient
     ? new QueuePhysicalNamePropertyRetriever(props.queueClient)
     : unsupportedProperty;
+  const [socketCallExecutor, socketUrlPropertyRetriever] = props.socketClient
+    ? [
+        new SocketCallExecutor(props.socketClient),
+        new SocketUrlPropertyRetriever(props.socketClient),
+      ]
+    : [unsupportedExecutor, unsupportedProperty];
 
   return (...input: Input) => {
     const resolvedExecutorOverrides = props.executorOverrides
@@ -133,6 +143,7 @@ export function createEventualWorker<Input extends any[], Output>(
         SignalHandlerCall: unsupportedExecutor,
         SearchCall: openSearchExecutor,
         SendSignalCall: serviceClientExecutor,
+        SocketCall: socketCallExecutor,
         StartWorkflowCall: serviceClientExecutor,
         // directly calling a task does not work outside of a workflow
         TaskCall: unsupportedExecutor,
@@ -148,6 +159,7 @@ export function createEventualWorker<Input extends any[], Output>(
         ServiceSpec: props.serviceSpec ?? unsupportedProperty,
         ServiceType: props.serviceType,
         ServiceUrl: props.serviceUrl,
+        SocketUrls: socketUrlPropertyRetriever,
         TaskToken: unsupportedProperty, // the task worker should override this
         ...resolvedPropertyOverrides,
       }),

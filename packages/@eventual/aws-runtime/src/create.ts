@@ -1,3 +1,4 @@
+import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
@@ -30,10 +31,12 @@ import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { AWSLogsClient } from "./clients/log-client.js";
 import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
 import { AWSQueueClient } from "./clients/queue-client.js";
+import { AWSSocketClient } from "./clients/socket-client.js";
 import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
 import * as env from "./env.js";
+import { socketUrls } from "./env.js";
 import { AWSBucketStore } from "./stores/bucket-store.js";
 import { AWSEntityStore } from "./stores/entity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -127,6 +130,19 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       workflowProvider ?? createWorkflowProvider()
     )
 );
+
+export const createApiGatewayManagementClient = /* @__PURE__ */ memoize(
+  ({ socketUrl }: { socketUrl: string }) =>
+    new ApiGatewayManagementApiClient({ endpoint: socketUrl })
+);
+
+export const createSocketClient = /* @__PURE__ */ memoize(() => {
+  return new AWSSocketClient({
+    socketUrls,
+    apiGatewayManagementClientRetriever: (url) =>
+      createApiGatewayManagementClient({ socketUrl: url }),
+  });
+});
 
 export const createExecutionQueueClient = /* @__PURE__ */ memoize(
   ({ workflowQueueUrl }: { workflowQueueUrl?: string } = {}) =>

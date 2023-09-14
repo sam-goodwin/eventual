@@ -8,6 +8,8 @@ import type {
   EntityOperation,
   QueueOperation,
   SearchOperation,
+  SocketMethod,
+  SocketOperation,
 } from "./calls.js";
 import type { SignalTarget } from "./signal.js";
 import { or } from "./util.js";
@@ -64,7 +66,11 @@ export enum WorkflowEventType {
   EntityRequestSucceeded = 53,
   QueueRequestSucceeded = 56,
   QueueRequestFailed = 64,
+  SearchRequestSucceeded = 62,
+  SearchRequestFailed = 63,
   SignalReceived = 24,
+  SocketRequestFailed = 65,
+  SocketRequestSucceeded = 66,
   TaskSucceeded = 46,
   TaskFailed = 57,
   TaskHeartbeatTimedOut = 58,
@@ -77,8 +83,6 @@ export enum WorkflowEventType {
   WorkflowRunCompleted = 80,
   WorkflowRunStarted = 15,
   WorkflowTimedOut = 90,
-  SearchRequestSucceeded = 62,
-  SearchRequestFailed = 63,
 }
 
 export enum WorkflowCallHistoryType {
@@ -89,6 +93,7 @@ export enum WorkflowCallHistoryType {
   EventsEmitted = 3,
   SearchRequest = 4,
   SignalSent = 5,
+  SocketRequest = 11,
   TaskScheduled = 7,
   TimerScheduled = 8,
   TransactionRequest = 9,
@@ -115,6 +120,7 @@ export type WorkflowCallHistoryEvent =
   | EventsEmitted
   | QueueRequest
   | SignalSent
+  | SocketRequest
   | TaskScheduled
   | TimerScheduled
   | TransactionRequest;
@@ -131,9 +137,11 @@ export type CompletionEvent =
   | EntityRequestSucceeded
   | QueueRequestSucceeded
   | QueueRequestFailed
-  | SignalReceived
   | SearchRequestSucceeded
   | SearchRequestFailed
+  | SignalReceived
+  | SocketRequestFailed
+  | SocketRequestSucceeded
   | TaskFailed
   | TaskHeartbeatTimedOut
   | TaskSucceeded
@@ -157,7 +165,11 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isEntityRequestSucceeded,
   isQueueRequestFailed,
   isQueueRequestSucceeded,
+  isSearchRequestFailed,
+  isSearchRequestSucceeded,
   isSignalReceived,
+  isSocketRequestFailed,
+  isSocketRequestSucceeded,
   isTaskSucceeded,
   isTaskFailed,
   isTaskHeartbeatTimedOut,
@@ -165,9 +177,7 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isTransactionRequestFailed,
   isTransactionRequestSucceeded,
   isWorkflowTimedOut,
-  isWorkflowRunStarted,
-  isSearchRequestFailed,
-  isSearchRequestSucceeded
+  isWorkflowRunStarted
 );
 
 /**
@@ -580,6 +590,52 @@ export function isEventsEmitted(
   event: WorkflowCallHistoryEvent
 ): event is EventsEmitted {
   return event.type === WorkflowCallHistoryType.EventsEmitted;
+}
+
+export interface SocketRequest
+  extends CallEventBase<WorkflowCallHistoryType.SocketRequest> {
+  operation:
+    | SocketOperation<Exclude<SocketMethod, "send">>
+    | {
+        operation: "send";
+        socketName: string;
+        connectionId: string;
+        input: string;
+        isBase64Encoded: boolean;
+      };
+}
+
+export interface SocketRequestSucceeded
+  extends CallEventResultBase<WorkflowEventType.SocketRequestSucceeded> {
+  name?: string;
+  operation: SocketMethod;
+  result: any;
+}
+
+export interface SocketRequestFailed
+  extends CallEventResultBase<WorkflowEventType.SocketRequestFailed> {
+  operation: SocketMethod;
+  name?: string;
+  error: string;
+  message: string;
+}
+
+export function isSocketRequest(
+  event: WorkflowCallHistoryEvent
+): event is SocketRequest {
+  return event.type === WorkflowCallHistoryType.SocketRequest;
+}
+
+export function isSocketRequestSucceeded(
+  event: WorkflowEvent
+): event is SocketRequestSucceeded {
+  return event.type === WorkflowEventType.SocketRequestSucceeded;
+}
+
+export function isSocketRequestFailed(
+  event: WorkflowEvent
+): event is SocketRequestFailed {
+  return event.type === WorkflowEventType.SocketRequestFailed;
 }
 
 export interface SearchRequest

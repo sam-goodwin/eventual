@@ -13,6 +13,7 @@ import {
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
+  createSocketClient,
   createTransactionClient,
 } from "../create.js";
 import { serviceName, serviceUrl } from "../env.js";
@@ -22,15 +23,16 @@ export const processEvent = createSubscriptionWorker({
   entityStore: createEntityStore(),
   openSearchClient: await createOpenSearchClient(serviceSpec),
   // partially uses the runtime clients and partially uses the http client
+  queueClient: createQueueClient(),
   serviceClient: createServiceClient({
     eventClient: createEventClient(),
     transactionClient: createTransactionClient(),
   }),
-  queueClient: createQueueClient(),
   serviceSpec,
   subscriptionProvider: new GlobalSubscriptionProvider(),
   serviceName,
   serviceUrl,
+  socketClient: createSocketClient(),
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

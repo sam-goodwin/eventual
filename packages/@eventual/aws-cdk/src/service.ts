@@ -74,6 +74,12 @@ import {
   WorkerServiceConstructProps,
 } from "./service-common";
 import {
+  ISocket,
+  SocketOverrides,
+  SocketService,
+  Sockets,
+} from "./socket-service";
+import {
   Subscription,
   SubscriptionOverrides,
   Subscriptions,
@@ -151,6 +157,10 @@ export interface ServiceProps<Service = any> {
    * Override the properties of the queues within the service.
    */
   queues?: QueueOverrides<Service>;
+  /**
+   * Override the properties of the socket apis within the service.
+   */
+  sockets?: SocketOverrides<Service>;
   /**
    * Override the properties of an bucket streams within the service.
    */
@@ -236,6 +246,10 @@ export class Service<S = any> extends Construct {
    */
   public readonly queues: ServiceQueues<S>;
   /**
+   * Queues defined by the service.
+   */
+  public readonly sockets: Sockets<S>;
+  /**
    * Handlers of bucket notification events defined by the service.
    */
   public readonly bucketNotificationHandlers: ServiceBucketNotificationHandlers<S>;
@@ -263,6 +277,7 @@ export class Service<S = any> extends Construct {
   private readonly bucketService: BucketService<S>;
   private readonly eventService: EventService;
   private readonly commandService: CommandService<S>;
+  private readonly socketService: SocketService<S>;
 
   public grantPrincipal: IPrincipal;
   public commandsPrincipal: IPrincipal;
@@ -271,6 +286,7 @@ export class Service<S = any> extends Construct {
   public entityStreamsPrincipal: IPrincipal;
   public bucketNotificationHandlersPrincipal: IPrincipal;
   public queueHandlersPrincipal: IPrincipal;
+  public socketHandlersPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
 
@@ -340,6 +356,7 @@ export class Service<S = any> extends Construct {
     const proxyEntityService = lazyInterface<EntityService<S>>();
     const proxyQueueService = lazyInterface<QueueService<S>>();
     const proxySearchService = lazyInterface<SearchService<S>>();
+    const proxySocketService = lazyInterface<SocketService<S>>();
 
     const serviceConstructProps: ServiceConstructProps = {
       build,
@@ -358,6 +375,7 @@ export class Service<S = any> extends Construct {
       entityService: proxyEntityService,
       queueService: proxyQueueService,
       searchService: proxySearchService,
+      socketService: proxySocketService,
     };
 
     this.eventService = new EventService(serviceConstructProps);
@@ -471,6 +489,14 @@ export class Service<S = any> extends Construct {
     proxyQueueService._bind(queueService);
     this.queues = queueService.queues;
 
+    this.socketService = new SocketService({
+      ...workerConstructProps,
+      overrides: props.sockets,
+      local: this.local,
+    });
+    proxySocketService._bind(this.socketService);
+    this.sockets = this.socketService.sockets;
+
     this.commandService.grantInvokeHttpServiceApi(accessRole);
     workflowService.grantFilterLogEvents(accessRole);
 
@@ -485,58 +511,41 @@ export class Service<S = any> extends Construct {
           eventBusArn: this.bus.eventBusArn,
           workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
           environmentVariables: props.environment,
+          socketEndpoints: Object.fromEntries(
+            Object.entries<ISocket>(this.socketService.sockets).map(
+              ([name, socket]) => [name, socket.gatewayStage.url]
+            )
+          ),
         }),
       }
     );
 
-    this.commandsPrincipal =
-      this.commandsList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.commandsList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.tasksPrincipal =
-      this.tasksList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.tasksList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.subscriptionsList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.entityStreamsPrincipal =
-      this.entityStreamList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.entityStreamList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
+    this.commandsPrincipal = this.createResourceGroupPrincipal(
+      this.commandsList
+    );
+    this.tasksPrincipal = this.createResourceGroupPrincipal(this.tasksList);
+    this.subscriptionsPrincipal = this.createResourceGroupPrincipal(
+      this.subscriptionsList
+    );
+    this.entityStreamsPrincipal = this.createResourceGroupPrincipal(
+      this.entityStreamList
+    );
     this.bucketNotificationHandlersPrincipal =
-      this.bucketNotificationHandlersList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.bucketNotificationHandlersList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.queueHandlersPrincipal =
-      this.queueHandlersList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.queueHandlersList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
+      this.createResourceGroupPrincipal(this.bucketNotificationHandlersList);
+    this.queueHandlersPrincipal = this.createResourceGroupPrincipal(
+      this.queueHandlersList
+    );
+    this.socketHandlersPrincipal = this.createResourceGroupPrincipal(
+      this.socketHandlersList
+    );
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.tasksPrincipal,
       this.subscriptionsPrincipal,
       this.entityStreamsPrincipal,
-      this.bucketNotificationHandlersPrincipal
+      this.bucketNotificationHandlersPrincipal,
+      this.queueHandlersPrincipal,
+      this.socketHandlersPrincipal
     );
 
     serviceDataSSM.grantRead(accessRole);
@@ -575,6 +584,19 @@ export class Service<S = any> extends Construct {
 
   public get queueHandlersList(): QueueHandler[] {
     return Object.values<IQueue>(this.queues).map((q) => q.handler);
+  }
+
+  public get socketHandlersList(): ISocket[] {
+    return Object.values<ISocket>(this.sockets);
+  }
+
+  private createResourceGroupPrincipal(grantables: IGrantable[]) {
+    return grantables.length > 0 || this.local
+      ? new DeepCompositePrincipal(
+          ...(this.local ? [this.local.environmentRole] : []),
+          ...grantables.map((f) => f.grantPrincipal)
+        )
+      : new UnknownPrincipal({ resource: this });
   }
 
   public subscribe(

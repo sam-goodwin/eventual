@@ -82,21 +82,38 @@ export function isBucketHandlerMemberCall(call: CallExpression): boolean {
 }
 
 /**
- * A heuristic for identifying a {@link CallExpression} that is a call to an `on` handler.
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `queue` resource.
  *
- * 1. must be a call to a MemberExpression matching to `<expression>.on(events, name, impl | props, impl)`.
- * 2. must have 3 or 4 arguments.
+ * 1. must be a call to a MemberExpression matching to `queue(name, opts, impl)`.
+ * 2. must have 3 arguments.
  */
-export function isQueueHandlerForEachMemberCall(call: CallExpression): boolean {
+export function isQueueResourceCall(call: CallExpression): boolean {
   const c = call.callee;
-  if (c.type === "MemberExpression") {
-    if (isId(c.property, "forEach") || isId(c.property, "forEachBatch")) {
-      // queue.forEach("handlerName", async () => { })
-      // queue.forEach("handlerName", options, async () => { })
-      // queue.forEachBatch("handlerName", async () => { })
-      // queue.forEachBatch("handlerName", options, async () => { })
-      return call.arguments.length === 2 || call.arguments.length === 3;
-    }
+  if (
+    (c.type === "Identifier" && c.value === "queue") ||
+    (c.type === "MemberExpression" && isId(c.property, "queue"))
+  ) {
+    // queue("handlerName", opts, async () => { })
+    return call.arguments.length === 3;
+  }
+  return false;
+}
+
+/**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `socket` resource.
+ *
+ * 1. must be a call to a MemberExpression matching to `socket(name, impl | opts, impl)`.
+ * 2. must have 2 or 3 arguments.
+ */
+export function isSocketResourceCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (
+    (c.type === "Identifier" && c.value === "socket") ||
+    (c.type === "MemberExpression" && isId(c.property, "socket"))
+  ) {
+    // socket("handlerName", async () => { })
+    // socket("handlerName", options, async () => { })
+    return call.arguments.length === 2 || call.arguments.length === 3;
   }
   return false;
 }

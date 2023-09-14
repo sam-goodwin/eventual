@@ -1,7 +1,8 @@
 import { LogLevel } from "@eventual/core";
 import { assertNonNull } from "@eventual/core/internal";
-import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
-import { QueueRuntimeOverrides } from "./clients/queue-client.js";
+import type { QueueRuntimeOverrides } from "./clients/queue-client.js";
+import type { SocketEndpoints } from "./clients/socket-client.js";
+import type { BucketRuntimeOverrides } from "./stores/bucket-store.js";
 
 export const ENV_NAMES = {
   AWS_ACCOUNT_ID: "EVENTUAL_AWS_ACCOUNT_ID",
@@ -22,6 +23,8 @@ export const ENV_NAMES = {
   WORKFLOW_EXECUTION_LOG_GROUP_NAME:
     "EVENTUAL_WORKFLOW_EXECUTION_LOG_GROUP_NAME",
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
+  SOCKET_NAME: "EVENTUAL_SOCKET_NAME",
+  SOCKET_URLS: "EVENTUAL_SOCKET_URLS",
   ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
   ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
   QUEUE_NAME: "EVENTUAL_QUEUE_NAME",
@@ -65,6 +68,7 @@ export const serviceLogGroupName = () =>
 export const serviceUrl = () => tryGetEnv<string>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
+export const socketName = () => tryGetEnv(ENV_NAMES.SOCKET_NAME);
 export const entityName = () => tryGetEnv(ENV_NAMES.ENTITY_NAME);
 export const entityStreamName = () => tryGetEnv(ENV_NAMES.ENTITY_STREAM_NAME);
 export const bucketName = () => tryGetEnv(ENV_NAMES.BUCKET_NAME);
@@ -85,4 +89,8 @@ export const queueOverrides = () => {
     string,
     QueueRuntimeOverrides
   >;
+};
+export const socketUrls = () => {
+  const socketUrlsString = process.env[ENV_NAMES.SOCKET_URLS] ?? "{}";
+  return JSON.parse(socketUrlsString) as SocketEndpoints;
 };

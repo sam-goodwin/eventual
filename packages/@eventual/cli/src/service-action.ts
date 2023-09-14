@@ -86,6 +86,8 @@ export function serviceAction<T>(
                 apiEndpoint: "http://localhost:3111",
                 eventBusArn: "NOT SET ON LOCAL",
                 workflowExecutionLogGroupName: "NOT SET ON LOCAL",
+                // TODO
+                socketEndpoints: {},
               } satisfies ServiceData,
               undefined,
               new HttpEventualClient({ serviceUrl: "http://localhost:3111" }),

@@ -302,3 +302,40 @@ export function deepEqual(a: any, b: any): boolean {
 
   return true;
 }
+
+export function withMiddlewares<Context, Output, Request>(
+  middlewares: ((input: {
+    next: (context: Context) => Promise<Output>;
+    context: Context;
+    request: Request;
+  }) =>
+    | Promise<Output & { context?: Context }>
+    | (Output & { context?: Context }))[],
+  handler: (request: Request, context: Context) => Promise<Output>
+): (request: Request, context: Context) => Promise<Output> {
+  return async (request: Request, context: Context): Promise<Output> => {
+    const chain = middlewares.values();
+
+    return next(request, context);
+
+    async function next(request: Request, context: Context): Promise<Output> {
+      let consumed = false;
+      const middleware = chain.next();
+      if (middleware.done) {
+        return handler(request, context);
+      } else {
+        return middleware.value({
+          request,
+          context,
+          next: async (context) => {
+            if (consumed) {
+              consumed = true;
+              throw new Error(`Middleware cannot call 'next' more than once`);
+            }
+            return next(request, context);
+          },
+        });
+      }
+    }
+  };
+}

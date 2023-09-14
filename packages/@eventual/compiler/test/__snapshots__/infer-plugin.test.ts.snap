@@ -38,14 +38,20 @@ var CallKind;
   CallKind2[CallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
   CallKind2[CallKind2["GetExecutionCall"] = 14] = "GetExecutionCall";
   CallKind2[CallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
+  CallKind2[CallKind2["QueueCall"] = 15] = "QueueCall";
+  CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
   CallKind2[CallKind2["SendSignalCall"] = 6] = "SendSignalCall";
   CallKind2[CallKind2["SignalHandlerCall"] = 5] = "SignalHandlerCall";
+  CallKind2[CallKind2["SocketCall"] = 16] = "SocketCall";
+  CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
   CallKind2[CallKind2["TaskCall"] = 0] = "TaskCall";
   CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
-  CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
-  CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
-  CallKind2[CallKind2["QueueCall"] = 15] = "QueueCall";
 })(CallKind || (CallKind = {}));
+var CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
+function createCall(kind, e2) {
+  e2[CallSymbol] = kind;
+  return e2;
+}
 
 var Schedule = {
   duration(dur, unit = "seconds") {
@@ -73,8 +79,14 @@ var PropertyKind;
   PropertyKind2[PropertyKind2["ServiceSpec"] = 5] = "ServiceSpec";
   PropertyKind2[PropertyKind2["ServiceType"] = 6] = "ServiceType";
   PropertyKind2[PropertyKind2["ServiceUrl"] = 7] = "ServiceUrl";
-  PropertyKind2[PropertyKind2["TaskToken"] = 8] = "TaskToken";
+  PropertyKind2[PropertyKind2["SocketUrls"] = 8] = "SocketUrls";
+  PropertyKind2[PropertyKind2["TaskToken"] = 9] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
+var PropertySymbol = /* @__PURE__ */ Symbol.for("eventual:EventualProperty");
+function createEventualProperty(kind, e2) {
+  e2[PropertySymbol] = kind;
+  return e2;
+}
 
 globalThis._eventual ??= { resources: {} };
 function registerEventualResource(resourceKind, resource) {
@@ -96,6 +108,7 @@ var ServiceType;
   ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
   ServiceType2["QueueHandlerWorker"] = "QueueHandlerWorker";
+  ServiceType2["SocketWorker"] = "SocketWorker";
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["TaskWorker"] = "TaskWorker";
   ServiceType2["TransactionWorker"] = "TransactionWorker";
@@ -130,8 +143,12 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
+function parseArgs(args, predicates) {
+  return Object.fromEntries(Object.entries(predicates).map(([name, predicate]) => [name, args.find(predicate)]));
+}
+
 function command(...args) {
-  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+  const { sourceLocation, name, options, handler } = parseCommandArgs(args);
   const command2 = {
     kind: "Command",
     name,
@@ -143,12 +160,12 @@ function command(...args) {
   return registerEventualResource("Command", command2);
 }
 function parseCommandArgs(args) {
-  return [
-    args.find(isSourceLocation),
-    args.find((a) => typeof a === "string"),
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function")
-  ];
+  return parseArgs(args, {
+    sourceLocation: isSourceLocation,
+    name: (a) => typeof a === "string",
+    options: (a) => typeof a === "object" && !isSourceLocation(a),
+    handler: (a) => typeof a === "function"
+  });
 }
 
 var router = itty_router_min_default.Router();
@@ -162,7 +179,7 @@ function createRouter(middlewares) {
         return (middleware) => createRouter([...middlewares ?? [], middleware]);
       } else if (method === "command") {
         return (...args) => {
-          const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+          const { sourceLocation, name, options, handler } = parseCommandArgs(args);
           return command(sourceLocation, name, {
             ...options ?? {},
             middlewares
@@ -294,6 +311,61 @@ globalThis.getEventualHook ??= () => {
 globalThis.tryGetEventualHook ??= () => {
   return void 0;
 };
+
+function createSocketBuilder(middlewares) {
+  const socketFunction = (...args) => {
+    const { sourceLocation, name, options, handlers } = parseSocketArgs(args);
+    const socket2 = {
+      middlewares,
+      name,
+      handlers,
+      sourceLocation,
+      kind: "Socket",
+      handlerTimeout: options?.handlerTimeout,
+      memorySize: options?.memorySize,
+      get wssEndpoint() {
+        return getEventualHook().getEventualProperty(createEventualProperty(PropertyKind.SocketUrls, { socketName: name })).wss;
+      },
+      get httpEndpoint() {
+        return getEventualHook().getEventualProperty(createEventualProperty(PropertyKind.SocketUrls, { socketName: name })).http;
+      },
+      send(...params) {
+        return getEventualHook().executeEventualCall(createCall(CallKind.SocketCall, {
+          operation: {
+            operation: "send",
+            socketName: name,
+            params
+          }
+        }));
+      },
+      disconnect(...params) {
+        return getEventualHook().executeEventualCall(createCall(CallKind.SocketCall, {
+          operation: {
+            operation: "disconnect",
+            socketName: name,
+            params
+          }
+        }));
+      }
+    };
+    return registerEventualResource("Socket", socket2);
+  };
+  const useFunction = (socketMiddleware) => {
+    const middleware = typeof socketMiddleware === "function" ? { connect: socketMiddleware } : socketMiddleware;
+    return createSocketBuilder([...middlewares, middleware]);
+  };
+  socketFunction.use = useFunction;
+  return socketFunction;
+}
+var socket = createSocketBuilder([]);
+function parseSocketArgs(args) {
+  return parseArgs(args, {
+    sourceLocation: isSourceLocation,
+    name: (a) => typeof a === "string",
+    options: (a) => typeof a === "object" && !isSourceLocation(a) && !("$connect" in a),
+    handlers: (a) => typeof a === "object" && !isSourceLocation(a) && "$connect" in a
+  });
+}
 
 var myHandler = api.get("/", async () => {
   return new HttpResponse();

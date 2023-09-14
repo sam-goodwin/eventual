@@ -7,12 +7,17 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { Execution, ExecutionHandle } from "../execution.js";
+import type {
+  FifoContentBasedDeduplication,
+  FifoQueue,
+  Queue,
+} from "../queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
+import { Socket } from "../socket/socket.js";
 import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { SignalTarget } from "./signal.js";
-import { FifoContentBasedDeduplication, FifoQueue, Queue } from "../queue.js";
 
 export type Call =
   | AwaitTimerCall
@@ -27,6 +32,7 @@ export type Call =
   | SignalHandlerCall
   | SearchCall
   | SendSignalCall
+  | SocketCall
   | StartWorkflowCall
   | TaskCall
   | TaskRequestCall
@@ -42,13 +48,14 @@ export enum CallKind {
   ExpectSignalCall = 3,
   GetExecutionCall = 14,
   InvokeTransactionCall = 9,
+  QueueCall = 15,
+  SearchCall = 11,
   SendSignalCall = 6,
   SignalHandlerCall = 5,
+  SocketCall = 16,
+  StartWorkflowCall = 13,
   TaskCall = 0,
   TaskRequestCall = 12,
-  SearchCall = 11,
-  StartWorkflowCall = 13,
-  QueueCall = 15,
 }
 
 export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -451,4 +458,33 @@ export interface InvokeTransactionCall<Input = any>
   extends CallBase<CallKind.InvokeTransactionCall, any> {
   input: Input;
   transactionName: string;
+}
+
+export type SocketMethod = Exclude<
+  {
+    [op in keyof Socket]: [Socket[op]] extends [Function] ? op : never;
+  }[keyof Socket],
+  undefined
+>;
+
+export type SocketOperation<Op extends SocketMethod = SocketMethod> = {
+  operation: Op;
+  socketName: string;
+  params: Parameters<Socket[Op]>;
+};
+
+export function isSocketCall(a: any): a is SocketCall {
+  return isCallOfKind(CallKind.SocketCall, a);
+}
+
+export interface SocketCall<Op extends SocketMethod = SocketMethod>
+  extends CallBase<CallKind.SocketCall, any> {
+  operation: SocketOperation<Op>;
+}
+
+export function isSocketCallOperation<Op extends SocketMethod>(
+  op: Op,
+  operation: SocketCall<any>
+): operation is SocketCall<Op> {
+  return operation.operation.operation === op;
 }
