@@ -22,6 +22,7 @@ export interface ServiceData {
   eventBusArn: string;
   workflowExecutionLogGroupName: string;
   environmentVariables?: Record<string, string>;
+  socketEndpoints: Record<string, string>;
 }
 
 /**

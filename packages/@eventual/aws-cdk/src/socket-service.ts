@@ -1,6 +1,5 @@
 import {
   IWebSocketApi,
-  IWebSocketStage,
   WebSocketApi,
   WebSocketNoneAuthorizer,
   WebSocketStage,
@@ -112,13 +111,14 @@ interface SocketProps {
 export interface ISocket {
   grantPrincipal: IPrincipal;
   gateway: IWebSocketApi;
+  gatewayStage: WebSocketStage;
   handler: Function;
 }
 
 class Socket extends Construct implements EventualResource, ISocket {
   public grantPrincipal: IPrincipal;
   public gateway: WebSocketApi;
-  public gatewayStage: IWebSocketStage;
+  public gatewayStage: WebSocketStage;
   public handler: Function;
 
   constructor(scope: Construct, props: SocketProps) {

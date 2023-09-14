@@ -511,6 +511,11 @@ export class Service<S = any> extends Construct {
           eventBusArn: this.bus.eventBusArn,
           workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
           environmentVariables: props.environment,
+          socketEndpoints: Object.fromEntries(
+            Object.entries<ISocket>(this.socketService.sockets).map(
+              ([name, socket]) => [name, socket.gatewayStage.url]
+            )
+          ),
         }),
       }
     );
