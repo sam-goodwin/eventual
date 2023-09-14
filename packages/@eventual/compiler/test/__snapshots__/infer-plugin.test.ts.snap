@@ -316,7 +316,7 @@ function createSocketBuilder(middlewares) {
   const socketFunction = (...args) => {
     const { sourceLocation, name, options, handlers } = parseSocketArgs(args);
     const socket2 = {
-      connectMiddlewares: middlewares,
+      middlewares,
       name,
       handlers,
       sourceLocation,
@@ -350,7 +350,10 @@ function createSocketBuilder(middlewares) {
     };
     return registerEventualResource("Socket", socket2);
   };
-  const useFunction = (socketMiddleware) => createSocketBuilder([...middlewares, socketMiddleware]);
+  const useFunction = (socketMiddleware) => {
+    const middleware = typeof socketMiddleware === "function" ? { connect: socketMiddleware } : socketMiddleware;
+    return createSocketBuilder([...middlewares, middleware]);
+  };
   socketFunction.use = useFunction;
   return socketFunction;
 }
