@@ -515,55 +515,23 @@ export class Service<S = any> extends Construct {
       }
     );
 
-    this.commandsPrincipal =
-      this.commandsList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.commandsList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.tasksPrincipal =
-      this.tasksList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.tasksList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.subscriptionsList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.entityStreamsPrincipal =
-      this.entityStreamList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.entityStreamList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.bucketNotificationHandlersPrincipal =
-      this.bucketNotificationHandlersList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.bucketNotificationHandlersList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.queueHandlersPrincipal =
-      this.queueHandlersList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.queueHandlersList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
-    this.socketHandlersPrincipal =
-      this.socketHandlersList.length > 0 || this.local
-        ? new DeepCompositePrincipal(
-            ...(this.local ? [this.local.environmentRole] : []),
-            ...this.socketHandlersList.map((f) => f.grantPrincipal)
-          )
-        : new UnknownPrincipal({ resource: this });
+    this.commandsPrincipal = createResourceGroupPrincipal(this.commandsList);
+    this.tasksPrincipal = createResourceGroupPrincipal(this.tasksList);
+    this.subscriptionsPrincipal = createResourceGroupPrincipal(
+      this.subscriptionsList
+    );
+    this.entityStreamsPrincipal = createResourceGroupPrincipal(
+      this.entityStreamList
+    );
+    this.bucketNotificationHandlersPrincipal = createResourceGroupPrincipal(
+      this.bucketNotificationHandlersList
+    );
+    this.queueHandlersPrincipal = createResourceGroupPrincipal(
+      this.queueHandlersList
+    );
+    this.socketHandlersPrincipal = createResourceGroupPrincipal(
+      this.socketHandlersList
+    );
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.tasksPrincipal,
@@ -586,6 +554,17 @@ export class Service<S = any> extends Construct {
       workflowService,
     };
     proxyService._bind(this);
+
+    const self = this;
+
+    function createResourceGroupPrincipal(grantables: IGrantable[]) {
+      return grantables.length > 0 || self.local
+        ? new DeepCompositePrincipal(
+            ...(self.local ? [self.local.environmentRole] : []),
+            ...grantables.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: self });
+    }
   }
 
   public get tasksList(): Task[] {
