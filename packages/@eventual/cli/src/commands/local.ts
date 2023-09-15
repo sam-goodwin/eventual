@@ -201,9 +201,10 @@ export const local = (yargs: Argv) =>
               return;
             }
             const query: SocketQuery = {};
-            new URL(request.url).searchParams.forEach(
-              (value, name) => (query[name] = value)
-            );
+            new URL(
+              request.url,
+              `http://${request.headers.host}`
+            ).searchParams.forEach((value, name) => (query[name] = value));
             const headers = Object.fromEntries(
               Object.entries(request.headers).map(([name, value]) => [
                 name,
@@ -275,7 +276,7 @@ export const local = (yargs: Argv) =>
         );
       }
 
-      app.listen(port, () => {
+      server.listen(port, () => {
         process.send?.("ready");
       });
 
