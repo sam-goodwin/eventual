@@ -154,6 +154,10 @@ new CfnOutput(stack, "serviceUrl", {
   value: testService.gateway.apiEndpoint,
 });
 
+new CfnOutput(stack, "testSocketUrl", {
+  value: testService.sockets.socket1.gatewayStage.url,
+});
+
 new CfnOutput(stack, "chaosParamName", {
   value: chaosExtension.ssm.parameterName,
 });

@@ -10,5 +10,8 @@ const outputs = fs.existsSync(path.resolve(outputsFile))
 export const awsRegion = () => process.env.AWS_REGION ?? "us-east-1";
 export const serviceUrl = () =>
   outputs?.["eventual-tests"]?.serviceUrl ?? "http://localhost:3111";
+export const testSocketUrl = () =>
+  outputs?.["eventual-tests"]?.testSocketUrl ??
+  "http://localhost:3111/__ws/socket1";
 export const chaosSSMParamName = () =>
   outputs?.["eventual-tests"]?.chaosParamName;
