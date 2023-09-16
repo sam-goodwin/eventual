@@ -33,6 +33,7 @@ import {
   isEntityStreamMemberCall,
   isOnEventCall,
   isQueueResourceCall,
+  isSocketMemberCall,
   isSocketResourceCall,
   isSubscriptionCall,
   isTaskCall,
@@ -279,6 +280,7 @@ export class InferVisitor extends Visitor {
         isBucketHandlerMemberCall,
         isQueueResourceCall,
         isSocketResourceCall,
+        isSocketMemberCall,
       ].some((op) => op(call))
     ) {
       this.didMutate = true;
