@@ -6,8 +6,9 @@ import {
   ServiceContext,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
+import { WebSocket } from "ws";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
-import { serviceUrl } from "./env.js";
+import { serviceUrl, testSocketUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import type * as TestService from "./test-service.js";
 import {
@@ -15,12 +16,15 @@ import {
   asyncWorkflow,
   bucketWorkflow,
   createAndDestroyWorkflow,
+  DataSocketEvent,
   entityWorkflow,
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
   queueWorkflow,
+  SocketMessage,
+  StartSocketEvent,
   timedOutWorkflow,
   timedWorkflow,
   transactionWorkflow,
@@ -302,6 +306,7 @@ eventualRuntimeTestHarness(
 );
 
 const url = serviceUrl();
+const socketUrl = testSocketUrl();
 
 test("hello API should route and return OK response", async () => {
   const restResponse = await (await fetch(`${url}/hello`)).json();
@@ -445,14 +450,79 @@ test("test service context", async () => {
 });
 
 test("socket test", async () => {
-  const rpcResponse = await (
+  const executionId = (await (
     await fetch(`${url}/${commandRpcPath({ name: "socketTest" })}`, {
       method: "POST",
     })
-  ).json();
+  ).json()) as string;
 
-  expect(rpcResponse).toEqual([3, 4]);
+  const encodedId = encodeURIComponent(executionId);
+
+  console.log("pre-socket");
+
+  const ws1 = new WebSocket(`${socketUrl}?id=${encodedId}&n=0`);
+  const ws2 = new WebSocket(`${socketUrl}?id=${encodedId}&n=1`);
+
+  console.log("setup-socket");
+
+  const running1 = setupWS(executionId, ws1);
+  const running2 = setupWS(executionId, ws2);
+
+  console.log("waiting...");
+
+  const result = await Promise.all([running1, running2]);
+
+  expect(result).toEqual([3, 4]);
 });
+
+function setupWS(executionId: string, ws: WebSocket) {
+  let n: number | undefined;
+  let v: number | undefined;
+  return new Promise<number>((resolve, reject) => {
+    ws.on("error", (err) => {
+      console.log("error", err);
+      reject(err);
+    });
+    ws.on("message", (data) => {
+      try {
+        console.log(n, "message");
+        const d = (data as Buffer).toString("utf8");
+        console.log(d);
+        const event = JSON.parse(d) as StartSocketEvent | DataSocketEvent;
+        if (event.type === "start") {
+          n = event.n;
+          // after connecting, we will send our "n" and incremented "value" back.
+          ws.send(
+            JSON.stringify({
+              id: executionId,
+              v: event.v + 1,
+            } satisfies SocketMessage)
+          );
+        } else if (event.type === "data") {
+          v = event.v;
+        } else {
+          console.log("unexpected event", event);
+          reject(event);
+        }
+      } catch (err) {
+        console.error(err);
+        reject(err);
+      }
+    });
+    ws.on("close", (code, reason) => {
+      try {
+        console.log(code, reason.toString("utf-8"));
+        console.log(n, "close", v);
+        if (n === undefined) {
+          throw new Error("n was not set");
+        }
+        resolve(v ?? -1);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
 
 if (!process.env.TEST_LOCAL) {
   test("index.search", async () => {

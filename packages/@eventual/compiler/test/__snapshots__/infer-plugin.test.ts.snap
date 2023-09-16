@@ -312,8 +312,8 @@ globalThis.tryGetEventualHook ??= () => {
   return void 0;
 };
 
-function createSocketBuilder(middlewares) {
-  const socketFunction = (...args) => {
+function createSocketFunction(middlewares) {
+  return (...args) => {
     const { sourceLocation, name, options, handlers } = parseSocketArgs(args);
     const socket2 = {
       middlewares,
@@ -350,14 +350,27 @@ function createSocketBuilder(middlewares) {
     };
     return registerEventualResource("Socket", socket2);
   };
-  const useFunction = (socketMiddleware) => {
+}
+function createUseFunction(middlewares) {
+  return (socketMiddleware) => {
     const middleware = typeof socketMiddleware === "function" ? { connect: socketMiddleware } : socketMiddleware;
-    return createSocketBuilder([...middlewares, middleware]);
+    return createSocketRouter([...middlewares, middleware]);
   };
+}
+function createSocketRouter(middlewares) {
+  return {
+    middlewares,
+    use: createUseFunction(middlewares),
+    socket: createSocketFunction(middlewares)
+  };
+}
+function createSocketBuilder() {
+  const socketFunction = createSocketFunction([]);
+  const useFunction = createUseFunction([]);
   socketFunction.use = useFunction;
   return socketFunction;
 }
-var socket = createSocketBuilder([]);
+var socket = createSocketBuilder();
 function parseSocketArgs(args) {
   return parseArgs(args, {
     sourceLocation: isSourceLocation,

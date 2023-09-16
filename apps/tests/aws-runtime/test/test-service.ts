@@ -37,7 +37,6 @@ import {
 } from "@eventual/core";
 import type openapi from "openapi3-ts";
 import { Readable } from "stream";
-import { WebSocket } from "ws";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
@@ -1392,7 +1391,7 @@ export const searchBlog = command(
  * 7. the socket will resolve the value in the connection, completing the test
  */
 
-interface SocketMessage {
+export interface SocketMessage {
   id: string;
   v: number;
 }
@@ -1413,31 +1412,33 @@ const jsonSocket = socket.use({
   },
 });
 
-export const socket1 = jsonSocket.use(({ request, context, next }) => {
-  const { id, n } = (request.query ?? {}) as { n?: string; id?: string };
-  if (!id || !n) {
-    throw new Error("Missing ID");
-  }
-  return next({ ...context, id, n });
-})("socket1", {
-  $connect: async ({ connectionId }, { id, n }) => {
-    console.log("sending signal to", id);
-    await socketConnectSignal.sendSignal(id, {
-      connectionId,
-      n: Number(n),
-    });
-    console.log("signal sent to", id);
-  },
-  $disconnect: async () => undefined,
-  $default: async ({ connectionId }, { data }) => {
-    console.log("sending signal to", data.id);
-    await socketMessageSignal.sendSignal(data.id, {
-      ...data,
-      connectionId,
-    });
-    console.log("signal sent to", data.id);
-  },
-});
+export const socket1 = jsonSocket
+  .use(({ request, context, next }) => {
+    const { id, n } = (request.query ?? {}) as { n?: string; id?: string };
+    if (!id || !n) {
+      throw new Error("Missing ID");
+    }
+    return next({ ...context, id, n });
+  })
+  .socket("socket1", {
+    $connect: async ({ connectionId }, { id, n }) => {
+      console.log("sending signal to", id);
+      await socketConnectSignal.sendSignal(id, {
+        connectionId,
+        n: Number(n),
+      });
+      console.log("signal sent to", id);
+    },
+    $disconnect: async () => undefined,
+    $default: async ({ connectionId }, { data }) => {
+      console.log("sending signal to", data.id);
+      await socketMessageSignal.sendSignal(data.id, {
+        ...data,
+        connectionId,
+      });
+      console.log("signal sent to", data.id);
+    },
+  });
 
 export const socketConnectSignal = signal<{ connectionId: string; n: number }>(
   "socketConnectSignal"
@@ -1447,13 +1448,13 @@ export const socketMessageSignal = signal<{
   v: number;
 }>("socketMessageSignal");
 
-interface StartSocketEvent {
+export interface StartSocketEvent {
   type: "start";
   n: number;
   v: number;
 }
 
-interface DataSocketEvent {
+export interface DataSocketEvent {
   type: "data";
   n: number;
   v: number;
@@ -1520,69 +1521,7 @@ export const socketTest = command(
     const { executionId } = await socketWorkflow.startExecution({
       input: undefined,
     });
-    const encodedId = encodeURIComponent(executionId);
 
-    console.log("pre-socket");
-
-    const ws1 = new WebSocket(`${socket1.wssEndpoint}?id=${encodedId}&n=0`);
-    const ws2 = new WebSocket(`${socket1.wssEndpoint}?id=${encodedId}&n=1`);
-
-    console.log("setup-socket");
-
-    const running1 = setupWS(executionId, ws1);
-    const running2 = setupWS(executionId, ws2);
-
-    console.log("waiting...");
-
-    return await Promise.all([running1, running2]);
+    return executionId;
   }
 );
-
-function setupWS(executionId: string, ws: WebSocket) {
-  let n: number | undefined;
-  let v: number | undefined;
-  return new Promise<number>((resolve, reject) => {
-    ws.on("error", (err) => {
-      console.log("error", err);
-      reject(err);
-    });
-    ws.on("message", (data) => {
-      try {
-        console.log(n, "message");
-        const d = (data as Buffer).toString("utf8");
-        console.log(d);
-        const event = JSON.parse(d) as StartSocketEvent | DataSocketEvent;
-        if (event.type === "start") {
-          n = event.n;
-          // after connecting, we will send our "n" and incremented "value" back.
-          ws.send(
-            JSON.stringify({
-              id: executionId,
-              v: event.v + 1,
-            } satisfies SocketMessage)
-          );
-        } else if (event.type === "data") {
-          v = event.v;
-        } else {
-          console.log("unexpected event", event);
-          reject(event);
-        }
-      } catch (err) {
-        console.error(err);
-        reject(err);
-      }
-    });
-    ws.on("close", (code, reason) => {
-      try {
-        console.log(code, reason.toString("utf-8"));
-        console.log(n, "close", v);
-        if (n === undefined) {
-          throw new Error("n was not set");
-        }
-        resolve(v ?? -1);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
-}

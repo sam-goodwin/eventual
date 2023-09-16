@@ -190,7 +190,7 @@ export const local = (yargs: Argv) =>
       const hasSockets = serviceSpec.sockets.length > 0;
 
       if (hasSockets) {
-        const wss = new WebSocketServer({ server });
+        const wss = new WebSocketServer({ noServer: true });
 
         server.on("upgrade", (request, socket, head) => {
           if (request.url?.startsWith("/__ws/")) {

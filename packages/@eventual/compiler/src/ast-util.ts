@@ -118,6 +118,18 @@ export function isSocketResourceCall(call: CallExpression): boolean {
   return false;
 }
 
+export function isSocketMemberCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (c.type === "MemberExpression") {
+    if (isId(c.property, "socket")) {
+      // socket.use().socket("handlerName", async () => { })
+      // socket.use().socket("handlerName", options, async () => { })
+      return call.arguments.length === 2 || call.arguments.length === 3;
+    }
+  }
+  return false;
+}
+
 /**
  * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
  *
