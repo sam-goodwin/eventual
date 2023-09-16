@@ -96,7 +96,7 @@ export type Socket<
 
 export type SocketOptions = FunctionRuntimeProps;
 
-export interface socket<Context extends SocketContext = SocketContext> {
+export interface SocketRouter<Context extends SocketContext = SocketContext> {
   middlewares: SocketMiddleware[];
   use<
     NextConnectContext extends SocketHandlerContext = Context["connect"],
@@ -117,9 +117,22 @@ export interface socket<Context extends SocketContext = SocketContext> {
           Context["connect"],
           NextConnectContext
         >
-  ): socket<
+  ): SocketRouter<
     SocketContext<NextConnectContext, NextDisconnectContext, NextMessageContext>
   >;
+  socket<Name extends string>(
+    name: Name,
+    options: SocketOptions,
+    handlers: SocketHandlers<Context>
+  ): Socket<Name, Context>;
+  socket<Name extends string>(
+    name: Name,
+    handlers: SocketHandlers<Context>
+  ): Socket<Name, Context>;
+}
+
+export interface socket<Context extends SocketContext = SocketContext>
+  extends SocketRouter<Context> {
   <Name extends string>(
     name: Name,
     options: SocketOptions,
@@ -131,10 +144,10 @@ export interface socket<Context extends SocketContext = SocketContext> {
   >;
 }
 
-function createSocketBuilder<Context extends SocketContext = SocketContext>(
+function createSocketFunction<Context extends SocketContext = SocketContext>(
   middlewares: SocketMiddleware[]
-): socket<Context> {
-  const socketFunction = <Name extends string>(
+) {
+  return <Name extends string>(
     ...args:
       | [name: Name, options: SocketOptions, handlers: SocketHandlers<Context>]
       | [name: Name, handlers: SocketHandlers<Context>]
@@ -185,9 +198,12 @@ function createSocketBuilder<Context extends SocketContext = SocketContext>(
 
     return registerEventualResource("Socket", socket as any) as Socket<Name>;
   };
-  const useFunction: socket<Context>["use"] = <
-    NextContext extends SocketContext = Context
-  >(
+}
+
+function createUseFunction<Context extends SocketContext = SocketContext>(
+  middlewares: SocketMiddleware[]
+): SocketRouter<Context>["use"] {
+  return <NextContext extends SocketContext = Context>(
     socketMiddleware:
       | SocketMiddleware<Context, NextContext>
       | SocketMiddlewareFunction<
@@ -200,14 +216,31 @@ function createSocketBuilder<Context extends SocketContext = SocketContext>(
       typeof socketMiddleware === "function"
         ? { connect: socketMiddleware }
         : socketMiddleware;
-    return createSocketBuilder<NextContext>([...middlewares, middleware]);
+    return createSocketRouter<NextContext>([...middlewares, middleware]);
   };
+}
+
+function createSocketRouter<Context extends SocketContext = SocketContext>(
+  middlewares: SocketMiddleware[]
+): SocketRouter<Context> {
+  return {
+    middlewares,
+    use: createUseFunction<Context>(middlewares),
+    socket: createSocketFunction<Context>(middlewares),
+  };
+}
+
+function createSocketBuilder<
+  Context extends SocketContext = SocketContext
+>(): socket<Context> {
+  const socketFunction = createSocketFunction<Context>([]);
+  const useFunction = createUseFunction<Context>([]);
   (socketFunction as unknown as socket<Context>).use = useFunction;
 
   return socketFunction as unknown as socket<Context>;
 }
 
-export const socket = createSocketBuilder([]);
+export const socket = createSocketBuilder();
 
 export function parseSocketArgs<Name extends string>(args: any[]) {
   return parseArgs(args, {

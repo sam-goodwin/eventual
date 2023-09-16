@@ -1412,31 +1412,33 @@ const jsonSocket = socket.use({
   },
 });
 
-export const socket1 = jsonSocket.use(({ request, context, next }) => {
-  const { id, n } = (request.query ?? {}) as { n?: string; id?: string };
-  if (!id || !n) {
-    throw new Error("Missing ID");
-  }
-  return next({ ...context, id, n });
-})("socket1", {
-  $connect: async ({ connectionId }, { id, n }) => {
-    console.log("sending signal to", id);
-    await socketConnectSignal.sendSignal(id, {
-      connectionId,
-      n: Number(n),
-    });
-    console.log("signal sent to", id);
-  },
-  $disconnect: async () => undefined,
-  $default: async ({ connectionId }, { data }) => {
-    console.log("sending signal to", data.id);
-    await socketMessageSignal.sendSignal(data.id, {
-      ...data,
-      connectionId,
-    });
-    console.log("signal sent to", data.id);
-  },
-});
+export const socket1 = jsonSocket
+  .use(({ request, context, next }) => {
+    const { id, n } = (request.query ?? {}) as { n?: string; id?: string };
+    if (!id || !n) {
+      throw new Error("Missing ID");
+    }
+    return next({ ...context, id, n });
+  })
+  .socket("socket1", {
+    $connect: async ({ connectionId }, { id, n }) => {
+      console.log("sending signal to", id);
+      await socketConnectSignal.sendSignal(id, {
+        connectionId,
+        n: Number(n),
+      });
+      console.log("signal sent to", id);
+    },
+    $disconnect: async () => undefined,
+    $default: async ({ connectionId }, { data }) => {
+      console.log("sending signal to", data.id);
+      await socketMessageSignal.sendSignal(data.id, {
+        ...data,
+        connectionId,
+      });
+      console.log("signal sent to", data.id);
+    },
+  });
 
 export const socketConnectSignal = signal<{ connectionId: string; n: number }>(
   "socketConnectSignal"
