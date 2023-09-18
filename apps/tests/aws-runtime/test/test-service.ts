@@ -941,6 +941,13 @@ const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   return val?.n ?? 0 + 1;
 });
 
+const transactDelete = transaction(
+  "transactDelete",
+  async ({ id }: { id: string }) => {
+    await check.delete([id]);
+  }
+);
+
 const noise = task(
   "noiseTask",
   async ({ x }: { x: number }, { execution: { id } }) => {
@@ -988,7 +995,7 @@ export const transactionWorkflow = workflow(
       gitErDone({ id }),
       check.put({ id, n: two ?? 0 + 1 }),
     ]);
-    await check.delete([id]);
+    await transactDelete({ id });
     return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
   }
 );
