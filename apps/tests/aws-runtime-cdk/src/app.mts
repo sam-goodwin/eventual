@@ -1,3 +1,4 @@
+import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import * as eventual from "@eventual/aws-cdk";
 import { DebugDashboard, ServiceDashboard } from "@eventual/aws-cdk";
@@ -12,6 +13,7 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Queue } from "aws-cdk-lib/aws-sqs";
+import { Duration } from "aws-cdk-lib/core";
 import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension.js";
@@ -69,7 +71,10 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
       domainName: "eventual-tests-2",
     },
     cors: {
-      allowOrigins: ["http://some-url.com"],
+      allowOrigins: ["http://some-url.com", "http://localhost:3000"],
+      allowHeaders: ["authorization", "content-type"],
+      allowMethods: [CorsHttpMethod.ANY],
+      maxAge: Duration.days(1),
     },
   }
 );

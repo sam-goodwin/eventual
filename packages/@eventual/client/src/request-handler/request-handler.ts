@@ -23,5 +23,5 @@ export class HttpError extends Error {
 }
 
 export interface BeforeRequest {
-  (request: HttpRequest): Promise<HttpRequest>;
+  (request: HttpRequest): Promise<HttpRequest> | HttpRequest;
 }
