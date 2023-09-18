@@ -941,6 +941,20 @@ const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   return val?.n ?? 0 + 1;
 });
 
+/**
+ * Test writing to a new item in a transaction while asserting that it is really new.
+ */
+const transactInitialize = transaction(
+  "transactInitialize",
+  async ({ id, n }: { id: string; n: number }) => {
+    // mimic a situation where an item is retrieved but doesn't exist
+    const x = await check.get({ id: "something random" });
+    if (!x) {
+      await check.put({ id, n });
+    }
+  }
+);
+
 const transactDelete = transaction(
   "transactDelete",
   async ({ id }: { id: string }) => {
@@ -952,6 +966,7 @@ const noise = task(
   "noiseTask",
   async ({ x }: { x: number }, { execution: { id } }) => {
     let n = 100;
+    await transactInitialize({ id, n: 101 });
     let transact: Promise<number> | undefined;
     while (n-- > 0) {
       try {

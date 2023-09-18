@@ -373,7 +373,7 @@ export class AWSEntityStore extends EntityStore {
                       "#version": EntityEntityRecord.VERSION_FIELD,
                     },
                     ExpressionAttributeValues:
-                      item.version !== undefined
+                      item.version !== undefined && item.version !== 0
                         ? {
                             ":expectedVersion": {
                               N: item.version.toString(),
