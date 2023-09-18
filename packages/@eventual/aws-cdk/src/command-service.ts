@@ -23,7 +23,13 @@ import aws_iam, {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import { Code, Function, FunctionProps, Runtime } from "aws-cdk-lib/aws-lambda";
+import {
+  Architecture,
+  Code,
+  Function,
+  FunctionProps,
+  Runtime,
+} from "aws-cdk-lib/aws-lambda";
 import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
@@ -328,7 +334,9 @@ export class CommandService<Service = any> {
             "options-command"
           ),
           handler: "index.handler",
-          runtime: Runtime.NODEJS_LATEST,
+          runtime: Runtime.NODEJS_18_X,
+          architecture: Architecture.ARM_64,
+          memorySize: 512,
           // the headers will be replaced with the correct headers based on the cors configuration
           // for example, the Access-Control-Allow-Origin header will only return if the cors origin
           //              matches the request origin and will be set accordingly
