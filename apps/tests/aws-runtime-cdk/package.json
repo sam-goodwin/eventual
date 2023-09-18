@@ -8,6 +8,7 @@
     "cdk": "cdk"
   },
   "dependencies": {
+    "@aws-cdk/aws-apigatewayv2-alpha": "^2.80.0-alpha.0",
     "aws-cdk-lib": "2.80.0",
     "constructs": "10.1.154"
   },
