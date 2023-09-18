@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.53.1 (2023-09-16)
+
+### Bug Fixes
+
+- fix tests, local, and socket middleware interface ([#447](https://github.com/functionless/eventual/issues/447)) ([0bc5c3f](https://github.com/functionless/eventual/commit/0bc5c3f9308ca9d256d5aca204c9457851d00003))
+
 # 0.53.0 (2023-09-14)
 
 ### Features
