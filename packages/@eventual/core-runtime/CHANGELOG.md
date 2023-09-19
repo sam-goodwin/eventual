@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.54.1 (2023-09-19)
+
+### Bug Fixes
+
+- transaction in a workflow transform error ([#450](https://github.com/functionless/eventual/issues/450)) ([e000bfc](https://github.com/functionless/eventual/commit/e000bfc1328a9afd47981c0e11b862307374b353))
+
 # 0.54.0 (2023-09-18)
 
 ### Features
