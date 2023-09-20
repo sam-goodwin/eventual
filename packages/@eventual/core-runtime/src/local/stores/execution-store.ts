@@ -25,11 +25,11 @@ export class LocalExecutionStore implements ExecutionStore, LocalSerializable {
 
   public static fromSerializedData(
     localConnector: LocalEnvConnector,
-    data: Record<string, Buffer>
+    data?: Record<string, Buffer>
   ) {
     return new LocalExecutionStore(
       localConnector,
-      JSON.parse(data.data!.toString("utf-8"))
+      data ? JSON.parse(data.data!.toString("utf-8")) : undefined
     );
   }
 

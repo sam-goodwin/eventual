@@ -76,6 +76,7 @@ import {
   createEmitEventsCommand,
   createExecuteTransactionCommand,
   createGetExecutionCommand,
+  createGetExecutionLogsCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
@@ -209,12 +210,12 @@ export class LocalContainer {
       this.localConnector
     );
     this.executionStore = localPersistanceStore.register("executions", (data) =>
-      data
-        ? LocalExecutionStore.fromSerializedData(this.localConnector, data)
-        : new LocalExecutionStore(this.localConnector)
+      LocalExecutionStore.fromSerializedData(this.localConnector, data)
     );
     // TODO: Support local log persistance and retrieval https://github.com/functionless/eventual/issues/435
-    this.logsClient = new LocalLogsClient();
+    this.logsClient = localPersistanceStore.register("execution-logs", (data) =>
+      LocalLogsClient.fromSerializedData(data)
+    );
     this.workflowProvider = new GlobalWorkflowProvider();
     this.queueProvider = new GlobalQueueProvider();
     this.workflowClient = new WorkflowClient(
@@ -227,10 +228,7 @@ export class LocalContainer {
     this.timerClient = new LocalTimerClient(this.localConnector);
     this.executionHistoryStore = localPersistanceStore.register(
       "execution-history",
-      (data) =>
-        data
-          ? LocalExecutionHistoryStore.fromSerializedData(data)
-          : new LocalExecutionHistoryStore()
+      (data) => LocalExecutionHistoryStore.fromSerializedData(data)
     );
     this.taskProvider = props.taskProvider ?? new GlobalTaskProvider();
     this.taskStore = localPersistanceStore.register("tasks", (data) =>
@@ -303,6 +301,7 @@ export class LocalContainer {
       executionHistoryStore: this.executionHistoryStore,
       executionQueueClient: this.executionQueueClient,
       executionStore: this.executionStore,
+      logsClient: this.logsClient,
       taskClient: this.taskClient,
       transactionClient: this.transactionClient,
       workflowClient: this.workflowClient,
@@ -425,6 +424,7 @@ export class LocalContainer {
     /**
      * Register all of the commands to run.
      */
+    createGetExecutionLogsCommand({ logsClient: this.logsClient });
     createListWorkflowsCommand({
       workflowProvider: this.workflowProvider,
     });

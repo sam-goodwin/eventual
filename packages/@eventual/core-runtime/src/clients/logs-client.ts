@@ -1,12 +1,16 @@
-export interface LogEntry {
-  time: number;
-  message: string;
-}
+import type {
+  GetExecutionLogsRequest,
+  GetExecutionLogsResponse,
+  LogEntry,
+} from "@eventual/core/internal";
 
 /**
  * A client interface which represent how Eventual should publish logs.
  */
 export interface LogsClient {
+  getExecutionLogs(
+    request: GetExecutionLogsRequest
+  ): Promise<GetExecutionLogsResponse>;
   /**
    * Put one or more log entries related to an execution.
    */

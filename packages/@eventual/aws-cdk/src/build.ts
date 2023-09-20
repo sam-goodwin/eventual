@@ -176,6 +176,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           }),
         },
         commands: [
+          "getExecutionLogs",
           "listWorkflows",
           "startExecution",
           "listExecutions",

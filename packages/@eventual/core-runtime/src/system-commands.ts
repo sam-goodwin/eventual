@@ -5,6 +5,7 @@ import {
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   EventualService,
   executeTransactionRequestSchema,
+  getExecutionLogsRequest,
   isSendTaskFailureRequest,
   isSendTaskHeartbeatRequest,
   isSendTaskSuccessRequest,
@@ -26,6 +27,7 @@ import type { ExecutionHistoryStateStore } from "./stores/execution-history-stat
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
 import type { ExecutionStore } from "./stores/execution-store.js";
 import { extendsError } from "./utils.js";
+import { LogsClient } from "./index.js";
 
 const withErrorHandling = api.use(async ({ next, context }) => {
   try {
@@ -121,6 +123,20 @@ export function createListWorkflowsCommand({
         name: w,
       })),
     }))
+  );
+}
+
+export function createGetExecutionLogsCommand({
+  logsClient,
+}: {
+  logsClient: LogsClient;
+}): EventualService["getExecutionLogs"] {
+  return systemCommand(
+    withErrorHandling.command(
+      "getExecutionLogs",
+      { input: getExecutionLogsRequest },
+      (input) => logsClient.getExecutionLogs(input)
+    )
   );
 }
 

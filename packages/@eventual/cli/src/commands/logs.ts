@@ -1,9 +1,8 @@
-import * as cwLogs from "@aws-sdk/client-cloudwatch-logs";
+import { EventualServiceClient } from "@eventual/core";
+import chalk from "chalk";
 import type { Ora } from "ora";
 import { Argv } from "yargs";
-import chalk from "chalk";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { EventualServiceClient } from "@eventual/core";
 
 /**
  * Command to list logs for a workflow or execution id
@@ -60,8 +59,7 @@ export const logs = (yargs: Argv) =>
       async (
         spinner,
         serviceClient,
-        { workflow, execution, since, follow },
-        { credentials, serviceData }
+        { workflow, execution, since, follow }
       ) => {
         if (
           !(
@@ -73,10 +71,6 @@ export const logs = (yargs: Argv) =>
           throw new Error("since parameter must be a string or number");
         }
         const startTime = await getStartTime(serviceClient, since, execution);
-        const { workflowExecutionLogGroupName: logGroupName } = serviceData;
-        const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({
-          credentials,
-        });
 
         const logFilter: LogFilter = {
           executionId: execution,
@@ -88,13 +82,7 @@ export const logs = (yargs: Argv) =>
         };
 
         do {
-          const fetchResult = await fetchLogs(
-            spinner,
-            cloudwatchLogsClient,
-            logGroupName,
-            logFilter,
-            logCursor
-          );
+          const fetchResult = await fetchLogs(spinner, logFilter, logCursor);
           logCursor = updateLogCursor(logCursor, fetchResult, follow);
 
           if (follow) {
@@ -106,6 +94,47 @@ export const logs = (yargs: Argv) =>
           // eslint-disable-next-line no-unmodified-loop-condition
         } while (follow || logCursor.nextToken);
         spinner.stop();
+
+        async function fetchLogs(
+          spinner: Ora,
+          logFilter: LogFilter,
+          logCursor: LogCursor
+        ): Promise<GetLogResult> {
+          const output = await serviceClient.getExecutionLogs({
+            executionId: logFilter.executionId,
+            nextToken: logCursor.nextToken,
+            startTime: logCursor.startTime
+              ? new Date(logCursor.startTime).toISOString()
+              : undefined,
+            workflowName: logFilter.workflowName,
+          });
+
+          const functionEvents = output.events ?? [];
+
+          // Print out the interleaved logs
+          if (functionEvents.length) {
+            spinner.stop();
+            functionEvents.forEach((ev) => {
+              console.log(
+                `${
+                  logFilter.executionId ? "" : `[${chalk.blue(ev.source)}] `
+                }${chalk.red(new Date(ev.time!).toLocaleString())} ${
+                  ev.message
+                }`
+              );
+            });
+          }
+
+          return {
+            latestEvent: Math.max(
+              logCursor.startTime ?? 0,
+              ...functionEvents
+                .map((e) => e.time)
+                .filter((t): t is number => !!t)
+            ),
+            nextToken: output.nextToken,
+          };
+        }
       }
     )
   );
@@ -119,50 +148,6 @@ function sleep(ms: number): Promise<void> {
 interface GetLogResult {
   nextToken?: string;
   latestEvent?: number;
-}
-
-async function fetchLogs(
-  spinner: Ora,
-  cloudwatchLogsClient: cwLogs.CloudWatchLogsClient,
-  logGroupName: string,
-  logFilter: LogFilter,
-  logCursor: LogCursor
-): Promise<GetLogResult> {
-  const output = await cloudwatchLogsClient.send(
-    new cwLogs.FilterLogEventsCommand({
-      logGroupName,
-      ...(logFilter.workflowName
-        ? { logStreamNamePrefix: logFilter.workflowName }
-        : {}),
-      ...(logFilter.executionId
-        ? { logStreamNames: [logFilter.executionId] }
-        : {}),
-      startTime: logCursor.startTime,
-      nextToken: logCursor.nextToken,
-    })
-  );
-
-  const functionEvents = output.events ?? [];
-
-  // Print out the interleaved logs
-  if (functionEvents.length) {
-    spinner.stop();
-    functionEvents.forEach((ev) => {
-      console.log(
-        `${
-          logFilter.executionId ? "" : `[${chalk.blue(ev.logStreamName)}] `
-        }${chalk.red(new Date(ev.timestamp!).toLocaleString())} ${ev.message}`
-      );
-    });
-  }
-
-  return {
-    latestEvent: Math.max(
-      logCursor.startTime ?? 0,
-      ...functionEvents.map((e) => e.timestamp).filter((t): t is number => !!t)
-    ),
-    nextToken: output.nextToken,
-  };
 }
 
 interface LogFilter {

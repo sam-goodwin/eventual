@@ -71,15 +71,22 @@ export class LocalPersistanceStore implements PersistanceStore {
   }
 
   public save() {
-    Object.entries(this.stores).forEach(async ([name, serializable]) => {
-      const serialized = serializable.serialize();
-      const storePath = path.join(this.loc, name);
-      mkdirSync(storePath, { recursive: true });
-      Object.entries(serialized).forEach(([fileName, data]) => {
-        const entryPath = path.join(storePath, fileName);
-        mkdirSync(path.dirname(entryPath), { recursive: true });
-        writeFileSync(entryPath, data);
-      });
+    Object.entries(this.stores).forEach(([name, serializable]) => {
+      try {
+        const serialized = serializable.serialize();
+        const storePath = path.join(this.loc, name);
+        mkdirSync(storePath, { recursive: true });
+        Object.entries(serialized).forEach(([fileName, data]) => {
+          const entryPath = path.join(storePath, fileName);
+          mkdirSync(path.dirname(entryPath), { recursive: true });
+          writeFileSync(entryPath, data);
+        });
+      } catch (err) {
+        console.error(
+          `Failed to save local persistance data for ${name}:`,
+          err
+        );
+      }
     });
   }
 }

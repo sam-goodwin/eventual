@@ -1,16 +1,19 @@
 import {
   CloudWatchLogsClient,
   CreateLogStreamCommand,
+  FilterLogEventsCommand,
+  FilterLogEventsCommandInput,
   InvalidParameterException,
   PutLogEventsCommand,
   ResourceAlreadyExistsException,
 } from "@aws-sdk/client-cloudwatch-logs";
+import { LazyValue, LogsClient, getLazy } from "@eventual/core-runtime";
 import {
-  getLazy,
-  LazyValue,
+  GetExecutionLogsRequest,
+  GetExecutionLogsResponse,
   LogEntry,
-  LogsClient,
-} from "@eventual/core-runtime";
+  LogEvent,
+} from "@eventual/core/internal";
 import {
   formatWorkflowExecutionStreamName,
   isAwsErrorOfType,
@@ -23,6 +26,42 @@ export interface AWSLogsClientProps {
 
 export class AWSLogsClient implements LogsClient {
   constructor(private props: AWSLogsClientProps) {}
+
+  public async getExecutionLogs(
+    request: GetExecutionLogsRequest
+  ): Promise<GetExecutionLogsResponse> {
+    if (
+      !(request.executionId || !request.workflowName) ||
+      (request.executionId && request.workflowName)
+    ) {
+      throw new Error("Either executionId or workflowName must be provided");
+    }
+    const logFilter: Partial<FilterLogEventsCommandInput> = request.executionId
+      ? { logStreamNames: [request.executionId] }
+      : { logStreamNamePrefix: request.workflowName };
+    const result = await this.props.cloudwatchLogsClient.send(
+      new FilterLogEventsCommand({
+        logGroupName: getLazy(this.props.serviceLogGroup),
+        ...logFilter,
+        startTime: request.startTime
+          ? new Date(request.startTime).getTime()
+          : undefined,
+        nextToken: request.nextToken,
+      })
+    );
+    const events =
+      result.events?.map(
+        (e): LogEvent => ({
+          message: e.message ?? "",
+          time: e.timestamp!,
+          source: e.logStreamName!,
+        })
+      ) ?? [];
+    return {
+      events,
+      nextToken: result.nextToken,
+    };
+  }
 
   public async putExecutionLogs(
     executionId: string,

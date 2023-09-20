@@ -127,6 +127,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionHistoryStore: localContainer.executionHistoryStore,
       executionQueueClient: localContainer.executionQueueClient,
       executionStore: localContainer.executionStore,
+      logsClient: localContainer.logsClient,
       workflowClient: localContainer.workflowClient,
       workflowProvider: localContainer.workflowProvider,
       transactionClient: localContainer.transactionClient,

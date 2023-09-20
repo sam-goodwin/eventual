@@ -29,14 +29,20 @@ import type { ExecutionQueueClient } from "./execution-queue-client.js";
 import type { TaskClient } from "./task-client.js";
 import type { TransactionClient } from "./transaction-client.js";
 import type { WorkflowClient } from "./workflow-client.js";
+import {
+  GetExecutionLogsRequest,
+  GetExecutionLogsResponse,
+} from "@eventual/core/internal";
+import { LogsClient } from "./logs-client.js";
 
 export interface RuntimeServiceClientProps {
-  taskClient: TaskClient;
   eventClient: EventClient;
   executionHistoryStateStore: ExecutionHistoryStateStore;
   executionHistoryStore: ExecutionHistoryStore;
   executionQueueClient: ExecutionQueueClient;
   executionStore: ExecutionStore;
+  logsClient: LogsClient;
+  taskClient: TaskClient;
   transactionClient: TransactionClient;
   workflowClient: WorkflowClient;
   workflowProvider: WorkflowProvider;
@@ -103,6 +109,15 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
       return this.fallbackServiceClient.getExecutionHistory(request);
     }
     return this.props.executionHistoryStore.getEvents(request);
+  }
+
+  public getExecutionLogs(
+    request: GetExecutionLogsRequest
+  ): Promise<GetExecutionLogsResponse> {
+    if (!this.props.logsClient) {
+      return this.fallbackServiceClient.getExecutionLogs(request);
+    }
+    return this.props.logsClient.getExecutionLogs(request);
   }
 
   public async getExecutionWorkflowHistory(

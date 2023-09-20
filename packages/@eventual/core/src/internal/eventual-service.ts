@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { Execution, ExecutionID, ExecutionStatus } from "../execution.js";
+import {
+  ExecutionStatus,
+  type Execution,
+  type ExecutionID,
+} from "../execution.js";
 import type { Command } from "../http/command.js";
 import type { ExecuteTransactionResponse } from "../service-client.js";
 import type { Transaction } from "../transaction.js";
@@ -66,6 +70,29 @@ export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
 });
 
 export type ListExecutionsRequest = z.infer<typeof listExecutionsRequestSchema>;
+
+export type GetExecutionLogsRequest = z.infer<typeof getExecutionLogsRequest>;
+export const getExecutionLogsRequest = /* @__PURE__ */ z.object({
+  executionId: /* @__PURE__ */ z.string().optional(),
+  workflowName: /* @__PURE__ */ z.string().optional(),
+  nextToken: /* @__PURE__ */ z.string().optional(),
+  startTime: /* @__PURE__ */ z.string().optional(),
+  maxResults: /* @__PURE__ */ z.number().default(10_000).optional(),
+});
+
+export interface LogEntry {
+  time: number;
+  message: string;
+}
+
+export interface LogEvent extends LogEntry {
+  source: string;
+}
+
+export interface GetExecutionLogsResponse {
+  events: LogEvent[];
+  nextToken?: string;
+}
 
 export interface ListExecutionsResponse {
   executions: Execution[];
@@ -200,6 +227,11 @@ export interface EventualService {
     ListExecutionsResponse
   >;
   sendSignal: Command<"sendSignal", SendSignalRequestSchema, void>;
+  getExecutionLogs: Command<
+    "getExecutionLogs",
+    GetExecutionLogsRequest,
+    GetExecutionLogsResponse
+  >;
   getExecutionHistory: Command<
     "getExecutionHistory",
     ListExecutionEventsRequest,
