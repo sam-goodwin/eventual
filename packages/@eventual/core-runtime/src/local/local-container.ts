@@ -51,7 +51,7 @@ import {
   EntityProvider,
   GlobalEntityProvider,
 } from "../providers/entity-provider.js";
-import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
+import { HybridExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalQueueProvider,
   QueueProvider,
@@ -95,7 +95,10 @@ import { LocalSocketClient } from "./clients/socket-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
-import { LocalPersistanceStore } from "./local-persistance-store.js";
+import {
+  NoPersistanceStore,
+  PersistanceStore,
+} from "./local-persistance-store.js";
 import { LocalBucketStore } from "./stores/bucket-store.js";
 import { LocalEntityStore } from "./stores/entity-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -152,10 +155,11 @@ export function isLocalEntityStreamEvent(
 }
 
 export interface LocalContainerProps {
-  taskProvider?: TaskProvider;
+  localPersistanceStore?: PersistanceStore;
   serviceName: string;
   serviceUrl: string;
   subscriptionProvider?: SubscriptionProvider;
+  taskProvider?: TaskProvider;
   webSocketContainer: WebSocketContainer;
 }
 
@@ -196,8 +200,10 @@ export class LocalContainer {
 
   constructor(
     private localConnector: LocalEnvConnector,
-    private localPersistanceStore: LocalPersistanceStore,
-    props: LocalContainerProps
+    {
+      localPersistanceStore = new NoPersistanceStore(),
+      ...props
+    }: LocalContainerProps
   ) {
     this.executionQueueClient = new LocalExecutionQueueClient(
       this.localConnector
@@ -266,7 +272,7 @@ export class LocalContainer {
     });
 
     this.executionHistoryStateStore = localPersistanceStore.register(
-      "execution-history",
+      "execution-history-state",
       (data) => LocalExecutionHistoryStateStore.fromSerializedData(data)
     );
 
@@ -364,7 +370,9 @@ export class LocalContainer {
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
       executionHistoryStore: this.executionHistoryStore,
-      executorProvider: new InMemoryExecutorProvider(),
+      executorProvider: new HybridExecutorProvider({
+        executionHistoryStateStore: this.executionHistoryStateStore,
+      }),
       metricsClient: this.metricsClient,
       logAgent,
       openSearchClient,

@@ -1,10 +1,12 @@
 import {
+  Dirent,
   mkdirSync,
   readFileSync,
   readdirSync,
   statSync,
   writeFileSync,
 } from "fs";
+import path from "path";
 
 export interface LocalSerializable {
   serialize(): Record<string, Buffer>;
@@ -15,9 +17,9 @@ export interface LocalSerializable {
  *
  * Intentionally synchronous to support constructors and ensure a consistent point in time when saving.
  */
-export class LocalPersistanceStore {
+export class LocalPersistanceStore implements PersistanceStore {
   private stores: Record<string, LocalSerializable> = {};
-  constructor(private loc?: string) {}
+  constructor(private loc: string) {}
 
   public register<T extends LocalSerializable>(
     name: string,
@@ -36,10 +38,24 @@ export class LocalPersistanceStore {
       if (loc.isDirectory()) {
         const files = readdirSync(dirPath, { withFileTypes: true });
         return Object.fromEntries(
-          files.map((f) => {
-            const ext = f.name.lastIndexOf(".");
-            const name = f.name.substring(0, ext);
-            return [name, readFileSync(`${dirPath}/${f.name}`)] as const;
+          files.flatMap((f) => {
+            return loadFile(f);
+
+            function loadFile(
+              file: Dirent,
+              prefix = ""
+            ): (readonly [string, Buffer])[] {
+              const name = path.join(prefix, file.name);
+              const filePath = path.join(dirPath, name);
+              if (file.isDirectory()) {
+                const files = readdirSync(filePath, {
+                  withFileTypes: true,
+                });
+                return files.flatMap((f) => loadFile(f, name));
+              } else {
+                return [[name, readFileSync(filePath)] as const];
+              }
+            }
           })
         );
       }
@@ -49,22 +65,42 @@ export class LocalPersistanceStore {
       );
 
       return undefined;
-    } catch (err) {
-      console.warn(
-        `Failed to find local persistance data at ${this.loc}/${name}`,
-        err
-      );
+    } catch {
       return undefined;
     }
   }
 
   public save() {
-    Object.entries(this.stores).map(async ([name, serializable]) => {
+    Object.entries(this.stores).forEach(async ([name, serializable]) => {
       const serialized = serializable.serialize();
-      mkdirSync(`${this.loc}/${name}`, { recursive: true });
-      Object.entries(serialized).map(([fileName, data]) =>
-        writeFileSync(`${this.loc}/${name}/${fileName}`, data)
-      );
+      const storePath = path.join(this.loc, name);
+      mkdirSync(storePath, { recursive: true });
+      Object.entries(serialized).forEach(([fileName, data]) => {
+        const entryPath = path.join(storePath, fileName);
+        mkdirSync(path.dirname(entryPath), { recursive: true });
+        writeFileSync(entryPath, data);
+      });
     });
+  }
+}
+
+export interface PersistanceStore {
+  register<T extends LocalSerializable>(
+    name: string,
+    factory: (data?: Record<string, Buffer>) => T
+  ): T;
+  save(): void;
+}
+
+export class NoPersistanceStore implements PersistanceStore {
+  public register<T extends LocalSerializable>(
+    _name: string,
+    factory: (data?: Record<string, Buffer> | undefined) => T
+  ): T {
+    return factory();
+  }
+
+  public save(): void {
+    return undefined;
   }
 }

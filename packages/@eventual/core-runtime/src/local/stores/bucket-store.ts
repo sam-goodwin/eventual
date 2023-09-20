@@ -46,7 +46,14 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
           const key = `${bucketName}/${objectKey}`;
           const { body, ...meta } = value;
           return [
-            [key, Buffer.from(JSON.stringify(value.body))],
+            [
+              key,
+              Buffer.from(
+                typeof value.body === "string"
+                  ? JSON.stringify(value.body)
+                  : value.body
+              ),
+            ],
             [`${key}##meta`, Buffer.from(JSON.stringify(meta))],
           ];
         })

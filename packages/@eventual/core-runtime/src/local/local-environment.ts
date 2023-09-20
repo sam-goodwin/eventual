@@ -23,13 +23,13 @@ import {
 } from "../utils.js";
 import {
   LocalContainer,
-  LocalEnvConnector,
-  LocalEvent,
+  type LocalEnvConnector,
+  type LocalEvent,
   isLocalEmittedEvents,
   isLocalEntityStreamEvent,
   isLocalQueuePollEvent,
 } from "./local-container.js";
-import { LocalPersistanceStore } from "./local-persistance-store.js";
+import type { PersistanceStore } from "./local-persistance-store.js";
 import { TimeController } from "./time-controller.js";
 import { WebSocketContainer } from "./web-socket-container.js";
 
@@ -44,15 +44,13 @@ export class LocalEnvironment {
   private localConnector: LocalEnvConnector;
   private running = false;
   private localContainer: LocalContainer;
-  private localPersistanceStore: LocalPersistanceStore;
 
   constructor(
     private environmentManifest: EnvironmentManifest,
     webSocketContainer: WebSocketContainer,
-    private persistLocation?: string
+    private persistanceStore: PersistanceStore
   ) {
-    this.localPersistanceStore = new LocalPersistanceStore(persistLocation);
-    this.timeController = this.localPersistanceStore.register("time", (data) =>
+    this.timeController = this.persistanceStore.register("time", (data) =>
       data
         ? TimeController.fromSerializedData(data)
         : new TimeController([], {
@@ -76,15 +74,12 @@ export class LocalEnvironment {
         this.tryStartProcessingEvents();
       },
     };
-    this.localContainer = new LocalContainer(
-      this.localConnector,
-      this.localPersistanceStore,
-      {
-        serviceName: environmentManifest.serviceName,
-        serviceUrl: environmentManifest.serviceUrl,
-        webSocketContainer,
-      }
-    );
+    this.localContainer = new LocalContainer(this.localConnector, {
+      localPersistanceStore: this.persistanceStore,
+      serviceName: environmentManifest.serviceName,
+      serviceUrl: environmentManifest.serviceUrl,
+      webSocketContainer,
+    });
 
     this.start();
   }
