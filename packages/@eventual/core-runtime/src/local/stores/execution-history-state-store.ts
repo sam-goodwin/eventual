@@ -3,7 +3,7 @@ import type {
   ExecutionHistoryStateStore,
   UpdateHistoryRequest,
 } from "../../stores/execution-history-state-store.js";
-import { LocalSerializable } from "../local-persistance-store.js";
+import type { LocalSerializable } from "../local-persistance-store.js";
 
 export class LocalExecutionHistoryStateStore
   implements ExecutionHistoryStateStore, LocalSerializable

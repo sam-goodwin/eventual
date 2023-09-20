@@ -5,7 +5,7 @@ import type {
 } from "@eventual/core";
 import type { WorkflowEvent } from "@eventual/core/internal";
 import { ExecutionHistoryStore } from "../../stores/execution-history-store.js";
-import { LocalSerializable } from "../local-persistance-store.js";
+import type { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
 
 export class LocalExecutionHistoryStore

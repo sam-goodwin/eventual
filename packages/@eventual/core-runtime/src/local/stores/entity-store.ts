@@ -3,10 +3,10 @@ import {
   Entity,
   EntityConsistencyOptions,
   EntityIndex,
+  EntityPutOptions,
   EntityQueryOptions,
   EntityQueryResult,
   EntityScanOptions,
-  EntityPutOptions,
   EntityStreamItem,
   EntityWithMetadata,
   KeyValue,
@@ -38,8 +38,8 @@ import {
 } from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
-import { paginateItems } from "./pagination.js";
 import { LocalSerializable } from "../local-persistance-store.js";
+import { paginateItems } from "./pagination.js";
 
 type PK = KeyValue;
 type SK = KeyValue;
