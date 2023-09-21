@@ -70,9 +70,9 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
     return Object.fromEntries(
       Object.entries(this.entities).flatMap(([name, entity]) => {
         return [
-          [name, serializeTableMap(entity.data)],
+          [`${name}/table`, serializeTableMap(entity.data)],
           ...Object.entries(entity.indices).map(([indexName, index]) => [
-            `${name}#${indexName}`,
+            `${name}/index/${indexName}`,
             serializeTableMap(index),
           ]),
         ];
@@ -88,17 +88,17 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
       return new LocalEntityStore(props);
     }
     const tablesAndIndicesData = Object.entries(data);
-    const tablesData = tablesAndIndicesData.filter(
-      ([name]) => !name.includes("#")
+    const tablesData = tablesAndIndicesData.filter(([name]) =>
+      name.includes("/table")
     );
     const indicesData = tablesAndIndicesData.filter(([name]) =>
-      name.includes("#")
+      name.includes("/index")
     );
     const entities = Object.fromEntries(
       tablesData.map(
         ([name, tableData]) =>
           [
-            name,
+            name.split("/")[0],
             {
               data: deserializeTableMap(tableData),
               indices: {},
@@ -107,7 +107,11 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
       )
     );
     indicesData.forEach(([name, indexData]) => {
-      const [tableName, indexName] = name.split("#") as [string, string];
+      const [tableName, , indexName] = name.split("/") as [
+        string,
+        string,
+        string
+      ];
       const entity = (entities[tableName] ??= {
         data: new Map(),
         indices: {},

@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "fs";
@@ -76,18 +77,31 @@ export class LocalPersistanceStore implements PersistanceStore {
         const serialized = serializable.serialize();
         const storePath = path.join(this.loc, name);
         mkdirSync(storePath, { recursive: true });
+        const pathsToDelete = new Set(getPaths(storePath));
         Object.entries(serialized).forEach(([fileName, data]) => {
+          pathsToDelete.delete(path.join(storePath, fileName));
           const entryPath = path.join(storePath, fileName);
           mkdirSync(path.dirname(entryPath), { recursive: true });
           writeFileSync(entryPath, data);
         });
+        pathsToDelete.forEach((p) => rmSync(p));
       } catch (err) {
+        // don't throw, let the other stores continue.
         console.error(
           `Failed to save local persistance data for ${name}:`,
           err
         );
       }
     });
+  }
+}
+
+function getPaths(path: string): string[] {
+  const fileStat = statSync(path);
+  if (fileStat.isDirectory()) {
+    return readdirSync(path).flatMap((f) => getPaths(`${path}/${f}`));
+  } else {
+    return [path];
   }
 }
 
