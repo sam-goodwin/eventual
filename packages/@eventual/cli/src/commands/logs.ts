@@ -1,6 +1,5 @@
 import { EventualServiceClient } from "@eventual/core";
 import chalk from "chalk";
-import type { Ora } from "ora";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
@@ -82,7 +81,7 @@ export const logs = (yargs: Argv) =>
         };
 
         do {
-          const fetchResult = await fetchLogs(spinner, logFilter, logCursor);
+          const fetchResult = await fetchLogs(logFilter, logCursor);
           logCursor = updateLogCursor(logCursor, fetchResult, follow);
 
           if (follow) {
@@ -96,7 +95,6 @@ export const logs = (yargs: Argv) =>
         spinner.stop();
 
         async function fetchLogs(
-          spinner: Ora,
           logFilter: LogFilter,
           logCursor: LogCursor
         ): Promise<GetLogResult> {

@@ -81,7 +81,7 @@ export const getExecutionLogsRequest = /* @__PURE__ */ z.object({
 });
 
 export interface LogEntry {
-  time: number;
+  time?: number;
   message: string;
 }
 

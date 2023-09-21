@@ -54,7 +54,7 @@ export class AWSLogsClient implements LogsClient {
       result.events?.map(
         (e): LogEvent => ({
           message: e.message ?? "",
-          time: e.timestamp!,
+          time: e.timestamp,
           source: e.logStreamName!,
         })
       ) ?? [];

@@ -17,7 +17,12 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
           name,
           Buffer.from(
             data
-              .map((d) => `${new Date(d.time).toISOString()}: ${d.message}`)
+              .map(
+                (d) =>
+                  `${d.time ? new Date(d.time).toISOString() : ""}: ${
+                    d.message
+                  }`
+              )
               .join("\n")
           ),
         ];
@@ -76,7 +81,7 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
 
     const result = paginateItems(
       items,
-      (i) => i.time,
+      (i) => i.time!,
       undefined,
       "ASC",
       request.maxResults,
@@ -93,7 +98,9 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
     (this.logEntries[executionId] ??= []).push(...logEntries);
     logEntries.forEach((l) => {
       console.log(
-        `${new Date(l.time).toISOString()}: (${executionId}) ${l.message}`
+        `${l.time ? new Date(l.time).toISOString() : ""}: (${executionId}) ${
+          l.message
+        }`
       );
     });
   }
