@@ -290,7 +290,7 @@ export const local = (yargs: Argv) =>
                     : message,
                 })
                 .then((res) => {
-                  if (res) {
+                  if (res && res.message) {
                     ws.send(res.message);
                   }
                 });

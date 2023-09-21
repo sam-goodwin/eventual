@@ -23,26 +23,14 @@ export function createTransactionWorkflowQueueExecutor(
     new TransactionCallExecutor(transactionClient),
     queueClient,
     (_, result, { executionTime, seq }) => {
-      if (result.succeeded) {
-        return createEvent<TransactionRequestSucceeded>(
-          {
-            type: WorkflowEventType.TransactionRequestSucceeded,
-            result: result.output,
-            seq,
-          },
-          executionTime
-        );
-      } else {
-        return createEvent<TransactionRequestFailed>(
-          {
-            type: WorkflowEventType.TransactionRequestFailed,
-            error: "Transaction Failed",
-            message: "",
-            seq,
-          },
-          executionTime
-        );
-      }
+      return createEvent<TransactionRequestSucceeded>(
+        {
+          type: WorkflowEventType.TransactionRequestSucceeded,
+          result,
+          seq,
+        },
+        executionTime
+      );
     },
     (_, err, { executionTime, seq }) => {
       return createEvent<TransactionRequestFailed>(

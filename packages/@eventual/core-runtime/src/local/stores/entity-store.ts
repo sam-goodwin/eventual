@@ -36,7 +36,6 @@ import {
   isNormalizedEntityQueryKeyConditionPart,
   normalizeCompositeKey,
 } from "../../stores/entity-store.js";
-import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
@@ -128,19 +127,35 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
     return this.getPartitionMap(entity, key.partition).get(skOrDefault(key));
   }
 
+  protected _getWithMetadataSync(
+    entity: Entity,
+    key: NormalizedEntityCompositeKeyComplete
+  ): EntityWithMetadata | undefined {
+    return this.getPartitionMap(entity, key.partition).get(skOrDefault(key));
+  }
+
   protected override async _put(
     entity: Entity,
     value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityPutOptions
   ): Promise<{ version: number }> {
+    return this._putSync(entity, value, key, options);
+  }
+
+  protected _putSync(
+    entity: Entity,
+    value: Attributes,
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntityPutOptions
+  ): { version: number } {
     const { version = 0, value: oldValue } =
-      (await this._getWithMetadata(entity, key)) ?? {};
+      this._getWithMetadataSync(entity, key) ?? {};
     if (
       options?.expectedVersion !== undefined &&
       options.expectedVersion !== version
     ) {
-      throw new Error(
+      throw new UnexpectedVersion(
         `Expected entity to be of version ${options.expectedVersion} but found ${version}`
       );
     }
@@ -174,7 +189,15 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
-    const item = await this._getWithMetadata(entity, key);
+    return this._deleteSync(entity, key, options);
+  }
+
+  protected _deleteSync(
+    entity: Entity,
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntityConsistencyOptions | undefined
+  ): void {
+    const item = this._getWithMetadataSync(entity, key);
     if (item) {
       if (options?.expectedVersion !== undefined) {
         if (options.expectedVersion !== item.version) {
@@ -309,37 +332,28 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
     };
   }
 
-  protected override async _transactWrite(
+  protected override _transactWrite(
     items: NormalizedEntityTransactItem[]
   ): Promise<void> {
-    const keysAndVersions = Object.fromEntries(
-      items.map((item) => {
-        return [
-          serializeCompositeKey(item.entity.name, item.key),
-          item.operation === "condition"
-            ? item.version
-            : item.options?.expectedVersion,
-        ] as const;
-      })
-    );
     /**
      * Evaluate the expected versions against the current state and return the results.
      *
      * This is similar to calling TransactWriteItem in dynamo with only ConditionChecks and then
      * handling the errors.
      */
-    const consistencyResults = await Promise.all(
-      Object.entries(keysAndVersions).map(async ([sKey, expectedVersion]) => {
-        if (expectedVersion === undefined) {
-          return true;
-        }
-        const [entityName, key] = deserializeCompositeKey(sKey);
-        const { version } = (await this.getWithMetadata(entityName, key)) ?? {
-          version: 0,
-        };
-        return version === expectedVersion;
-      })
-    );
+    const consistencyResults = items.map((item) => {
+      const expectedVersion =
+        item.operation === "condition"
+          ? item.version
+          : item.options?.expectedVersion;
+      if (expectedVersion === undefined) {
+        return true;
+      }
+      const { version } = this._getWithMetadataSync(item.entity, item.key) ?? {
+        version: 0,
+      };
+      return version === expectedVersion;
+    });
     if (consistencyResults.some((r) => !r)) {
       throw new TransactionCancelled(
         consistencyResults.map((r) =>
@@ -352,24 +366,19 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
      * Here we assume that the write operations are synchronous and that
      * the state of the condition checks will not be invalided.
      */
-    await Promise.all(
-      items.map(async (item) => {
-        if (item.operation === "put") {
-          return await this._put(
-            item.entity,
-            item.value,
-            item.key,
-            item.options
-          );
-        } else if (item.operation === "delete") {
-          return await this._delete(item.entity, item.key, item.options);
-        } else if (item.operation === "condition") {
-          // no op
-          return;
-        }
-        return assertNever(item);
-      })
-    );
+    items.forEach((item) => {
+      if (item.operation === "put") {
+        return this._putSync(item.entity, item.value, item.key, item.options);
+      } else if (item.operation === "delete") {
+        return this._deleteSync(item.entity, item.key, item.options);
+      } else if (item.operation === "condition") {
+        // no op
+        return;
+      }
+      return assertNever(item);
+    });
+
+    return Promise.resolve();
   }
 
   private getLocalEntity(entityOrIndex: Entity | EntityIndex) {

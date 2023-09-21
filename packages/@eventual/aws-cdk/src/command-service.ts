@@ -7,6 +7,7 @@ import {
   ENV_NAMES,
   commandServiceFunctionSuffix,
   sanitizeFunctionName,
+  serviceFunctionName,
 } from "@eventual/aws-runtime";
 import { isDefaultNamespaceCommand } from "@eventual/core";
 import { type CommandFunction } from "@eventual/core-runtime";
@@ -22,7 +23,13 @@ import aws_iam, {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
+import {
+  Architecture,
+  Code,
+  Function,
+  FunctionProps,
+  Runtime,
+} from "aws-cdk-lib/aws-lambda";
 import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
@@ -84,6 +91,10 @@ export interface CorsOptions {
    * @default Duration.seconds(0)
    */
   readonly maxAge?: Duration;
+  /**
+   * When false, a preflight OPTIONS request will be created on OPTIONS /{proxy+}.
+   */
+  readonly disableOptionsEndpoint?: boolean;
 }
 
 export interface CommandsProps<Service = any>
@@ -315,9 +326,46 @@ export class CommandService<Service = any> {
         }
       );
 
+      let optionsFunction: Function | undefined;
+      if (props.cors && !props.cors.disableOptionsEndpoint) {
+        optionsFunction = new Function(commandsSystemScope, "Options", {
+          functionName: serviceFunctionName(
+            props.serviceName,
+            "options-command"
+          ),
+          handler: "index.handler",
+          runtime: Runtime.NODEJS_18_X,
+          architecture: Architecture.ARM_64,
+          memorySize: 512,
+          // the headers will be replaced with the correct headers based on the cors configuration
+          // for example, the Access-Control-Allow-Origin header will only return if the cors origin
+          //              matches the request origin and will be set accordingly
+          code: Code.fromInline(
+            `exports.handler = () => Promise.resolve({ statusCode: 204 });`
+          ),
+        });
+        optionsFunction.grantInvoke(self.integrationRole);
+      }
+
       return {
         ...spec,
         paths: {
+          ...(optionsFunction
+            ? {
+                "/{proxy+}": {
+                  options: {
+                    [XAmazonApiGatewayIntegration]: {
+                      type: "AWS_PROXY",
+                      credentials: self.integrationRole.roleArn,
+                      httpMethod: HttpMethod.POST,
+                      payloadFormatVersion: "2.0",
+                      connectionType: "INTERNET",
+                      uri: optionsFunction.functionArn,
+                    } satisfies XAmazonApiGatewayIntegration,
+                  },
+                },
+              }
+            : {}),
           "/$default": {
             [XAmazonApigatewayAnyMethod]: {
               isDefaultRoute: true,
