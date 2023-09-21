@@ -30,15 +30,16 @@ export class AWSLogsClient implements LogsClient {
   public async getExecutionLogs(
     request: GetExecutionLogsRequest
   ): Promise<GetExecutionLogsResponse> {
-    if (
-      !(request.executionId || request.workflowName) ||
-      (request.executionId && request.workflowName)
-    ) {
-      throw new Error("Either executionId or workflowName must be provided");
+    if (request.executionId && request.workflowName) {
+      throw new Error(
+        "One of executionId, workflowName, or neither are allowed."
+      );
     }
     const logFilter: Partial<FilterLogEventsCommandInput> = request.executionId
       ? { logStreamNames: [request.executionId] }
-      : { logStreamNamePrefix: request.workflowName };
+      : request.workflowName
+      ? { logStreamNamePrefix: request.workflowName }
+      : {};
     const result = await this.props.cloudwatchLogsClient.send(
       new FilterLogEventsCommand({
         logGroupName: getLazy(this.props.serviceLogGroup),

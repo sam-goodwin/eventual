@@ -54,19 +54,22 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
   public async getExecutionLogs(
     request: GetExecutionLogsRequest
   ): Promise<GetExecutionLogsResponse> {
-    if (
-      !(request.executionId || request.workflowName) ||
-      (request.executionId && request.workflowName)
-    ) {
-      throw new Error("Either executionId or workflowName must be provided");
+    if (request.executionId && request.workflowName) {
+      throw new Error(
+        "One of executionId, workflowName, or neither are allowed."
+      );
     }
     const items = request.executionId
       ? (this.logEntries[request.executionId] ?? []).map((e) => ({
           ...e,
-          source: request.executionId!,
+          source: request.executionId,
         }))
       : Object.entries(this.logEntries)
-          .filter(([name]) => name.startsWith(`${request.workflowName!}/`))
+          .filter(([name]) =>
+            request.workflowName
+              ? name.startsWith(`${request.workflowName}/`)
+              : true
+          )
           .flatMap(([name, entries]) =>
             entries.map((e) => ({ ...e, source: name }))
           );
