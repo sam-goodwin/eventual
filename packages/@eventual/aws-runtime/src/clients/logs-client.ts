@@ -31,7 +31,7 @@ export class AWSLogsClient implements LogsClient {
     request: GetExecutionLogsRequest
   ): Promise<GetExecutionLogsResponse> {
     if (
-      !(request.executionId || !request.workflowName) ||
+      !(request.executionId || request.workflowName) ||
       (request.executionId && request.workflowName)
     ) {
       throw new Error("Either executionId or workflowName must be provided");
