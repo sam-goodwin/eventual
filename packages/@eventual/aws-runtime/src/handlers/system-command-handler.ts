@@ -5,6 +5,7 @@ import {
   createEmitEventsCommand,
   createExecuteTransactionCommand,
   createGetExecutionCommand,
+  createGetExecutionLogsCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
@@ -22,6 +23,7 @@ import {
   createExecutionHistoryStore,
   createExecutionQueueClient,
   createExecutionStore,
+  createLogsClient,
   createQueueClient,
   createSocketClient,
   createTaskClient,
@@ -52,6 +54,7 @@ const workflowClient = createWorkflowClient({
 const executionStore = createExecutionStore();
 
 export default systemCommandWorker(
+  createGetExecutionLogsCommand({ logsClient: createLogsClient() }),
   createListExecutionHistoryCommand({
     executionHistoryStore: createExecutionHistoryStore(),
   }),

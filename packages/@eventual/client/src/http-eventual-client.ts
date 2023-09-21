@@ -21,6 +21,8 @@ import {
 } from "@eventual/core";
 import type {
   EventualService,
+  GetExecutionLogsRequest,
+  GetExecutionLogsResponse,
   SendTaskHeartbeatRequest,
 } from "@eventual/core/internal";
 import type { HttpServiceClientProps } from "./base-http-client.js";
@@ -81,6 +83,12 @@ export class HttpEventualClient implements EventualServiceClient {
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse> {
     return this.serviceClient.getExecutionHistory(request);
+  }
+
+  public async getExecutionLogs(
+    request: GetExecutionLogsRequest
+  ): Promise<GetExecutionLogsResponse> {
+    return this.serviceClient.getExecutionLogs(request);
   }
 
   public async getExecutionWorkflowHistory(

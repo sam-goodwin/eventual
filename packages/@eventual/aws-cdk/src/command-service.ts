@@ -473,6 +473,9 @@ export class CommandService<Service = any> {
     this.props.workflowService.configureStartExecution(
       this.systemCommandsHandler
     );
+    this.props.workflowService.configureGetExecutionLogs(
+      this.systemCommandsHandler
+    );
     // transactions
     this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler

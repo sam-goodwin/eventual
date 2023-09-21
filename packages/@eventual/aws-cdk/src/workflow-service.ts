@@ -397,6 +397,11 @@ export class WorkflowService {
    * Log Client - for workflow execution logs
    */
 
+  public configureGetExecutionLogs(func: Function) {
+    this.grantFilterLogEvents(func);
+    this.addEnvs(func, ENV_NAMES.WORKFLOW_EXECUTION_LOG_GROUP_NAME);
+  }
+
   @grant()
   public grantFilterLogEvents(grantable: IGrantable) {
     this.logGroup.grant(grantable, "logs:FilterLogEvents");

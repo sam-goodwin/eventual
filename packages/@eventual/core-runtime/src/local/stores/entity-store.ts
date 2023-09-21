@@ -37,6 +37,7 @@ import {
   normalizeCompositeKey,
 } from "../../stores/entity-store.js";
 import { LocalEnvConnector } from "../local-container.js";
+import { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
 
 type PK = KeyValue;
@@ -55,11 +56,68 @@ export interface LocalEntity {
   indices: Record<string, TableMap>;
 }
 
-export class LocalEntityStore extends EntityStore {
-  private entities: Record<string, LocalEntity> = {};
-
-  constructor(private props: LocalEntityStoreProps) {
+export class LocalEntityStore extends EntityStore implements LocalSerializable {
+  constructor(
+    private props: LocalEntityStoreProps,
+    private entities: Record<string, LocalEntity> = {}
+  ) {
     super(props.entityProvider);
+  }
+
+  // serialize the indices and
+  public serialize(): Record<string, Buffer> {
+    return Object.fromEntries(
+      Object.entries(this.entities).flatMap(([name, entity]) => {
+        return [
+          [`${name}/table`, serializeTableMap(entity.data)],
+          ...Object.entries(entity.indices).map(([indexName, index]) => [
+            `${name}/index/${indexName}`,
+            serializeTableMap(index),
+          ]),
+        ];
+      })
+    );
+  }
+
+  public static fromSerializedData(
+    props: LocalEntityStoreProps,
+    data?: Record<string, Buffer>
+  ) {
+    if (!data) {
+      return new LocalEntityStore(props);
+    }
+    const tablesAndIndicesData = Object.entries(data);
+    const tablesData = tablesAndIndicesData.filter(([name]) =>
+      name.includes("/table")
+    );
+    const indicesData = tablesAndIndicesData.filter(([name]) =>
+      name.includes("/index")
+    );
+    const entities = Object.fromEntries(
+      tablesData.map(
+        ([name, tableData]) =>
+          [
+            name.split("/")[0],
+            {
+              data: deserializeTableMap(tableData),
+              indices: {},
+            } as LocalEntity,
+          ] as const
+      )
+    );
+    indicesData.forEach(([name, indexData]) => {
+      const [tableName, , indexName] = name.split("/") as [
+        string,
+        string,
+        string
+      ];
+      const entity = (entities[tableName] ??= {
+        data: new Map(),
+        indices: {},
+      });
+      entity.indices[indexName] = deserializeTableMap(indexData);
+    });
+    return new LocalEntityStore(props, entities);
   }
 
   protected override async _getWithMetadata(
@@ -549,4 +607,32 @@ function filterEntryBySortKey(
   } else {
     return entrySortKeyValue === querySortKey.keyValue;
   }
+}
+
+type SerializedData = Record<string, Record<string, EntityWithMetadata<any>>>;
+
+function serializeTableMap(tableMap: TableMap): Buffer {
+  const record: SerializedData = Object.fromEntries(
+    [...tableMap.entries()].map(([pk, partition]) => {
+      return [
+        pk,
+        Object.fromEntries(
+          [...partition.entries()].map(([sk, entry]) => [sk, entry] as const)
+        ),
+      ] as const;
+    })
+  );
+  return Buffer.from(JSON.stringify(record));
+}
+
+function deserializeTableMap(data: Buffer): TableMap {
+  const record: SerializedData = JSON.parse(data.toString("utf-8"));
+  return new Map(
+    Object.entries(record).map(([pk, partition]) => {
+      return [
+        pk,
+        new Map(Object.entries(partition).map(([sk, entry]) => [sk, entry])),
+      ];
+    })
+  );
 }

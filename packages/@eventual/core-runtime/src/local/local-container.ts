@@ -51,7 +51,7 @@ import {
   EntityProvider,
   GlobalEntityProvider,
 } from "../providers/entity-provider.js";
-import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
+import { HybridExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalQueueProvider,
   QueueProvider,
@@ -76,6 +76,7 @@ import {
   createEmitEventsCommand,
   createExecuteTransactionCommand,
   createGetExecutionCommand,
+  createGetExecutionLogsCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
@@ -95,6 +96,10 @@ import { LocalSocketClient } from "./clients/socket-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
+import {
+  NoPersistanceStore,
+  PersistanceStore,
+} from "./local-persistance-store.js";
 import { LocalBucketStore } from "./stores/bucket-store.js";
 import { LocalEntityStore } from "./stores/entity-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -151,10 +156,11 @@ export function isLocalEntityStreamEvent(
 }
 
 export interface LocalContainerProps {
-  taskProvider?: TaskProvider;
+  localPersistanceStore?: PersistanceStore;
   serviceName: string;
   serviceUrl: string;
   subscriptionProvider?: SubscriptionProvider;
+  taskProvider?: TaskProvider;
   webSocketContainer: WebSocketContainer;
 }
 
@@ -195,13 +201,21 @@ export class LocalContainer {
 
   constructor(
     private localConnector: LocalEnvConnector,
-    props: LocalContainerProps
+    {
+      localPersistanceStore = new NoPersistanceStore(),
+      ...props
+    }: LocalContainerProps
   ) {
     this.executionQueueClient = new LocalExecutionQueueClient(
       this.localConnector
     );
-    this.executionStore = new LocalExecutionStore(this.localConnector);
-    this.logsClient = new LocalLogsClient();
+    this.executionStore = localPersistanceStore.register("executions", (data) =>
+      LocalExecutionStore.fromSerializedData(this.localConnector, data)
+    );
+    // TODO: Support local log persistance and retrieval https://github.com/functionless/eventual/issues/435
+    this.logsClient = localPersistanceStore.register("execution-logs", (data) =>
+      LocalLogsClient.fromSerializedData(data)
+    );
     this.workflowProvider = new GlobalWorkflowProvider();
     this.queueProvider = new GlobalQueueProvider();
     this.workflowClient = new WorkflowClient(
@@ -212,19 +226,34 @@ export class LocalContainer {
       () => this.localConnector.getTime()
     );
     this.timerClient = new LocalTimerClient(this.localConnector);
-    this.executionHistoryStore = new LocalExecutionHistoryStore();
+    this.executionHistoryStore = localPersistanceStore.register(
+      "execution-history",
+      (data) => LocalExecutionHistoryStore.fromSerializedData(data)
+    );
     this.taskProvider = props.taskProvider ?? new GlobalTaskProvider();
-    this.taskStore = new LocalTaskStore();
+    this.taskStore = localPersistanceStore.register("tasks", (data) =>
+      LocalTaskStore.fromSerializedData(data)
+    );
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
     this.entityProvider = new GlobalEntityProvider();
-    const entityStore = new LocalEntityStore({
-      entityProvider: this.entityProvider,
-      localConnector: this.localConnector,
-    });
-    const bucketStore = new LocalBucketStore({
-      localConnector: this.localConnector,
-    });
+    const entityStore = localPersistanceStore.register("entities", (data) =>
+      LocalEntityStore.fromSerializedData(
+        {
+          entityProvider: this.entityProvider,
+          localConnector: this.localConnector,
+        },
+        data
+      )
+    );
+    const bucketStore = localPersistanceStore.register("buckets", (data) =>
+      LocalBucketStore.fromSerializedData(
+        {
+          localConnector: this.localConnector,
+        },
+        data
+      )
+    );
     const openSearchClient = new LocalOpenSearchClient();
     this.eventClient = new LocalEventClient(this.localConnector);
     this.metricsClient = new LocalMetricsClient();
@@ -240,11 +269,17 @@ export class LocalContainer {
       executionStore: this.executionStore,
     });
 
-    this.executionHistoryStateStore = new LocalExecutionHistoryStateStore();
+    this.executionHistoryStateStore = localPersistanceStore.register(
+      "execution-history-state",
+      (data) => LocalExecutionHistoryStateStore.fromSerializedData(data)
+    );
 
-    this.queueClient = new LocalQueueClient(
-      this.queueProvider,
-      this.localConnector
+    this.queueClient = localPersistanceStore.register("queues", (data) =>
+      LocalQueueClient.fromSerializedData(
+        this.queueProvider,
+        this.localConnector,
+        data
+      )
     );
 
     this.socketClient = new LocalSocketClient(props.webSocketContainer);
@@ -266,6 +301,7 @@ export class LocalContainer {
       executionHistoryStore: this.executionHistoryStore,
       executionQueueClient: this.executionQueueClient,
       executionStore: this.executionStore,
+      logsClient: this.logsClient,
       taskClient: this.taskClient,
       transactionClient: this.transactionClient,
       workflowClient: this.workflowClient,
@@ -333,7 +369,9 @@ export class LocalContainer {
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
       executionHistoryStore: this.executionHistoryStore,
-      executorProvider: new InMemoryExecutorProvider(),
+      executorProvider: new HybridExecutorProvider({
+        executionHistoryStateStore: this.executionHistoryStateStore,
+      }),
       metricsClient: this.metricsClient,
       logAgent,
       openSearchClient,
@@ -386,6 +424,7 @@ export class LocalContainer {
     /**
      * Register all of the commands to run.
      */
+    createGetExecutionLogsCommand({ logsClient: this.logsClient });
     createListWorkflowsCommand({
       workflowProvider: this.workflowProvider,
     });

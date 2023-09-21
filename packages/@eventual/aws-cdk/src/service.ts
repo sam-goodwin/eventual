@@ -688,12 +688,17 @@ export class Service<S = any> extends Construct {
     this.system.taskService.configureSendHeartbeat(func);
   }
 
+  public configureGetExecutionLogs(func: Function) {
+    this.system.workflowService.configureGetExecutionLogs(func);
+  }
+
   public configureForServiceClient(func: Function) {
     this.configureUpdateTask(func);
     this.configureEmitEvents(func);
     this.configureReadExecutions(func);
     this.configureSendSignal(func);
     this.configureStartExecution(func);
+    this.configureGetExecutionLogs(func);
   }
 
   public configureServiceName(func: Function) {

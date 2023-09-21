@@ -206,15 +206,23 @@ export async function tryGetBuildManifest(
 }
 
 function manifestPath(outDir: string, serviceName: string) {
-  return resolveFile(outDir, serviceName, "manifest.json");
+  return resolveServiceFile(outDir, serviceName, "manifest.json");
 }
 
 function specPath(outDir: string, serviceName: string) {
-  return resolveFile(outDir, serviceName, "spec.json");
+  return resolveServiceFile(outDir, serviceName, "spec.json");
 }
 
-function resolveFile(outDir: string, serviceName: string, file: string) {
-  return path.resolve(outDir, ".eventual", serviceName, file);
+export function resolveServiceFile(
+  outDir: string,
+  serviceName: string,
+  file: string
+) {
+  return path.resolve(servicePath(outDir, serviceName), file);
+}
+
+export function servicePath(outDir: string, serviceName: string) {
+  return path.resolve(outDir, ".eventual", serviceName);
 }
 
 export async function getServiceSpec(outDir: string, serviceName: string) {

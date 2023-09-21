@@ -3,6 +3,8 @@ import type { Command, CommandInput } from "./http/command.js";
 import type {
   EventualService,
   ExecutionHistoryResponse,
+  GetExecutionLogsRequest,
+  GetExecutionLogsResponse,
   ListExecutionEventsResponse,
   ListExecutionsResponse,
   ListWorkflowsResponse,
@@ -56,6 +58,13 @@ export interface EventualServiceClient {
   getExecutionHistory(
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse>;
+
+  /**
+   * Retrieves logs for an execution or workflow.
+   */
+  getExecutionLogs(
+    request: GetExecutionLogsRequest
+  ): Promise<GetExecutionLogsResponse>;
 
   /**
    * Retrieves the workflow history events for an execution.

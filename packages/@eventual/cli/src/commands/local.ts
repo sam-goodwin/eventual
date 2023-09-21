@@ -1,6 +1,10 @@
 import { inferFromMemory } from "@eventual/compiler";
 import { HttpMethod, HttpRequest, SocketQuery } from "@eventual/core";
-import { LocalEnvironment } from "@eventual/core-runtime";
+import {
+  LocalEnvironment,
+  LocalPersistanceStore,
+  NoPersistanceStore,
+} from "@eventual/core-runtime";
 import { ServiceSpec } from "@eventual/core/internal";
 import { EventualConfig, discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
@@ -21,6 +25,7 @@ import {
   getServiceSpec,
   isServiceDeployed,
   resolveRegion,
+  resolveServiceFile,
   tryGetBuildManifest,
   tryResolveDefaultService,
 } from "../service-data.js";
@@ -55,6 +60,18 @@ export const local = (yargs: Argv) =>
             "Offline mode allows for local development without AWS or deployments. Environment variables from the CDK application and AWS credentials will not be set.",
           default: false,
           type: "boolean",
+        })
+        .option("persist", {
+          describe:
+            "Whether or not to persist the local environment between runs.",
+          default: true,
+          type: "boolean",
+        })
+        .option("persistLocation", {
+          describe:
+            "Location to load from and save to when persist is enabled. Relative paths will save to outDir/.eventual/[serviceName]/[path]. Defaults to outDir/.eventual/[serviceName]/local.",
+          default: "./local",
+          type: "string",
         }),
     async ({
       port: userPort,
@@ -63,6 +80,8 @@ export const local = (yargs: Argv) =>
       region,
       offline,
       maxBodySize,
+      persist,
+      persistLocation,
     }) => {
       const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
@@ -134,6 +153,16 @@ export const local = (yargs: Argv) =>
         `localhost:${port}`
       );
 
+      const persistanceStore = persist
+        ? new LocalPersistanceStore(
+            resolveServiceFile(
+              config.outDir,
+              buildManifest.serviceName,
+              persistLocation
+            )
+          )
+        : new NoPersistanceStore();
+
       // TODO: should the loading be done by the local env?
       const localEnv = new LocalEnvironment(
         {
@@ -141,7 +170,8 @@ export const local = (yargs: Argv) =>
           serviceUrl: url,
           serviceName: buildManifest.serviceName,
         },
-        webSocketContainer
+        webSocketContainer,
+        persistanceStore
       );
 
       const app = express();
@@ -294,6 +324,20 @@ export const local = (yargs: Argv) =>
             : ""
         }`
       );
+
+      let saved = false;
+      const save = () => {
+        if (!saved) {
+          persistanceStore.save();
+          saved = true;
+        }
+      };
+      process.on("exit", () => {
+        save();
+      });
+      process.on("SIGINT", () => {
+        save();
+      });
     }
   );
 

@@ -66,6 +66,39 @@ export class RemoteExecutorProvider<Context = undefined>
   }
 }
 
+/**
+ * Combination of InMemory execution provider and the Remote execution provider.
+ *
+ * Will first try to load the executor from memory, then from remote, then initialize a new executor.
+ * When saving, will save in memory and persist the events to remote.
+ */
+export class HybridExecutorProvider<
+  Context = undefined
+> extends RemoteExecutorProvider<Context> {
+  private executions: Record<string, WorkflowExecutor<any, any, Context>> = {};
+
+  public async getExecutor(
+    executionId: string,
+    initializeNewExecutor: (
+      history: HistoryStateEvent[]
+    ) => WorkflowExecutor<any, any, Context>
+  ): Promise<WorkflowExecutor<any, any, Context>> {
+    return (this.executions[executionId] ??= await super.getExecutor(
+      executionId,
+      initializeNewExecutor
+    ));
+  }
+
+  public async persistExecution(
+    executionId: string,
+    _newEvents: HistoryStateEvent[],
+    executor: WorkflowExecutor<any, any, any>
+  ): Promise<{ storedBytes: number }> {
+    this.executions[executionId] = executor;
+    return await super.persistExecution(executionId, _newEvents, executor);
+  }
+}
+
 export class InMemoryExecutorProvider<Context = undefined>
   implements ExecutorProvider<Context>
 {

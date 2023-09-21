@@ -28,7 +28,7 @@ import {
 import type { ServiceSpec } from "@eventual/core/internal";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { AWSLogsClient } from "./clients/log-client.js";
+import { AWSLogsClient } from "./clients/logs-client.js";
 import { AWSOpenSearchClient } from "./clients/opensearch-client.js";
 import { AWSQueueClient } from "./clients/queue-client.js";
 import { AWSSocketClient } from "./clients/socket-client.js";
@@ -278,25 +278,27 @@ export const createEventClient = /* @__PURE__ */ memoize(
 
 export const createServiceClient = /* @__PURE__ */ memoize(
   ({
-    taskClient,
     eventClient,
     executionHistoryStateStore,
     executionHistoryStore,
     executionQueueClient,
     executionStore,
+    logsClient,
+    serviceUrl,
+    taskClient,
     workflowClient,
     workflowProvider,
-    serviceUrl,
   }: Partial<RuntimeServiceClientProps> & { serviceUrl?: string }) =>
     new RuntimeFallbackServiceClient(
       {
         eventClient,
         executionHistoryStore,
-        workflowClient,
         executionQueueClient,
         executionStore,
         executionHistoryStateStore,
+        logsClient,
         taskClient,
+        workflowClient,
         workflowProvider,
       },
       createHttpServiceClient({ serviceUrl })

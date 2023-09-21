@@ -16,6 +16,7 @@ import {
   createExecutionQueueClient,
   createExecutionStore,
   createLogAgent,
+  createLogsClient,
   createOpenSearchClient,
   createQueueClient,
   createServiceClient,
@@ -42,6 +43,8 @@ const worker = createTaskWorker({
     executionQueueClient: createExecutionQueueClient(),
     // already used by the task client
     executionStore: createExecutionStore(),
+    // already used by the log agent
+    logsClient: createLogsClient(),
     taskClient: createTaskClient(),
     transactionClient: createTransactionClient(),
   }),

@@ -1,12 +1,12 @@
 import {
   DEFAULT_QUEUE_VISIBILITY_TIMEOUT,
   QueueBatchResponse,
+  QueueDeleteBatchEntry,
   type DurationSchedule,
   type FifoQueue,
   type FifoQueueHandlerMessageItem,
   type Queue,
   type StandardQueueHandlerMessageItem,
-  QueueDeleteBatchEntry,
 } from "@eventual/core";
 import type {
   QueueSendMessageBatchOperation,
@@ -17,6 +17,7 @@ import { QueueClient } from "../../clients/queue-client.js";
 import type { QueueProvider } from "../../providers/queue-provider.js";
 import { computeScheduleDate } from "../../schedule.js";
 import type { LocalEnvConnector } from "../local-container.js";
+import type { LocalSerializable } from "../local-persistance-store.js";
 
 export interface QueueRetrieveMessagesRequest {
   maxMessages?: number;
@@ -26,15 +27,44 @@ export interface QueueRetrieveMessagesRequest {
 /**
  * TODO: implement message deduplication
  */
-export class LocalQueueClient extends QueueClient {
+export class LocalQueueClient extends QueueClient implements LocalSerializable {
   constructor(
     queueProvider: QueueProvider,
-    private localConnector: LocalEnvConnector
+    private localConnector: LocalEnvConnector,
+    private readonly queues: Map<string, LocalQueue> = new Map()
   ) {
     super(queueProvider);
   }
 
-  private readonly queues: Map<string, LocalQueue> = new Map();
+  public serialize(): Record<string, Buffer> {
+    return Object.fromEntries(
+      Object.entries(this.queues).map(([name, queue]) => [
+        name,
+        queue.serialize(),
+      ])
+    );
+  }
+
+  public static fromSerializedData(
+    queueProvider: QueueProvider,
+    localConnector: LocalEnvConnector,
+    data?: Record<string, Buffer>
+  ) {
+    const queues = new Map<string, LocalQueue>();
+    if (data) {
+      for (const [name, serialized] of Object.entries(data)) {
+        const queue = queueProvider.getQueue(name);
+        if (!queue) {
+          continue;
+        }
+        queues.set(
+          name,
+          LocalQueue.fromSerializedData(queue, localConnector, serialized)
+        );
+      }
+    }
+    return new LocalQueueClient(queueProvider, localConnector, queues);
+  }
 
   public receiveMessages(
     queueName: string,
@@ -128,18 +158,64 @@ export class LocalQueueClient extends QueueClient {
   }
 }
 
+interface SerializedMessage
+  extends Omit<
+    FifoQueueHandlerMessageItem | StandardQueueHandlerMessageItem,
+    "sent"
+  > {
+  sent: number;
+  visibility?: number;
+}
+
 export class LocalQueue {
   constructor(
     private queue: FifoQueue | Queue,
-    private localConnector: LocalEnvConnector
+    private localConnector: LocalEnvConnector,
+    private messages: (
+      | FifoQueueHandlerMessageItem
+      | StandardQueueHandlerMessageItem
+    )[] = [],
+    private messageVisibility: Record<string, Date> = {}
   ) {}
 
-  public messages: (
-    | FifoQueueHandlerMessageItem
-    | StandardQueueHandlerMessageItem
-  )[] = [];
+  public serialize(): Buffer {
+    return Buffer.from(
+      JSON.stringify(
+        this.messages.map(({ sent, ...m }) => {
+          return {
+            ...m,
+            visibility: this.messageVisibility[m.id]?.getTime(),
+            sent: sent.getTime(),
+          };
+        }) satisfies SerializedMessage[]
+      )
+    );
+  }
 
-  public messageVisibility: Record<string, Date> = {};
+  public static fromSerializedData(
+    queue: FifoQueue | Queue,
+    localConnector: LocalEnvConnector,
+    data?: Buffer
+  ) {
+    if (!data) {
+      return new LocalQueue(queue, localConnector);
+    }
+    const messageVisibility: Record<string, Date> = {};
+    const storedMessages = JSON.parse(
+      data.toString("utf-8")
+    ) as SerializedMessage[];
+    const messages = storedMessages.map(({ sent, visibility, ...m }) => {
+      const message = {
+        ...m,
+        sent: new Date(sent),
+      };
+      if (visibility) {
+        messageVisibility[m.id] = new Date(visibility);
+      }
+      return message;
+    });
+    return new LocalQueue(queue, localConnector, messages, messageVisibility);
+  }
 
   public receiveMessages(request?: QueueRetrieveMessagesRequest) {
     const takeMessages = [];

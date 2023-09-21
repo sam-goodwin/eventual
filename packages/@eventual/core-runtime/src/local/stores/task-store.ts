@@ -1,7 +1,21 @@
 import type { TaskExecution, TaskStore } from "../../stores/task-store.js";
+import { LocalSerializable } from "../local-persistance-store.js";
 
-export class LocalTaskStore implements TaskStore {
-  private tasks: Record<string, TaskExecution> = {};
+export class LocalTaskStore implements TaskStore, LocalSerializable {
+  constructor(private tasks: Record<string, TaskExecution> = {}) {}
+
+  public serialize(): Record<string, Buffer> {
+    return { data: Buffer.from(JSON.stringify(this.tasks)) };
+  }
+
+  public static fromSerializedData(data?: Record<string, Buffer>) {
+    return new LocalTaskStore(
+      data && "data" in data
+        ? JSON.parse(data.data.toString("utf-8"))
+        : undefined
+    );
+  }
+
   public async claim(
     _executionId: string,
     _seq: number,
