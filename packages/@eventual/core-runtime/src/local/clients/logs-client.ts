@@ -62,7 +62,7 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
     const items = request.executionId
       ? (this.logEntries[request.executionId] ?? []).map((e) => ({
           ...e,
-          source: request.executionId,
+          source: request.executionId!,
         }))
       : Object.entries(this.logEntries)
           .filter(([name]) =>
