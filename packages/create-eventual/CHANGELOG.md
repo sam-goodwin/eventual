@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.55.0 (2023-09-22)
+
+### Features
+
+- local state ([#451](https://github.com/functionless/eventual/issues/451)) ([cd816f8](https://github.com/functionless/eventual/commit/cd816f834b792b296d0cdd6e041a29db63eb2654))
+
 ## 0.54.1 (2023-09-19)
 
 ### Bug Fixes
