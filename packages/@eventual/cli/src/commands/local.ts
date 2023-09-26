@@ -337,6 +337,11 @@ export const local = (yargs: Argv) =>
       });
       process.on("SIGINT", () => {
         save();
+        process.exit();
+      });
+      process.on("SIGTERM", () => {
+        save();
+        process.exit();
       });
     }
   );
