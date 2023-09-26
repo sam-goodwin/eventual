@@ -20,6 +20,7 @@
     "@opensearch-project/opensearch": "^2.2.1",
     "heap-js": "2.2.0",
     "itty-router": "^2.6.6",
+    "superjson": "^1.13.1",
     "ulidx": "^0.3.0",
     "zod": "^3.21.4"
   },
