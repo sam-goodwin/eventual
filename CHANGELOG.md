@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.55.1 (2023-09-27)
+
+### Bug Fixes
+
+- eventual local does not exit on siginit ([#457](https://github.com/functionless/eventual/issues/457)) ([9b63c4d](https://github.com/functionless/eventual/commit/9b63c4de934f0ec0679966c3618530fed193da83))
+
 # 0.55.0 (2023-09-22)
 
 ### Features
