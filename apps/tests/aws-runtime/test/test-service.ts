@@ -1453,6 +1453,9 @@ export const socket1 = jsonSocket
     },
     $disconnect: async () => undefined,
     $default: async ({ connectionId }, { data }) => {
+      if (!data.id) {
+        throw new Error("Invalid id");
+      }
       console.log("sending signal to", data.id);
       await socketMessageSignal.sendSignal(data.id, {
         ...data,

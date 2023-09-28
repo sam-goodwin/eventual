@@ -27,12 +27,15 @@ const firstProcess = spawn("node", [eventual, "local"], {
 
 // Handler for IPC messages
 firstProcess.on("message", (message) => {
-  console.log(message);
   if (message === "ready") {
     // Run the second script after receiving the "ready" signal
-    const secondProcess = spawn("pnpm", ["test:local"], {
-      env: envVars,
-    });
+    const secondProcess = spawn(
+      "pnpm",
+      ["test:local", ...process.argv.slice(2)],
+      {
+        env: envVars,
+      }
+    );
 
     secondProcess.stdout.on("data", (data) => {
       console.log(`test:local stdout: ${data}`);
@@ -70,4 +73,8 @@ firstProcess.on("close", (code) => {
     console.log(`eventual:local process exited with code ${code}`);
     process.exit(code);
   }
+});
+
+process.on("exit", () => {
+  firstProcess.kill();
 });

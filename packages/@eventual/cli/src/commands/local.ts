@@ -223,18 +223,20 @@ export const local = (yargs: Argv) =>
         const wss = new WebSocketServer({ noServer: true });
 
         server.on("upgrade", (request, socket, head) => {
-          if (request.url?.startsWith("/__ws/")) {
-            const [, , socketName] = request.url.split("/");
+          if (!request.url) {
+            socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+            socket.destroy();
+          }
+          const url = new URL(request.url!, `http://${request.headers.host}`);
+          if (url.pathname?.startsWith("/__ws/")) {
+            const [, , socketName] = url.pathname.split("/");
             if (!socketName) {
               socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
               socket.destroy();
               return;
             }
             const query: SocketQuery = {};
-            new URL(
-              request.url,
-              `http://${request.headers.host}`
-            ).searchParams.forEach((value, name) => (query[name] = value));
+            url.searchParams.forEach((value, name) => (query[name] = value));
             const headers = Object.fromEntries(
               Object.entries(request.headers).map(([name, value]) => [
                 name,
@@ -293,6 +295,9 @@ export const local = (yargs: Argv) =>
                   if (res && res.message) {
                     ws.send(res.message);
                   }
+                })
+                .catch((err) => {
+                  console.error("Error sending socket message", err);
                 });
             });
             ws.on("close", () => {
