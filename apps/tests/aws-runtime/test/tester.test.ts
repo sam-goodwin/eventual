@@ -508,9 +508,6 @@ function setupWS(executionId: string, ws: WebSocket) {
           );
         } else if (event.type === "data") {
           v = event.v;
-        } else {
-          console.log("unexpected event", event);
-          reject(event);
         }
       } catch (err) {
         console.error(err);
