@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.55.2 (2023-09-28)
+
+### Bug Fixes
+
+- socket message throw ([#459](https://github.com/functionless/eventual/issues/459)) ([75e2151](https://github.com/functionless/eventual/commit/75e21512c6c661808b3897b0dab3b1de09cddeaa))
+
 ## 0.55.1 (2023-09-27)
 
 ### Bug Fixes
