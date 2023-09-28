@@ -33,6 +33,9 @@ interface ObjectData extends PutBucketOptions {
 
 type Buckets = Record<string, Record<string, ObjectData>>;
 
+const META_SUFFIX = "/##meta";
+const OBJECT_SUFFIX = "/##object";
+
 export class LocalBucketStore implements BucketStore, LocalSerializable {
   constructor(
     private props: LocalBucketStoreProps,
@@ -47,14 +50,14 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
           const { body, ...meta } = value;
           return [
             [
-              key,
+              `${key}${OBJECT_SUFFIX}`,
               Buffer.from(
                 typeof value.body === "string"
                   ? JSON.stringify(value.body)
                   : value.body
               ),
             ],
-            [`${key}##meta`, Buffer.from(JSON.stringify(meta))],
+            [`${key}${META_SUFFIX}`, Buffer.from(JSON.stringify(meta))],
           ];
         })
       )
@@ -68,18 +71,20 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
     if (!data) {
       return new LocalBucketStore(props);
     }
-    const objectBody = Object.entries(data).filter(
-      ([name]) => !name.endsWith("##meta")
+    const objectBody = Object.entries(data).filter(([name]) =>
+      name.endsWith(OBJECT_SUFFIX)
     );
     const buckets: Buckets = {};
-    objectBody.forEach(([key, value]) => {
+    objectBody.forEach(([objKey, value]) => {
+      const suffixIndex = objKey.lastIndexOf(OBJECT_SUFFIX);
+      const key = objKey.substring(0, suffixIndex);
       const [bucketName, ...objectKeyParts] = key.split("/") as [
         string,
         ...string[]
       ];
       const objectKey = objectKeyParts.join("/");
       const bucket = (buckets[bucketName] ??= {});
-      const metaData = data[`${key}##meta`];
+      const metaData = data[`${key}${META_SUFFIX}`];
       const meta: Omit<ObjectData, "body"> = metaData
         ? JSON.parse(metaData.toString("utf-8"))
         : { contentLength: 0, etag: "" };
