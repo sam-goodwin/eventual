@@ -20,7 +20,7 @@ const testLocal = process.env.TEST_LOCAL;
 
 const serviceClient = testLocal
   ? new HttpEventualClient({
-      serviceUrl: "http://localhost:3111",
+      serviceUrl: serviceUrl(),
     })
   : new AWSHttpEventualClient({
       serviceUrl: serviceUrl(),

@@ -484,6 +484,14 @@ function setupWS(executionId: string, ws: WebSocket) {
       reject(err);
     });
     ws.on("message", (data) => {
+      // test: invalid call, should not crash the server
+      ws.send(
+        JSON.stringify({
+          id: "",
+          v: 0,
+        } satisfies SocketMessage)
+      );
+
       try {
         console.log(n, "message");
         const d = (data as Buffer).toString("utf8");

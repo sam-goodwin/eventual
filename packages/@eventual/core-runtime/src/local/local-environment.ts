@@ -23,11 +23,11 @@ import {
 } from "../utils.js";
 import {
   LocalContainer,
-  type LocalEnvConnector,
-  type LocalEvent,
   isLocalEmittedEvents,
   isLocalEntityStreamEvent,
   isLocalQueuePollEvent,
+  type LocalEnvConnector,
+  type LocalEvent,
 } from "./local-container.js";
 import type { PersistanceStore } from "./local-persistance-store.js";
 import { TimeController } from "./time-controller.js";
