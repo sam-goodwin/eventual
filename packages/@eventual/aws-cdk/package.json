@@ -1,6 +1,6 @@
 {
   "name": "@eventual/aws-cdk",
-  "version": "0.55.2",
+  "version": "0.55.3",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {

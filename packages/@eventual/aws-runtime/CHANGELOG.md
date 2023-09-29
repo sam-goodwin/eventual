@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.55.3 (2023-09-29)
+
+### Bug Fixes
+
+- bucket local persistence ([#460](https://github.com/functionless/eventual/issues/460)) ([e278eff](https://github.com/functionless/eventual/commit/e278eff1da787dae7e1375a3b0e3e14cb9e5f07a))
+
 ## 0.55.2 (2023-09-28)
 
 ### Bug Fixes
