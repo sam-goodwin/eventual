@@ -81,7 +81,9 @@ export class LocalPersistanceStore implements PersistanceStore {
         Object.entries(serialized).forEach(([fileName, data]) => {
           pathsToDelete.delete(path.join(storePath, fileName));
           const entryPath = path.join(storePath, fileName);
-          mkdirSync(path.dirname(entryPath), { recursive: true });
+          if (entryPath !== storePath) {
+            mkdirSync(path.dirname(entryPath), { recursive: true });
+          }
           writeFileSync(entryPath, data);
         });
         pathsToDelete.forEach((p) => rmSync(p));
