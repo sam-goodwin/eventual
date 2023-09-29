@@ -26,6 +26,16 @@ describe("persist", () => {
     });
     await bucketStore.put("bucket", "key/key2", Buffer.from("value2"));
     await bucketStore.put("bucket", "key2", Buffer.from("value3"));
+    await bucketStore.put(
+      "bucket",
+      "key2.something.json",
+      Buffer.from('{"key": "value"}')
+    );
+    await bucketStore.put(
+      "bucket",
+      "key3--something.json",
+      Buffer.from("value5")
+    );
 
     localPersistance.save();
   });
@@ -37,6 +47,8 @@ describe("persist", () => {
         data
       )
     );
+
+    console.log(bucketStore.serialize());
 
     await expect(
       bucketStore.get("bucket", "key").then((v) => v?.getBodyString())
@@ -50,5 +62,15 @@ describe("persist", () => {
     await expect(
       bucketStore.get("bucket", "key2").then((v) => v?.getBodyString())
     ).resolves.toEqual("value3");
+    await expect(
+      bucketStore
+        .get("bucket", "key2.something.json")
+        .then((v) => v?.getBodyString())
+    ).resolves.toEqual('{"key": "value"}');
+    await expect(
+      bucketStore
+        .get("bucket", "key3--something.json")
+        .then((v) => v?.getBodyString())
+    ).resolves.toEqual("value5");
   });
 });

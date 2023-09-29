@@ -33,8 +33,7 @@ interface ObjectData extends PutBucketOptions {
 
 type Buckets = Record<string, Record<string, ObjectData>>;
 
-const META_SUFFIX = "/##meta";
-const OBJECT_SUFFIX = "/##object";
+const META_SUFFIX = ".eventual.meta.json";
 
 export class LocalBucketStore implements BucketStore, LocalSerializable {
   constructor(
@@ -46,18 +45,24 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
     return Object.fromEntries(
       Object.entries(this.buckets).flatMap(([bucketName, value]) =>
         Object.entries(value).flatMap(([objectKey, value]) => {
-          const key = `${bucketName}/${objectKey}`;
+          const [prefix, ...extensionParts] = objectKey.split(".");
+          const randomizer = shortHash(objectKey);
+          // [bucket]/[prefix]-hash.[ext]
+          const key = `${bucketName}/${prefix}-${randomizer}${
+            extensionParts.length > 0 ? `.${extensionParts.join(".")}` : ""
+          }`;
+          const metaKey = `${bucketName}/${prefix}-${randomizer}${META_SUFFIX}`;
           const { body, ...meta } = value;
           return [
             [
-              `${key}${OBJECT_SUFFIX}`,
+              key,
               Buffer.from(
                 typeof value.body === "string"
                   ? JSON.stringify(value.body)
                   : value.body
               ),
             ],
-            [`${key}${META_SUFFIX}`, Buffer.from(JSON.stringify(meta))],
+            [metaKey, Buffer.from(JSON.stringify(meta))],
           ];
         })
       )
@@ -71,24 +76,53 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
     if (!data) {
       return new LocalBucketStore(props);
     }
-    const objectBody = Object.entries(data).filter(([name]) =>
-      name.endsWith(OBJECT_SUFFIX)
+    const objectBody = Object.entries(data).filter(
+      ([name]) => !name.endsWith(META_SUFFIX)
     );
     const buckets: Buckets = {};
     objectBody.forEach(([objKey, value]) => {
-      const suffixIndex = objKey.lastIndexOf(OBJECT_SUFFIX);
-      const key = objKey.substring(0, suffixIndex);
-      const [bucketName, ...objectKeyParts] = key.split("/") as [
+      // Expected object key format: [bucket]/[part1]/[part2]-[randomizer].[ext]
+      const [bucketName, ...pathParts] = objKey.split("/") as [
         string,
         ...string[]
       ];
-      const objectKey = objectKeyParts.join("/");
-      const bucket = (buckets[bucketName] ??= {});
-      const metaData = data[`${key}${META_SUFFIX}`];
-      const meta: Omit<ObjectData, "body"> = metaData
-        ? JSON.parse(metaData.toString("utf-8"))
+
+      // Split the last part into its prefix (before extension) and the extension
+      const [prefix, ...extensionParts] =
+        pathParts[pathParts.length - 1]!.split(".");
+
+      // Extract just the [part2] from the prefix
+      const mainKey = prefix!.substring(0, prefix!.lastIndexOf("-"));
+
+      // Construct the object key without the extension: [part1]/[part2]
+      const keyWithoutExtension = [
+        ...pathParts.slice(0, pathParts.length - 1),
+        mainKey,
+      ].join("/");
+
+      // If there's an extension, add it back to get the full object key
+      const fullObjectKey =
+        extensionParts.length > 0
+          ? `${keyWithoutExtension}.${extensionParts.join(".")}`
+          : keyWithoutExtension;
+
+      // Retrieve bucket and meta data for the object
+      const bucket = buckets[bucketName] || (buckets[bucketName] = {});
+
+      // meta key is the key prefixed with the bucket name and the path without the extension, followed by the meta suffix
+      const metakey = `${[
+        bucketName,
+        ...pathParts.slice(0, pathParts.length - 1),
+        prefix,
+      ].join("/")}${META_SUFFIX}`;
+      const metaDataContent = data[metakey];
+
+      // Parse meta data and construct the final object data
+      const meta: Omit<ObjectData, "body"> = metaDataContent
+        ? JSON.parse(metaDataContent.toString("utf-8"))
         : { contentLength: 0, etag: "" };
-      bucket[objectKey] = {
+
+      bucket[fullObjectKey] = {
         ...meta,
         body: value,
       };
@@ -327,4 +361,14 @@ function getEtag(data: Uint8Array | string) {
   }
 
   return `${md5(Buffer.from(md5Chunks.join(""), "hex"))}-${chunksNumber}`;
+}
+
+function shortHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(16); // Convert the integer to a hex string
 }
