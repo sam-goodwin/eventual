@@ -57,7 +57,6 @@ export function createTransactionWorker(
   );
 
   return async (request) => {
-    console.log(request);
     const transactionName =
       typeof request.transaction === "string"
         ? request.transaction
