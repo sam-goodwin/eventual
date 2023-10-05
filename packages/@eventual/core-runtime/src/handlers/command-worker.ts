@@ -37,7 +37,6 @@ export function createCommandWorker(
   return createEventualWorker(
     { serviceType: ServiceType.CommandWorker, ...deps },
     async (request, context) => {
-      console.debug("request", request);
       try {
         const response = await router.handle(request, context);
         if (response === undefined) {
