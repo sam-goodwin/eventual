@@ -81,8 +81,13 @@ export const logs = (yargs: Argv) =>
         };
 
         do {
-          const fetchResult = await fetchLogs(logFilter, logCursor);
-          logCursor = updateLogCursor(logCursor, fetchResult, follow);
+          try {
+            const fetchResult = await fetchLogs(logFilter, logCursor);
+            logCursor = updateLogCursor(logCursor, fetchResult, follow);
+          } catch (err) {
+            console.error(err);
+            throw err;
+          }
 
           if (follow) {
             spinner.start("Watching logs");

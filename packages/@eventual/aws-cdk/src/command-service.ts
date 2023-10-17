@@ -185,6 +185,7 @@ export class CommandService<Service = any> {
           this.props.build.system.eventualService.systemCommandHandler,
         functionNameSuffix: "system-command",
         serviceName: this.props.serviceName,
+        defaults: { timeout: Duration.seconds(30) },
       }
     );
 
