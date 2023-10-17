@@ -185,6 +185,7 @@ export class CommandService<Service = any> {
           this.props.build.system.eventualService.systemCommandHandler,
         functionNameSuffix: "system-command",
         serviceName: this.props.serviceName,
+        // the logs command is the outlier here. Was often timing out at 3 seconds.
         defaults: { timeout: Duration.seconds(30) },
       }
     );
