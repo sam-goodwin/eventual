@@ -72,7 +72,9 @@ jobs:
           role-duration-seconds: 3600
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
           role-skip-session-tagging: true
+          role-session-name: ${{ github.job	}}
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
   test-local:
@@ -106,7 +108,9 @@ jobs:
           role-duration-seconds: 3600
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
           role-skip-session-tagging: true
+          role-session-name: ${{ github.job	}}
       - name: Run Local Tests
         run: pnpm -r --filter tests-runtime run test:local-start
   test-cli:
@@ -144,7 +148,9 @@ jobs:
           role-duration-seconds: 3600
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
           role-skip-session-tagging: true
+          role-session-name: ${{ github.job	}}
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
   test-create:
