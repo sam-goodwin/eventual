@@ -77,6 +77,8 @@ jobs:
           role-session-name: ${{ github.job	}}
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
+        env:
+          OUTPUTS_FILE: "${{ steps.deployment-output.outputs.download-path }}/outputs.json"
   test-local:
     needs: [deploy-runtime]
     runs-on: ubuntu-latest
