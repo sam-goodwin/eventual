@@ -78,7 +78,7 @@ jobs:
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
         env:
-          OUTPUTS_FILE: "${{ steps.deployment-output.outputs.download-path }}/outputs.json"
+          OUTPUTS_FILE: "./deployment/outputs.json"
   test-local:
     needs: [deploy-runtime]
     runs-on: ubuntu-latest
