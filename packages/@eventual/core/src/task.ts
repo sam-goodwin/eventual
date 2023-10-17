@@ -1,6 +1,9 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
-import type { FunctionRuntimeProps } from "./function-props.js";
+import type {
+  FunctionBundleProps,
+  FunctionRuntimeProps,
+} from "./function-props.js";
 import { sendTaskHeartbeat } from "./heartbeat.js";
 import { CallKind, createCall } from "./internal/calls.js";
 import type {
@@ -76,7 +79,8 @@ export interface TaskInvocationOptions {
  */
 export interface TaskOptions
   extends Omit<TaskInvocationOptions, "timeout">,
-    FunctionRuntimeProps {
+    FunctionRuntimeProps,
+    FunctionBundleProps {
   /**
    * How long the workflow will wait for the task to complete or fail.
    *
