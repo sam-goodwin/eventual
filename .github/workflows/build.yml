@@ -50,6 +50,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
+          aws-region: us-east-1
+          role-duration-seconds: 3600
       - name: Download artifact with variable
         id: deployment-output
         uses: actions/download-artifact@v3
@@ -72,7 +78,6 @@ jobs:
         run: pnpm -r --filter tests-runtime run test:runtime
   test-local:
     needs: [deploy-runtime]
-    concurrency: pr-test-runtime
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -80,6 +85,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
+          aws-region: us-east-1
+          role-duration-seconds: 3600
       - name: Download artifact with variable
         id: deployment-output
         uses: actions/download-artifact@v3
@@ -113,6 +124,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
+          aws-region: us-east-1
+          role-duration-seconds: 3600
       - name: Download artifact with variable
         id: deployment-output
         uses: actions/download-artifact@v3
