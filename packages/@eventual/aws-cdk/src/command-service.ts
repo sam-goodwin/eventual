@@ -33,10 +33,12 @@ import {
 import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
+import { attachPolicy } from "./attach-policy.js";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi, SpecHttpApiProps } from "./constructs/spec-http-api";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
+import { ManagedPolicies } from "./managed-policies.js";
 import { EventualResource } from "./resource.js";
 import { ServiceLocal } from "./service";
 import {
@@ -136,6 +138,9 @@ export class CommandService<Service = any> {
    */
   public readonly serviceCommands: Commands<Service>;
   public readonly systemCommandsHandler: Function;
+
+  private readonly invokeHttpServicePolicy: aws_iam.ManagedPolicy;
+
   private integrationRole: Role;
 
   /**
@@ -156,8 +161,19 @@ export class CommandService<Service = any> {
       props.eventualServiceScope,
       "Commands"
     );
+
     // Service => Commands
     const commandsScope = new Construct(props.serviceScope, "Commands");
+
+    const policies = new ManagedPolicies(
+      commandsSystemScope,
+      "Policies",
+      props
+    );
+    this.invokeHttpServicePolicy = policies.createManagedPolicy(
+      "invoke-http-service-policy"
+    );
+    this.grantInvokeHttpServiceApiInline(this.invokeHttpServicePolicy);
 
     this.serviceCommands = synthesizeAPI(
       commandsScope,
@@ -196,19 +212,24 @@ export class CommandService<Service = any> {
       assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
     });
 
-    this.integrationRole.addToPrincipalPolicy(
-      new PolicyStatement({
-        actions: ["lambda:InvokeFunction"],
-        resources: [
-          serviceFunctionArn(
-            this.props.serviceName,
-            Stack.of(this.props.systemScope),
-            "*",
-            false
-          ),
-        ],
-      })
-    );
+    policies.createManagedPolicy("integration-policy", {
+      description:
+        "Allows API Gateway to invoke the service's Lambda Functions",
+      roles: [this.integrationRole],
+      statements: [
+        new PolicyStatement({
+          actions: ["lambda:InvokeFunction"],
+          resources: [
+            serviceFunctionArn(
+              this.props.serviceName,
+              Stack.of(this.props.systemScope),
+              commandServiceFunctionSuffix("*"),
+              false
+            ),
+          ],
+        }),
+      ],
+    });
 
     this.specification = createSpecification();
 
@@ -420,8 +441,12 @@ export class CommandService<Service = any> {
     }
   }
 
+  public grantInvokeHttpServiceApi(grantee: IGrantable) {
+    attachPolicy(grantee, this.invokeHttpServicePolicy);
+  }
+
   @grant()
-  public grantInvokeHttpServiceApi(grantable: IGrantable) {
+  public grantInvokeHttpServiceApiInline(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()
     );

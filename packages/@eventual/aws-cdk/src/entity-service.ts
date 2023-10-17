@@ -22,7 +22,12 @@ import {
   StreamViewType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import {
+  IGrantable,
+  IPrincipal,
+  ManagedPolicy,
+  PolicyStatement,
+} from "aws-cdk-lib/aws-iam";
 import {
   FilterCriteria,
   FilterRule,
@@ -43,6 +48,8 @@ import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
 import { EventualResource } from "./resource.js";
+import { attachPolicy } from "./attach-policy.js";
+import { ManagedPolicies } from "./managed-policies.js";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -85,10 +92,13 @@ export interface EntityServiceProps<Service>
 }
 
 export class EntityService<Service> {
-  public entities: ServiceEntities<Service>;
-  public entityStreams: ServiceEntityStreams<Service>;
-  public transactions: ServiceTransactions<Service>;
-  public transactionWorker?: Function;
+  public readonly entities: ServiceEntities<Service>;
+  public readonly entityStreams: ServiceEntityStreams<Service>;
+  public readonly transactions: ServiceTransactions<Service>;
+  public readonly transactionWorker?: Function;
+
+  private readonly invokeTransactionsPolicy: ManagedPolicy;
+  private readonly readWritePolicy: ManagedPolicy;
 
   constructor(private props: EntityServiceProps<Service>) {
     const entitiesConstruct = new Construct(props.serviceScope, "Entities");
@@ -143,6 +153,24 @@ export class EntityService<Service> {
         this.transactionWorker
       );
     }
+
+    const policies = new ManagedPolicies(
+      entityServiceConstruct,
+      "Policies",
+      props
+    );
+    this.invokeTransactionsPolicy = policies.createManagedPolicy(
+      "invoke-http-service-policy",
+      {
+        description:
+          "Allows the service to invoke the Entity Transaction worker",
+      }
+    );
+    this.grantInvokeTransactionsInline(this.invokeTransactionsPolicy);
+    this.readWritePolicy = policies.createManagedPolicy("read-write-data", {
+      description: "Allows access to read/write entity data stored in DynamoDB",
+    });
+    this.grantReadWriteEntityTablesInline(this.readWritePolicy);
   }
 
   public configureReadWriteEntityTable(func: Function) {
@@ -154,6 +182,10 @@ export class EntityService<Service> {
   }
 
   public grantReadWriteEntityTables(grantee: IGrantable) {
+    attachPolicy(grantee, this.readWritePolicy);
+  }
+
+  public grantReadWriteEntityTablesInline(grantee: IGrantable) {
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
@@ -189,6 +221,10 @@ export class EntityService<Service> {
   }
 
   public grantInvokeTransactions(grantee: IGrantable) {
+    attachPolicy(grantee, this.invokeTransactionsPolicy);
+  }
+
+  public grantInvokeTransactionsInline(grantee: IGrantable) {
     this.transactionWorker?.grantInvoke(grantee);
   }
 
