@@ -16,8 +16,7 @@ jobs:
   test-runtime:
     needs: [build]
     concurrency: pr-test-runtime
-    runs-on:
-      labels: ubuntu-latest-m
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
@@ -49,12 +48,28 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
           role-skip-session-tagging: true
-      - name: Run Local Tests
-        run: pnpm -r --filter tests-runtime run test:local-start
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
+      - name: Run Local Tests
+        run: pnpm -r --filter tests-runtime run test:local-start
+  test-cli:
+    needs: [test-runtime]
+    runs-on:
+      labels: ubuntu-latest-m
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
+          aws-region: us-east-1
+          role-duration-seconds: 3600
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
+    env:
+      NODE_OPTIONS: "--max-old-space-size=12096"
+      CI: "true"
   test-create:
     needs: [build]
     runs-on: ubuntu-latest
