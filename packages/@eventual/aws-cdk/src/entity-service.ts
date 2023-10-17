@@ -97,7 +97,7 @@ export class EntityService<Service> {
   public readonly transactions: ServiceTransactions<Service>;
   public readonly transactionWorker?: Function;
 
-  private readonly invokeTransactionsPolicy: ManagedPolicy;
+  private readonly invokeTransactionsPolicy: ManagedPolicy | undefined;
   private readonly readWritePolicy: ManagedPolicy;
 
   constructor(private props: EntityServiceProps<Service>) {
@@ -106,6 +106,26 @@ export class EntityService<Service> {
       props.systemScope,
       "EntityService"
     );
+
+    const policies = new ManagedPolicies(
+      entityServiceConstruct,
+      "Policies",
+      props
+    );
+    if (this.transactionWorker) {
+      this.invokeTransactionsPolicy = policies.createManagedPolicy(
+        "invoke-transactions-policy",
+        {
+          description:
+            "Allows the service to invoke the Entity Transaction worker",
+        }
+      );
+      this.grantInvokeTransactionsInline(this.invokeTransactionsPolicy);
+    }
+    this.readWritePolicy = policies.createManagedPolicy("read-write-data", {
+      description: "Allows access to read/write entity data stored in DynamoDB",
+    });
+    this.grantReadWriteEntityTablesInline(this.readWritePolicy);
 
     this.entities = Object.fromEntries(
       props.build.entities.entities.map((d) => [
@@ -153,24 +173,6 @@ export class EntityService<Service> {
         this.transactionWorker
       );
     }
-
-    const policies = new ManagedPolicies(
-      entityServiceConstruct,
-      "Policies",
-      props
-    );
-    this.invokeTransactionsPolicy = policies.createManagedPolicy(
-      "invoke-http-service-policy",
-      {
-        description:
-          "Allows the service to invoke the Entity Transaction worker",
-      }
-    );
-    this.grantInvokeTransactionsInline(this.invokeTransactionsPolicy);
-    this.readWritePolicy = policies.createManagedPolicy("read-write-data", {
-      description: "Allows access to read/write entity data stored in DynamoDB",
-    });
-    this.grantReadWriteEntityTablesInline(this.readWritePolicy);
   }
 
   public configureReadWriteEntityTable(func: Function) {
@@ -221,7 +223,9 @@ export class EntityService<Service> {
   }
 
   public grantInvokeTransactions(grantee: IGrantable) {
-    attachPolicy(grantee, this.invokeTransactionsPolicy);
+    if (this.invokeTransactionsPolicy) {
+      attachPolicy(grantee, this.invokeTransactionsPolicy);
+    }
   }
 
   public grantInvokeTransactionsInline(grantee: IGrantable) {

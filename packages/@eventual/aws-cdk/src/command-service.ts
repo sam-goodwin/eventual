@@ -162,18 +162,12 @@ export class CommandService<Service = any> {
       "Commands"
     );
 
+    this.integrationRole = new Role(commandsSystemScope, "IntegrationRole", {
+      assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+    });
+
     // Service => Commands
     const commandsScope = new Construct(props.serviceScope, "Commands");
-
-    const policies = new ManagedPolicies(
-      commandsSystemScope,
-      "Policies",
-      props
-    );
-    this.invokeHttpServicePolicy = policies.createManagedPolicy(
-      "invoke-http-service-policy"
-    );
-    this.grantInvokeHttpServiceApiInline(this.invokeHttpServicePolicy);
 
     this.serviceCommands = synthesizeAPI(
       commandsScope,
@@ -208,9 +202,25 @@ export class CommandService<Service = any> {
       this.configureSystemCommandHandler();
     });
 
-    this.integrationRole = new Role(commandsSystemScope, "IntegrationRole", {
-      assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+    this.specification = createSpecification();
+
+    // Service => Gateway
+    this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
+      apiDefinition: ApiDefinition.fromInline(this.specification),
+      ...props.apiOverrides,
     });
+
+    const policies = new ManagedPolicies(
+      commandsSystemScope,
+      "Policies",
+      props
+    );
+    this.invokeHttpServicePolicy = policies.createManagedPolicy(
+      "invoke-http-service-policy"
+    );
+    this.grantInvokeHttpServiceApiInline(
+      this.invokeHttpServicePolicy.grantPrincipal
+    );
 
     policies.createManagedPolicy("integration-policy", {
       description:
@@ -229,14 +239,6 @@ export class CommandService<Service = any> {
           ],
         }),
       ],
-    });
-
-    this.specification = createSpecification();
-
-    // Service => Gateway
-    this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
-      apiDefinition: ApiDefinition.fromInline(this.specification),
-      ...props.apiOverrides,
     });
 
     this.gateway.node.addDependency(this.integrationRole);
@@ -447,9 +449,10 @@ export class CommandService<Service = any> {
 
   @grant()
   public grantInvokeHttpServiceApiInline(grantable: IGrantable) {
-    grantable.grantPrincipal.addToPrincipalPolicy(
+    const result = grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()
     );
+    return result;
   }
 
   private executeApiPolicyStatement() {

@@ -309,6 +309,9 @@ importers:
       aws-cdk-lib:
         specifier: 2.80.0
         version: 2.80.0(constructs@10.1.154)
+      cdk-nag:
+        specifier: ^2.27.164
+        version: 2.27.164(aws-cdk-lib@2.80.0)(constructs@10.1.154)
       constructs:
         specifier: 10.1.154
         version: 10.1.154
@@ -997,7 +1000,7 @@ importers:
         version: 2.80.0
       create-sst:
         specifier: latest
-        version: 2.25.2
+        version: 2.21.4
     devDependencies:
       '@eventual/project':
         specifier: workspace:^
@@ -6976,6 +6979,16 @@ packages:
     resolution: {integrity: sha512-mzDSXIPaFwVDvZAHqZ9VlbyF4yyXRuX6IvB06WvPYkqJVO24kX1PPhv9bfpKNFZyxYFmmgo03HUiD8iklmJYRQ==}
     engines: {node: '>= 0.8.0'}
 
+  /cdk-nag@2.27.164(aws-cdk-lib@2.80.0)(constructs@10.1.154):
+    resolution: {integrity: sha512-+T5u/diNLWdjDqXKMsRcUen40fquMhSSNIeYaNUBQpE97xztZPyjfK8UBaYobTVL1pvuavMTdIdx5CkNTpvsSA==}
+    peerDependencies:
+      aws-cdk-lib: ^2.78.0
+      constructs: ^10.0.5
+    dependencies:
+      aws-cdk-lib: 2.80.0(constructs@10.1.154)
+      constructs: 10.1.154
+    dev: false
+
   /chai@4.3.7:
     resolution: {integrity: sha512-HLnAzZ2iupm25PlN0xFreAlBA5zaBSv3og0DdeGA4Ar6h6rJ3A0rolRUKJhSF2V10GZKDgWF/VmAEsNWjCRB+A==}
     engines: {node: '>=4'}
@@ -7438,8 +7451,8 @@ packages:
   /create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  /create-sst@2.25.2:
-    resolution: {integrity: sha512-dlguHq0Mo71QLlcoiBo57FdfT/eG+sXhifxYY7wX8m/+WcEr8eWYHVqGhhD+odpEsNyZzRFN4PNMqkb6slISbQ==}
+  /create-sst@2.21.4:
+    resolution: {integrity: sha512-FLzaUd4Y34QV7l+Gi6F9bZfQW5mE2EL2UXLZHPcKLh5vPVgceDix3Oa9NfT78GeajJQzc+/dOv2nzsV4NFGmog==}
     hasBin: true
     dependencies:
       cli-spinners: 2.9.0

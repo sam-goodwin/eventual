@@ -25,6 +25,7 @@
     "test:local": "pnpm -r --filter tests-runtime run test:local-start",
     "typecheck": "tsc -b",
     "watch": "tsc -b -w",
+    "nag": "pnpm --filter tests-cdk run nag",
     "export": "turbo run export"
   },
   "devDependencies": {

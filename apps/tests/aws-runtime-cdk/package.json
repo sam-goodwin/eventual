@@ -5,11 +5,13 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "nag": "ts-node-esm ./scripts/report-violations.ts"
   },
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.80.0-alpha.0",
     "aws-cdk-lib": "2.80.0",
+    "cdk-nag": "^2.27.164",
     "constructs": "10.1.154"
   },
   "devDependencies": {
