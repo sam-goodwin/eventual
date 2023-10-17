@@ -105,6 +105,7 @@ export const logs = (yargs: Argv) =>
               ? new Date(logCursor.startTime).toISOString()
               : undefined,
             workflowName: logFilter.workflowName,
+            maxResults: 1000,
           });
 
           const functionEvents = output.events ?? [];

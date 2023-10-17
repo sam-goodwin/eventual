@@ -56,6 +56,9 @@ jobs:
     needs: [test-runtime]
     runs-on:
       labels: ubuntu-latest-m
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
