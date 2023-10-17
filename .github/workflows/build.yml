@@ -3,7 +3,7 @@ on:
   pull_request: {}
   workflow_call: {}
 jobs:
-  build:
+  unit-tests:
     runs-on: ubuntu-latest
     env:
       CI: "true"
@@ -44,6 +44,9 @@ jobs:
     needs: [deploy-runtime]
     concurrency: pr-test-runtime
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
@@ -51,8 +54,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
+          path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -79,8 +83,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
+          path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -110,8 +115,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
+          path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -125,7 +131,6 @@ jobs:
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
   test-create:
-    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
