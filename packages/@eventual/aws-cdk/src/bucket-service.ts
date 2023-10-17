@@ -13,6 +13,7 @@ import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { CorsOptions } from "./command-service";
@@ -23,6 +24,7 @@ import {
 import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
 import { EventualResource } from "./resource";
+import { attachPolicy } from "./attach-policy";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<
@@ -68,6 +70,8 @@ export class BucketService<Service> {
   public buckets: ServiceBuckets<Service>;
   public bucketHandlers: ServiceBucketNotificationHandlers<Service>;
 
+  private readonly readWritePolicy: iam.ManagedPolicy;
+
   constructor(private props: BucketServiceProps<Service>) {
     const bucketsScope = new Construct(props.serviceScope, "Buckets");
 
@@ -90,6 +94,16 @@ export class BucketService<Service> {
         ...ent.handlers,
       };
     }, {}) as ServiceBucketNotificationHandlers<Service>;
+
+    const awsRegion = Stack.of(bucketsScope).region;
+    this.readWritePolicy = new iam.ManagedPolicy(
+      bucketsScope,
+      "ReadWriteAccess",
+      {
+        managedPolicyName: `${props.serviceName}-read-access-${awsRegion}`,
+      }
+    );
+    this.grantReadWriteBucketsInline(this.readWritePolicy);
   }
 
   public configureReadWriteBuckets(func: Function) {
@@ -98,6 +112,10 @@ export class BucketService<Service> {
   }
 
   public grantReadWriteBuckets(grantee: IGrantable) {
+    attachPolicy(grantee, this.readWritePolicy);
+  }
+
+  public grantReadWriteBucketsInline(grantee: IGrantable) {
     // find any bucket names that were provided by the service and not computed
     const bucketNameOverrides = this.props.bucketOverrides
       ? Object.values(
