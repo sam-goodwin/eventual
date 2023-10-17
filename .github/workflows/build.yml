@@ -56,7 +56,9 @@ jobs:
           name: deployment-output
           path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("/home/runner/work/eventual/eventual/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "$(ls)"
+          echo "$(cwd)"
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -85,7 +87,7 @@ jobs:
           name: deployment-output
           path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("/home/runner/work/eventual/eventual/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -117,7 +119,7 @@ jobs:
           name: deployment-output
           path: ./output.json
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("/home/runner/work/eventual/eventual/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
