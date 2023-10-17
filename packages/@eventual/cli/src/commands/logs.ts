@@ -110,16 +110,15 @@ export const logs = (yargs: Argv) =>
 
           const functionEvents = output.events ?? [];
 
-          // Print out the interleaved logs
           if (functionEvents.length) {
             spinner.stop();
             functionEvents.forEach((ev) => {
-              console.log(
+              process.stdout.write(
                 `${
                   logFilter.executionId ? "" : `[${chalk.blue(ev.source)}] `
                 }${chalk.red(new Date(ev.time!).toLocaleString())} ${
                   ev.message
-                }`
+                }\n`
               );
             });
           }
