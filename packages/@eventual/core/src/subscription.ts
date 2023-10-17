@@ -1,5 +1,8 @@
 import type { Event, EventPayload } from "./event.js";
-import type { FunctionRuntimeProps } from "./function-props.js";
+import type {
+  FunctionBundleProps,
+  FunctionRuntimeProps,
+} from "./function-props.js";
 import { registerEventualResource } from "./internal/resources.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
@@ -22,7 +25,9 @@ export type SubscriptionHandler<E extends EventPayload> = (
 /**
  * Runtime Props for an Event Handler.
  */
-export interface SubscriptionRuntimeProps extends FunctionRuntimeProps {
+export interface SubscriptionRuntimeProps
+  extends FunctionRuntimeProps,
+    FunctionBundleProps {
   /**
    * Number of times an event can be re-driven to the Event Handler before considering
    * the Event as failed to process and sending it to the Service Dead Letter Queue.

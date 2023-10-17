@@ -14,3 +14,7 @@ export interface FunctionRuntimeProps {
    */
   handlerTimeout?: DurationSchedule;
 }
+
+export interface FunctionBundleProps {
+  externalModules?: string[];
+}

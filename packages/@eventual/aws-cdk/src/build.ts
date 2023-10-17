@@ -225,7 +225,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return await Promise.all(
       commandSpecs.map(async (spec) => {
         return {
-          entry: await bundleFile(spec, "command", "command-worker", spec.name),
+          entry: await bundleFile(
+            spec,
+            "command",
+            "command-worker",
+            spec.name,
+            spec.externalModules
+          ),
           spec,
         };
       })
@@ -240,7 +246,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             spec,
             "subscription",
             "subscription-worker",
-            spec.name
+            spec.name,
+            spec.props?.externalModules
           ),
           spec,
         };
@@ -252,7 +259,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
-          entry: await bundleFile(spec, "task", "task-worker", spec.name),
+          entry: await bundleFile(
+            spec,
+            "task",
+            "task-worker",
+            spec.name,
+            spec.options?.externalModules
+          ),
           spec,
         };
       })
@@ -267,7 +280,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             spec,
             "entity-streams",
             "entity-stream-worker",
-            spec.name
+            spec.name,
+            spec.options?.externalModules
           ),
           spec,
         };
@@ -283,7 +297,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             spec,
             "bucket-handlers",
             "bucket-handler-worker",
-            spec.name
+            spec.name,
+            spec.options?.externalModules
           ),
           spec,
         };
@@ -297,7 +312,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         spec.handler,
         "queue-handlers",
         "queue-handler-worker",
-        spec.name
+        spec.name,
+        spec.handler.options?.externalModules
       ),
       spec: spec.handler,
     };
@@ -307,7 +323,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
-          entry: await bundleFile(spec, "socket", "socket-worker", spec.name),
+          entry: await bundleFile(
+            spec,
+            "socket",
+            "socket-worker",
+            spec.name,
+            spec.externalModules
+          ),
           spec,
         };
       })
@@ -315,12 +337,20 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   }
 
   async function bundleFile<
-    Spec extends CommandSpec | SubscriptionSpec | TaskSpec | QueueHandlerSpec
+    Spec extends
+      | CommandSpec
+      | SubscriptionSpec
+      | TaskSpec
+      | QueueHandlerSpec
+      | SocketSpec
+      | EntityStreamSpec
+      | BucketNotificationHandlerSpec
   >(
     spec: Spec,
     pathPrefix: string,
     entryPoint: (typeof WORKER_ENTRY_POINTS)[number],
-    name: string
+    name: string,
+    externalModules?: string[]
   ): Promise<string> {
     return spec.sourceLocation?.fileName
       ? // we know the source location of the command, so individually build it from that
@@ -333,6 +363,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           exportName: spec.sourceLocation.exportName,
           injectedEntry: spec.sourceLocation.fileName,
           injectedServiceSpec: specPath,
+          external: externalModules,
         })
       : monolithFunctions[entryPoint];
   }
