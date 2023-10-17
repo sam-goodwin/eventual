@@ -51,14 +51,15 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
       - name: Download artifact with variable
-        uses: actions/download-artifact@v2
+        id: deployment-output
+        uses: actions/download-artifact@v3
         with:
           name: deployment-output
           path: deployment
       - run: |
-          echo "$(ls)"
-          echo "$(cwd)"
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "${{ steps.deployment-output.outputs.download-path }}"
+          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -82,12 +83,15 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
       - name: Download artifact with variable
-        uses: actions/download-artifact@v2
+        id: deployment-output
+        uses: actions/download-artifact@v3
         with:
           name: deployment-output
           path: deployment
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "${{ steps.deployment-output.outputs.download-path }}"
+          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -114,12 +118,15 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
       - name: Download artifact with variable
-        uses: actions/download-artifact@v2
+        id: deployment-output
+        uses: actions/download-artifact@v3
         with:
           name: deployment-output
           path: deployment
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "${{ steps.deployment-output.outputs.download-path }}"
+          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
