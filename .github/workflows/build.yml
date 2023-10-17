@@ -54,11 +54,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
-          path: ./output.json
+          path: deployment
       - run: |
           echo "$(ls)"
           echo "$(cwd)"
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -85,9 +85,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
-          path: ./output.json
+          path: deployment
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -117,9 +117,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: deployment-output
-          path: ./output.json
+          path: deployment
       - run: |
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./deployment/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
