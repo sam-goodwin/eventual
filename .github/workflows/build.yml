@@ -36,7 +36,7 @@ jobs:
         env:
           EVENTUAL_LOCAL: "1"
       - name: Upload deployment output as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: deployment-output
           path: ./apps/tests/aws-runtime/cdk.out/outputs.json
@@ -57,9 +57,7 @@ jobs:
           name: deployment-output
           path: deployment
       - run: |
-          echo "${{ steps.deployment-output.outputs.download-path }}"
-          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -89,9 +87,7 @@ jobs:
           name: deployment-output
           path: deployment
       - run: |
-          echo "${{ steps.deployment-output.outputs.download-path }}"
-          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
@@ -124,9 +120,7 @@ jobs:
           name: deployment-output
           path: deployment
       - run: |
-          echo "${{ steps.deployment-output.outputs.download-path }}"
-          echo $(ls "${{ steps.deployment-output.outputs.download-path }}")
-          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/output.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("${{ steps.deployment-output.outputs.download-path }}/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
