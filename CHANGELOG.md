@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.55.5 (2023-10-18)
+
+### Bug Fixes
+
+- cli tests randomly fail ([#469](https://github.com/functionless/eventual/issues/469)) ([9e89cd5](https://github.com/functionless/eventual/commit/9e89cd5e5f96e9e2e8ca987c4dc29caecc49807a))
+
 ## 0.55.4 (2023-10-05)
 
 **Note:** Version bump only for package eventual-monorepo
