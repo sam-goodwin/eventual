@@ -7,7 +7,10 @@ import type {
   EntityCompositeKeyPart,
   StreamQueryKey,
 } from "../entity/key.js";
-import type { FunctionRuntimeProps } from "../function-props.js";
+import type {
+  FunctionBundleProps,
+  FunctionRuntimeProps,
+} from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
 import type { DurationSchedule } from "../schedule.js";
@@ -106,7 +109,8 @@ export interface CommandSpec<
   Input = undefined,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
-> extends FunctionRuntimeProps {
+> extends FunctionRuntimeProps,
+    FunctionBundleProps {
   name: Name;
   /**
    * Long description of the API, written to the description field of the generated open API spec.
@@ -190,7 +194,9 @@ export interface IndexSpec extends opensearchtypes.IndicesIndexState {
 
 export type BucketNotificationEventType = "put" | "copy" | "delete";
 
-export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
+export interface BucketNotificationHandlerOptions
+  extends FunctionRuntimeProps,
+    FunctionBundleProps {
   /**
    * A list of operations to be send to the stream.
    *
@@ -231,7 +237,8 @@ export interface EntityStreamOptions<
     | undefined,
   Operations extends EntityStreamOperation[] = EntityStreamOperation[],
   IncludeOld extends boolean = false
-> extends FunctionRuntimeProps {
+> extends FunctionRuntimeProps,
+    FunctionBundleProps {
   /**
    * A list of operations to be send to the stream.
    *
@@ -295,7 +302,9 @@ export interface TransactionSpec<Name extends string = string> {
 /**
  * TODO: Support filter criteria.
  */
-export interface QueueHandlerOptions extends FunctionRuntimeProps {
+export interface QueueHandlerOptions
+  extends FunctionRuntimeProps,
+    FunctionBundleProps {
   /**
    * Max batch size.
    *
@@ -329,7 +338,8 @@ export interface QueueSpec<Name extends string = string> {
 }
 
 export interface SocketSpec<Name extends string = string>
-  extends FunctionRuntimeProps {
+  extends FunctionRuntimeProps,
+    FunctionBundleProps {
   name: Name;
   sourceLocation?: SourceLocation;
 }

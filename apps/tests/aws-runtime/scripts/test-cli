@@ -14,6 +14,8 @@ npx eventual start workflow sleepy -f
 
 npx eventual list executions
 
+mkdir -p .eventual
+
 npx eventual list executions --workflow sleepy --json > .eventual/out.json
 
 execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8")).executions[0].id')

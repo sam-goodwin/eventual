@@ -84,7 +84,7 @@ export class ChaosExtension extends Construct {
   /**
    * Grant the ability to read and write the SSM parameter used by the chaos extension.
    *
-   * This is required to use the {@link SSMChaosClient}.
+   * This is required to use the {@link ChaosClient}.
    */
   public grantReadWrite(grantable: IGrantable) {
     this.ssm.grantRead(grantable);
