@@ -16,6 +16,7 @@ import {
   Effect,
   IGrantable,
   IPrincipal,
+  ManagedPolicyProps,
   PolicyStatement,
   Role,
   UnknownPrincipal,
@@ -56,6 +57,7 @@ import {
 } from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
+import { ManagedPolicies } from "./managed-policies";
 import { lazyInterface } from "./proxy-construct";
 import {
   IQueue,
@@ -299,6 +301,8 @@ export class Service<S = any> extends Construct {
 
   public readonly searchService: SearchService<S> | undefined;
 
+  public readonly policies: ManagedPolicies;
+
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
@@ -380,6 +384,11 @@ export class Service<S = any> extends Construct {
 
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
+    this.policies = new ManagedPolicies(
+      this,
+      "Policies",
+      serviceConstructProps
+    );
 
     if (build.search.indices.length > 0) {
       if (props.search?.serverless) {
@@ -588,6 +597,10 @@ export class Service<S = any> extends Construct {
 
   public get socketHandlersList(): ISocket[] {
     return Object.values<ISocket>(this.sockets);
+  }
+
+  public createManagedPolicy(name: string, options?: ManagedPolicyProps) {
+    return this.policies.createManagedPolicy(name, options);
   }
 
   private createResourceGroupPrincipal(grantables: IGrantable[]) {

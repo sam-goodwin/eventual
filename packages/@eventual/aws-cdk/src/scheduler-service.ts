@@ -3,12 +3,12 @@ import { ArnFormat, CfnResource, Resource, Stack } from "aws-cdk-lib/core";
 import {
   IGrantable,
   IRole,
+  ManagedPolicy,
   PolicyStatement,
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { grant } from "./grant";
@@ -18,6 +18,7 @@ import type { TaskService } from "./task-service.js";
 import { serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
 import { ServiceConstructProps } from "./service-common";
+import { CompliantSqsEventSource } from "./compliance/compliant-sqs-event-source";
 
 export interface SchedulerProps extends ServiceConstructProps {
   /**
@@ -68,6 +69,8 @@ export class SchedulerService {
    */
   public readonly dlq: Queue;
 
+  private readonly scheduleTimerPolicy: ManagedPolicy;
+
   constructor(private props: SchedulerProps) {
     const schedulerServiceScope = new Construct(
       props.systemScope,
@@ -89,10 +92,24 @@ export class SchedulerService {
       }),
     });
 
+    const schedulerPolicy = props.service.createManagedPolicy(
+      "scheduler-internal",
+      {
+        roles: [this.schedulerRole],
+      }
+    );
     this.dlq = new Queue(schedulerServiceScope, "DeadLetterQueue");
-    this.dlq.grantSendMessages(this.schedulerRole);
+    this.dlq.grantSendMessages(schedulerPolicy);
 
     this.queue = new Queue(schedulerServiceScope, "Queue");
+    const queueConsumeMessagesPolicy = props.service.createManagedPolicy(
+      "scheduler-queue-consume-messages"
+    );
+    this.queue.grantConsumeMessages(queueConsumeMessagesPolicy);
+
+    this.scheduleTimerPolicy =
+      props.service.createManagedPolicy("scheduler-timer");
+    this.schedulerRole.grantPassRole(this.scheduleTimerPolicy);
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
     this.forwarder = new ServiceFunction(schedulerServiceScope, "Forwarder", {
@@ -103,7 +120,7 @@ export class SchedulerService {
     });
 
     // Allow the scheduler to create workflow tasks.
-    this.forwarder.grantInvoke(this.schedulerRole);
+    this.forwarder.grantInvoke(schedulerPolicy);
 
     this.handler = new ServiceFunction(schedulerServiceScope, "handler", {
       build: props.build,
@@ -112,7 +129,7 @@ export class SchedulerService {
       serviceName: props.serviceName,
       overrides: {
         events: [
-          new SqsEventSource(this.queue, {
+          new CompliantSqsEventSource(this.queue, queueConsumeMessagesPolicy, {
             reportBatchItemFailures: true,
           }),
         ],
@@ -136,6 +153,7 @@ export class SchedulerService {
       ENV_NAMES.SCHEDULER_GROUP,
       ENV_NAMES.SCHEDULER_ROLE_ARN
     );
+
     this.schedulerRole.grantPassRole(func.grantPrincipal);
     if (func !== this.forwarder) {
       this.addEnvs(func, ENV_NAMES.SCHEDULE_FORWARDER_ARN);

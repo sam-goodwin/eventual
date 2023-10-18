@@ -6,7 +6,12 @@ import {
 } from "@eventual/aws-runtime";
 import { DEFAULT_QUEUE_VISIBILITY_TIMEOUT } from "@eventual/core";
 import { QueueRuntime, computeDurationSeconds } from "@eventual/core-runtime";
-import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import {
+  IGrantable,
+  IPrincipal,
+  ManagedPolicy,
+  PolicyStatement,
+} from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as sqs from "aws-cdk-lib/aws-sqs";
@@ -19,6 +24,8 @@ import {
 } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, formatQueueArn, serviceQueueArn } from "./utils";
+import { grant } from "./grant";
+import { attachPolicy } from "./attach-policy";
 
 export type QueueHandlerFunctionProps = Omit<
   Partial<FunctionProps>,
@@ -48,7 +55,8 @@ export interface QueueServiceProps<Service>
 }
 
 export class QueueService<Service> {
-  public queues: ServiceQueues<Service>;
+  public readonly queues: ServiceQueues<Service>;
+  private readonly sendAndManagePolicy: ManagedPolicy;
 
   constructor(private props: QueueServiceProps<Service>) {
     const queuesScope = new Construct(props.serviceScope, "Queues");
@@ -63,6 +71,10 @@ export class QueueService<Service> {
         }),
       ])
     ) as ServiceQueues<Service>;
+    this.sendAndManagePolicy = props.service.createManagedPolicy(
+      "queue-send-and-manage"
+    );
+    this.grantSendAndManageMessageInline(this.sendAndManagePolicy);
   }
 
   public configureSendMessage(func: Function) {
@@ -70,7 +82,13 @@ export class QueueService<Service> {
     this.grantSendAndManageMessage(func);
   }
 
+  @grant()
   public grantSendAndManageMessage(grantee: IGrantable) {
+    attachPolicy(grantee, this.sendAndManagePolicy);
+  }
+
+  @grant()
+  public grantSendAndManageMessageInline(grantee: IGrantable) {
     // find any queue names that were provided by the service and not computed
     const queueNameOverrides = this.props.queueOverrides
       ? Object.values(

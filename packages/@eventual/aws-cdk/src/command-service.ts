@@ -38,7 +38,6 @@ import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi, SpecHttpApiProps } from "./constructs/spec-http-api";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
-import { ManagedPolicies } from "./managed-policies.js";
 import { EventualResource } from "./resource.js";
 import { ServiceLocal } from "./service";
 import {
@@ -210,19 +209,14 @@ export class CommandService<Service = any> {
       ...props.apiOverrides,
     });
 
-    const policies = new ManagedPolicies(
-      commandsSystemScope,
-      "Policies",
-      props
-    );
-    this.invokeHttpServicePolicy = policies.createManagedPolicy(
-      "invoke-http-service-policy"
+    this.invokeHttpServicePolicy = props.service.createManagedPolicy(
+      "command-invoke-http-service-policy"
     );
     this.grantInvokeHttpServiceApiInline(
       this.invokeHttpServicePolicy.grantPrincipal
     );
 
-    policies.createManagedPolicy("integration-policy", {
+    props.service.createManagedPolicy("command-integration-policy", {
       description:
         "Allows API Gateway to invoke the service's Lambda Functions",
       roles: [this.integrationRole],
@@ -443,6 +437,7 @@ export class CommandService<Service = any> {
     }
   }
 
+  @grant()
   public grantInvokeHttpServiceApi(grantee: IGrantable) {
     attachPolicy(grantee, this.invokeHttpServicePolicy);
   }

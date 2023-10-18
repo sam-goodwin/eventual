@@ -25,6 +25,7 @@ import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
 import { EventualResource } from "./resource";
 import { attachPolicy } from "./attach-policy";
+import { grant } from "./grant";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<
@@ -95,14 +96,8 @@ export class BucketService<Service> {
       };
     }, {}) as ServiceBucketNotificationHandlers<Service>;
 
-    const awsRegion = Stack.of(bucketsScope).region;
-    this.readWritePolicy = new iam.ManagedPolicy(
-      bucketsScope,
-      "ReadWriteAccess",
-      {
-        managedPolicyName: `${props.serviceName}-read-access-${awsRegion}`,
-      }
-    );
+    this.readWritePolicy =
+      props.service.createManagedPolicy("bucket-read-write");
     this.grantReadWriteBucketsInline(this.readWritePolicy);
   }
 
@@ -111,10 +106,12 @@ export class BucketService<Service> {
     this.grantReadWriteBuckets(func);
   }
 
+  @grant()
   public grantReadWriteBuckets(grantee: IGrantable) {
     attachPolicy(grantee, this.readWritePolicy);
   }
 
+  @grant()
   public grantReadWriteBucketsInline(grantee: IGrantable) {
     // find any bucket names that were provided by the service and not computed
     const bucketNameOverrides = this.props.bucketOverrides

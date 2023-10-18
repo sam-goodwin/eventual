@@ -3,34 +3,21 @@ import awsSolutions from "../cdk.out/HIPAA.Security-eventual-tests-NagReport.jso
 
 type Report = typeof hipaa | typeof awsSolutions;
 
-report(hipaa);
-report(awsSolutions);
+report([hipaa]);
 
-function report(report: Report) {
-  const nonCompliant = report.lines.filter(
+function report(report: Report[]) {
+  const errors = report.flatMap((report) => report.lines);
+
+  const nonCompliant = errors.filter(
     (line) => line.compliance === "Non-Compliant"
   );
+  const compliant = errors.filter((line) => line.compliance === "Compliant");
   type Violation = (typeof nonCompliant)[number];
 
-  const byResource = nonCompliant.reduce<{
-    [resourceID: string]: Violation[];
-  }>((resources, line) => {
-    resources[line.resourceId] = resources[line.resourceId] ?? [];
-    resources[line.resourceId]!.push(line);
-    return resources;
-  }, {});
-
-  const resourceIDs = Object.keys(byResource).sort();
-  for (const resourceID of resourceIDs) {
-    console.log(
-      `# ${resourceID
-        .replace("eventual-tests/testService", "")
-        .replace("eventual-tests/", "")}`
-    );
-    printErrors(byResource[resourceID]!);
-  }
-
-  // printErrors(nonCompliant);
+  console.log("# Non-compliant");
+  printErrors(nonCompliant);
+  console.log("# Compliant");
+  printErrors(compliant);
 
   function printErrors(error: Violation[]) {
     const uniqueErrors = Array.from(

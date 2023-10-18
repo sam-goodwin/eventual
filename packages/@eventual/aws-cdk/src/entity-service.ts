@@ -49,7 +49,7 @@ import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
 import { EventualResource } from "./resource.js";
 import { attachPolicy } from "./attach-policy.js";
-import { ManagedPolicies } from "./managed-policies.js";
+import { grant } from "./grant.js";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -107,13 +107,8 @@ export class EntityService<Service> {
       "EntityService"
     );
 
-    const policies = new ManagedPolicies(
-      entityServiceConstruct,
-      "Policies",
-      props
-    );
     if (this.transactionWorker) {
-      this.invokeTransactionsPolicy = policies.createManagedPolicy(
+      this.invokeTransactionsPolicy = props.service.createManagedPolicy(
         "invoke-transactions-policy",
         {
           description:
@@ -122,9 +117,13 @@ export class EntityService<Service> {
       );
       this.grantInvokeTransactionsInline(this.invokeTransactionsPolicy);
     }
-    this.readWritePolicy = policies.createManagedPolicy("read-write-data", {
-      description: "Allows access to read/write entity data stored in DynamoDB",
-    });
+    this.readWritePolicy = props.service.createManagedPolicy(
+      "entity-read-write-data",
+      {
+        description:
+          "Allows access to read/write entity data stored in DynamoDB",
+      }
+    );
     this.grantReadWriteEntityTablesInline(this.readWritePolicy);
 
     this.entities = Object.fromEntries(
@@ -222,12 +221,14 @@ export class EntityService<Service> {
     this.grantInvokeTransactions(func);
   }
 
+  @grant()
   public grantInvokeTransactions(grantee: IGrantable) {
     if (this.invokeTransactionsPolicy) {
       attachPolicy(grantee, this.invokeTransactionsPolicy);
     }
   }
 
+  @grant()
   public grantInvokeTransactionsInline(grantee: IGrantable) {
     this.transactionWorker?.grantInvoke(grantee);
   }

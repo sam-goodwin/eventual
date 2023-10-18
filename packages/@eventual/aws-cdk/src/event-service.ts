@@ -2,13 +2,15 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Schemas } from "@eventual/core/internal";
 import { EventBus, IEventBus } from "aws-cdk-lib/aws-events";
 import aws_eventschemas from "aws-cdk-lib/aws-eventschemas";
-import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { IGrantable, ManagedPolicy } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { Lazy, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import { grant } from "./grant";
-import { ServiceConstructProps } from "./service-common";
+import { ManagedPolicies } from "./managed-policies";
+import type { ServiceConstructProps } from "./service-common";
+import { attachPolicy } from "./attach-policy";
 
 export type EventsProps = ServiceConstructProps;
 
@@ -17,11 +19,17 @@ export class EventService {
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */
   public readonly bus: IEventBus;
+  policies: ManagedPolicies;
+  emitPolicy: ManagedPolicy;
 
   constructor(private props: EventsProps) {
     this.bus = new EventBus(props.serviceScope, "Bus", {
       eventBusName: props.serviceName,
     });
+
+    this.policies = new ManagedPolicies(this.bus, "Policies", props);
+    this.emitPolicy = this.policies.createManagedPolicy("emit");
+    this.grantEmitInline(this.emitPolicy);
   }
 
   public configureEmit(func: Function) {
@@ -29,11 +37,16 @@ export class EventService {
     this.addEnvs(func, ENV_NAMES.EVENT_BUS_ARN, ENV_NAMES.SERVICE_NAME);
   }
 
+  @grant()
+  public grantEmit(grantable: IGrantable) {
+    attachPolicy(grantable, this.emitPolicy);
+  }
+
   /**
    * Grants permission to emit to this {@link Service}'s {@link eventBus}.
    */
   @grant()
-  public grantEmit(grantable: IGrantable) {
+  public grantEmitInline(grantable: IGrantable) {
     this.bus.grantPutEventsTo(grantable);
   }
 
