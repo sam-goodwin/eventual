@@ -48,8 +48,6 @@ describe("persist", () => {
       )
     );
 
-    console.log(bucketStore.serialize());
-
     await expect(
       bucketStore.get("bucket", "key").then((v) => v?.getBodyString())
     ).resolves.toEqual("value");

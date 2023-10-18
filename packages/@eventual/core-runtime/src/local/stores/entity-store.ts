@@ -23,7 +23,7 @@ import {
   isLessThanEqualsQueryKeyCondition,
   isLessThanQueryKeyCondition,
 } from "@eventual/core/internal";
-import { EntityProvider } from "../../providers/entity-provider.js";
+import type { EntityProvider } from "../../providers/entity-provider.js";
 import {
   EntityStore,
   NormalizedEntityCompositeKeyComplete,
@@ -167,7 +167,7 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
       version: newVersion,
     };
 
-    setLocalEntity(this.getLocalEntity(entity), newValue, key, entity);
+    this.setLocalEntity(this.getLocalEntity(entity), newValue, key, entity);
 
     this.props.localConnector.pushWorkflowTask({
       kind: "EntityStreamEvent",
@@ -205,7 +205,7 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
         }
       }
 
-      if (deleteLocalEntity(this.getLocalEntity(entity), key, entity)) {
+      if (this.deleteLocalEntity(this.getLocalEntity(entity), key, entity)) {
         this.props.localConnector.pushWorkflowTask({
           kind: "EntityStreamEvent",
           entityName: entity.name,
@@ -386,15 +386,17 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
       entityOrIndex.kind === "Entity"
         ? entityOrIndex
         : this.getEntity(entityOrIndex.entityName);
-    const _entity = (this.entities[entity.name] ??=
-      initializeLocalEntity(entity));
+    const _entity = (this.entities[entity.name] ??= {
+      data: new Map(),
+      indices: {},
+    });
     return _entity;
   }
 
   private getLocalEntityStore(entityOrIndex: Entity | EntityIndex) {
     const localEntity = this.getLocalEntity(entityOrIndex);
     return entityOrIndex.kind === "EntityIndex"
-      ? localEntity.indices[entityOrIndex.name]
+      ? (localEntity.indices[entityOrIndex.name] ??= new Map())
       : localEntity.data;
   }
 
@@ -413,75 +415,68 @@ export class LocalEntityStore extends EntityStore implements LocalSerializable {
     }
     return partitionMap;
   }
-}
 
-function initializeLocalEntity(entity: Entity): LocalEntity {
-  return {
-    data: new Map(),
-    indices: Object.fromEntries(entity.indices.map((i) => [i.name, new Map()])),
-  };
-}
+  private setLocalEntity(
+    localEntity: LocalEntity,
+    value: EntityWithMetadata,
+    key: NormalizedEntityCompositeKeyComplete,
+    entity: Entity
+  ) {
+    const oldValue = getPartitionEntry(localEntity.data, key);
+    updatePartitionEntry(localEntity.data, key, value);
 
-function setLocalEntity(
-  localEntity: LocalEntity,
-  value: EntityWithMetadata,
-  key: NormalizedEntityCompositeKeyComplete,
-  entity: Entity
-) {
-  const oldValue = getPartitionEntry(localEntity.data, key);
-  updatePartitionEntry(localEntity.data, key, value);
-
-  entity.indices.forEach((i) => {
-    const localIndex = localEntity.indices[i.name];
-    if (!localIndex) {
-      return;
-    }
-    const normalizedKey = normalizeCompositeKey(i.key, value.value);
-
-    if (oldValue) {
-      // if the value existed before, try to delete it from the index.
-      const oldKey = normalizeCompositeKey(i.key, oldValue.value);
-      if (isCompleteKey(oldKey)) {
-        deleteIndexPartitionEntry(localIndex, key, oldKey);
+    entity.indices.forEach((i) => {
+      const localIndex = this.getLocalEntityStore(i);
+      if (!localIndex) {
+        return;
       }
-    }
+      const normalizedKey = normalizeCompositeKey(i.key, value.value);
 
-    // if the key isn't complete (missing parts of the index composite key), ignore this item
-    if (isCompleteKey(normalizedKey)) {
-      updateIndexPartitionEntry(localIndex, key, normalizedKey, value);
-    }
-  });
-}
+      if (oldValue) {
+        // if the value existed before, try to delete it from the index.
+        const oldKey = normalizeCompositeKey(i.key, oldValue.value);
+        if (isCompleteKey(oldKey)) {
+          deleteIndexPartitionEntry(localIndex, key, oldKey);
+        }
+      }
 
-function deleteLocalEntity(
-  localEntity: LocalEntity,
-  key: NormalizedEntityCompositeKeyComplete,
-  entity: Entity
-): boolean {
-  const value = localEntity.data
-    .get(key.partition.keyValue)
-    ?.get(skOrDefault(key));
-
-  if (!value) {
-    return false;
+      // if the key isn't complete (missing parts of the index composite key), ignore this item
+      if (isCompleteKey(normalizedKey)) {
+        updateIndexPartitionEntry(localIndex, key, normalizedKey, value);
+      }
+    });
   }
 
-  const deleted = deletePartitionEntry(localEntity.data, key);
+  private deleteLocalEntity(
+    localEntity: LocalEntity,
+    key: NormalizedEntityCompositeKeyComplete,
+    entity: Entity
+  ): boolean {
+    const value = localEntity.data
+      .get(key.partition.keyValue)
+      ?.get(skOrDefault(key));
 
-  entity.indices.forEach((i) => {
-    const localIndex = localEntity.indices[i.name];
-    if (!localIndex) {
-      return;
+    if (!value) {
+      return false;
     }
-    const normalizedKey = normalizeCompositeKey(i.key, value.value);
 
-    // if the key isn't complete (missing parts of the index composite key), ignore this item
-    if (isCompleteKey(normalizedKey)) {
-      deleteIndexPartitionEntry(localIndex, key, normalizedKey);
-    }
-  });
+    const deleted = deletePartitionEntry(localEntity.data, key);
 
-  return deleted;
+    entity.indices.forEach((i) => {
+      const localIndex = this.getLocalEntityStore(i);
+      if (!localIndex) {
+        return;
+      }
+      const normalizedKey = normalizeCompositeKey(i.key, value.value);
+
+      // if the key isn't complete (missing parts of the index composite key), ignore this item
+      if (isCompleteKey(normalizedKey)) {
+        deleteIndexPartitionEntry(localIndex, key, normalizedKey);
+      }
+    });
+
+    return deleted;
+  }
 }
 
 function updatePartitionEntry(
