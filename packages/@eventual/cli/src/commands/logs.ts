@@ -81,8 +81,13 @@ export const logs = (yargs: Argv) =>
         };
 
         do {
-          const fetchResult = await fetchLogs(logFilter, logCursor);
-          logCursor = updateLogCursor(logCursor, fetchResult, follow);
+          try {
+            const fetchResult = await fetchLogs(logFilter, logCursor);
+            logCursor = updateLogCursor(logCursor, fetchResult, follow);
+          } catch (err) {
+            console.error(err);
+            throw err;
+          }
 
           if (follow) {
             spinner.start("Watching logs");
@@ -105,20 +110,20 @@ export const logs = (yargs: Argv) =>
               ? new Date(logCursor.startTime).toISOString()
               : undefined,
             workflowName: logFilter.workflowName,
+            maxResults: 1000,
           });
 
           const functionEvents = output.events ?? [];
 
-          // Print out the interleaved logs
           if (functionEvents.length) {
             spinner.stop();
             functionEvents.forEach((ev) => {
-              console.log(
+              process.stdout.write(
                 `${
                   logFilter.executionId ? "" : `[${chalk.blue(ev.source)}] `
                 }${chalk.red(new Date(ev.time!).toLocaleString())} ${
                   ev.message
-                }`
+                }\n`
               );
             });
           }
