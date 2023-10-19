@@ -264,6 +264,8 @@ export const createBucketStore = memoize(
       s3: s3(),
       serviceName: env.serviceName,
       bucketOverrides: env.bucketOverrides,
+      accountID: env.awsAccount,
+      region: env.awsRegion,
     })
 );
 

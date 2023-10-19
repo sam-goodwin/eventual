@@ -45,6 +45,8 @@ export interface AWSBucketStoreProps {
   s3: S3Client;
   serviceName: LazyValue<string>;
   bucketOverrides: LazyValue<Record<string, BucketRuntimeOverrides>>;
+  accountID: LazyValue<string>;
+  region: LazyValue<string>;
 }
 
 export class AWSBucketStore implements BucketStore {
@@ -244,7 +246,12 @@ export class AWSBucketStore implements BucketStore {
     const nameOverride = overrides[bucketName]?.bucketName;
     return (
       nameOverride ??
-      bucketServiceBucketName(getLazy(this.props.serviceName), bucketName)
+      bucketServiceBucketName(
+        getLazy(this.props.serviceName),
+        bucketName,
+        getLazy(this.props.accountID),
+        getLazy(this.props.region)
+      )
     );
   }
 }
