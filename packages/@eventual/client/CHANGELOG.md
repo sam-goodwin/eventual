@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.56.0 (2023-10-19)
+
+### Features
+
+- account region unique bucket name ([#472](https://github.com/functionless/eventual/issues/472)) ([3388882](https://github.com/functionless/eventual/commit/33888820fa1fd248e05b45ec9c2c17a41348d7ba))
+
 ## 0.55.5 (2023-10-18)
 
 ### Bug Fixes
