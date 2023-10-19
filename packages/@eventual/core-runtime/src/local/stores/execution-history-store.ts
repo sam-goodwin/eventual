@@ -7,6 +7,7 @@ import type { WorkflowEvent } from "@eventual/core/internal";
 import { ExecutionHistoryStore } from "../../stores/execution-history-store.js";
 import type { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
+import { fromJSON, toJSON } from "../serialize.js";
 
 export class LocalExecutionHistoryStore
   extends ExecutionHistoryStore
@@ -20,7 +21,7 @@ export class LocalExecutionHistoryStore
     return Object.fromEntries(
       Object.entries(this.eventStore).map(([key, value]) => [
         key,
-        Buffer.from(JSON.stringify(value)),
+        Buffer.from(toJSON(value)),
       ])
     );
   }
@@ -31,7 +32,7 @@ export class LocalExecutionHistoryStore
         ? Object.fromEntries(
             Object.entries(data).map(([key, value]) => [
               key,
-              JSON.parse(value.toString("utf-8")),
+              fromJSON(value.toString("utf-8")),
             ])
           )
         : {}

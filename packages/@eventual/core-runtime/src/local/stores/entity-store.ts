@@ -39,6 +39,7 @@ import {
 import { LocalEnvConnector } from "../local-container.js";
 import { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
+import { fromJSON, toJSON } from "../serialize.js";
 
 type PK = KeyValue;
 type SK = KeyValue;
@@ -617,11 +618,11 @@ function serializeTableMap(tableMap: TableMap): Buffer {
       ] as const;
     })
   );
-  return Buffer.from(JSON.stringify(record));
+  return Buffer.from(toJSON(record));
 }
 
 function deserializeTableMap(data: Buffer): TableMap {
-  const record: SerializedData = JSON.parse(data.toString("utf-8"));
+  const record: SerializedData = fromJSON(data.toString("utf-8"));
   return new Map(
     Object.entries(record).map(([pk, partition]) => {
       return [

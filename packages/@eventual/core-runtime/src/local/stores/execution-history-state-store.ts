@@ -4,6 +4,7 @@ import type {
   UpdateHistoryRequest,
 } from "../../stores/execution-history-state-store.js";
 import type { LocalSerializable } from "../local-persistance-store.js";
+import { fromJSON, toJSON } from "../serialize.js";
 
 export class LocalExecutionHistoryStateStore
   implements ExecutionHistoryStateStore, LocalSerializable
@@ -16,7 +17,7 @@ export class LocalExecutionHistoryStateStore
     return Object.fromEntries(
       Object.entries(this.executionHistory).map(([e, history]) => [
         e,
-        Buffer.from(JSON.stringify(history)),
+        Buffer.from(toJSON(history)),
       ])
     );
   }
@@ -29,7 +30,7 @@ export class LocalExecutionHistoryStateStore
       Object.fromEntries(
         Object.entries(data).map(([key, value]) => [
           key,
-          JSON.parse(value.toString("utf-8")),
+          fromJSON(value.toString("utf-8")),
         ])
       )
     );

@@ -821,6 +821,9 @@ importers:
       itty-router:
         specifier: ^2.6.6
         version: 2.6.6
+      superjson:
+        specifier: ^1.13.1
+        version: 1.13.1
       ulidx:
         specifier: ^0.3.0
         version: 0.3.0
@@ -997,7 +1000,7 @@ importers:
         version: 2.80.0
       create-sst:
         specifier: latest
-        version: 2.25.2
+        version: 2.21.4
     devDependencies:
       '@eventual/project':
         specifier: workspace:^
@@ -7406,6 +7409,13 @@ packages:
     resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
     engines: {node: '>= 0.6'}
 
+  /copy-anything@3.0.5:
+    resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
+    engines: {node: '>=12.13'}
+    dependencies:
+      is-what: 4.1.15
+    dev: false
+
   /core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
     dev: true
@@ -7438,8 +7448,8 @@ packages:
   /create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  /create-sst@2.25.2:
-    resolution: {integrity: sha512-dlguHq0Mo71QLlcoiBo57FdfT/eG+sXhifxYY7wX8m/+WcEr8eWYHVqGhhD+odpEsNyZzRFN4PNMqkb6slISbQ==}
+  /create-sst@2.21.4:
+    resolution: {integrity: sha512-FLzaUd4Y34QV7l+Gi6F9bZfQW5mE2EL2UXLZHPcKLh5vPVgceDix3Oa9NfT78GeajJQzc+/dOv2nzsV4NFGmog==}
     hasBin: true
     dependencies:
       cli-spinners: 2.9.0
@@ -10089,6 +10099,11 @@ packages:
     resolution: {integrity: sha512-qctsuLZmIQ0+vSSMfoVvyFe2+GSEvnmZ2ezTup1SBse9+twCCeial6EEi3Nc2KFcf6+qz2FBPnjXsk8xhKSaPQ==}
     dependencies:
       call-bind: 1.0.2
+
+  /is-what@4.1.15:
+    resolution: {integrity: sha512-uKua1wfy3Yt+YqsD6mTUEa2zSi3G1oPlqTflgaPJ7z63vUGN5pxFpnQfeSLMFnJDEsdvOtkp1rUWkYjB4YfhgA==}
+    engines: {node: '>=12.13'}
+    dev: false
 
   /is-wsl@2.2.0:
     resolution: {integrity: sha512-fKzAra0rGJUUBwGBgNkHZuToZcn+TtXHpeCgmkMJMMYx1sQDYaCSyjJBSCa2nH1DGm7s3n1oBnohoVTBaN7Lww==}
@@ -13771,6 +13786,13 @@ packages:
       minimist: 1.2.8
       through: 2.3.8
     dev: true
+
+  /superjson@1.13.1:
+    resolution: {integrity: sha512-AVH2eknm9DEd3qvxM4Sq+LTCkSXE2ssfh1t11MHMXyYXFQyQ1HLgVvV+guLTsaQnJU3gnaVo34TohHPulY/wLg==}
+    engines: {node: '>=10'}
+    dependencies:
+      copy-anything: 3.0.5
+    dev: false
 
   /supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
