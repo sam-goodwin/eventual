@@ -283,8 +283,12 @@ export function entityServiceTableSuffix(entityName: string) {
   return `entity-${entityName}`;
 }
 
-export function bucketServiceBucketSuffix(bucketName: string) {
-  return `bucket-${bucketName}`;
+export function bucketServiceBucketSuffix(
+  bucketName: string,
+  accountID: string,
+  region: string
+) {
+  return `bucket-${bucketName}-${accountID}-${region}`;
 }
 
 export function queueServiceQueueSuffix(queueName: string) {
@@ -314,9 +318,14 @@ export function entityServiceTableName(
  */
 export function bucketServiceBucketName(
   serviceName: string,
-  bucketName: string
+  bucketName: string,
+  accountID: string,
+  region: string
 ): string {
-  return serviceBucketName(serviceName, bucketServiceBucketSuffix(bucketName));
+  return serviceBucketName(
+    serviceName,
+    bucketServiceBucketSuffix(bucketName, accountID, region)
+  );
 }
 
 export function socketServiceSocketName(
