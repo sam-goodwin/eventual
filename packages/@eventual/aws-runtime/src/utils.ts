@@ -288,7 +288,7 @@ export function bucketServiceBucketSuffix(
   accountID: string,
   region: string
 ) {
-  return `bucket-${bucketName}-${accountID}-${region}`;
+  return `${bucketName}-${accountID}-${region}`;
 }
 
 export function queueServiceQueueSuffix(queueName: string) {
