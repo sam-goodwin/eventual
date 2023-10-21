@@ -25,6 +25,7 @@ import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension.js";
 
+import { ComplianceStandard } from "@eventual/aws-cdk/src/compliance.js";
 import { CfnPipe } from "aws-cdk-lib/aws-pipes";
 import type * as testServiceRuntime from "tests-runtime";
 
@@ -64,9 +65,9 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
       TEST_QUEUE_URL: testQueue.queueUrl,
       TEST_TABLE_NAME: testTable.tableName,
     },
-    // compliance: {
-    //   standards: [ComplianceStandard.HIPAA],
-    // },
+    compliance: {
+      standards: [ComplianceStandard.HIPAA],
+    },
     system: {
       workflowService: {
         logLevel: LogLevel.DEBUG,
