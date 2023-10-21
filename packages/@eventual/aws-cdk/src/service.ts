@@ -3,12 +3,7 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import {
-  Metric,
-  MetricOptions,
-  Statistic,
-  Unit,
-} from "aws-cdk-lib/aws-cloudwatch";
+import { Metric, MetricOptions, Stats, Unit } from "aws-cdk-lib/aws-cloudwatch";
 import aws_events from "aws-cdk-lib/aws-events";
 import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
@@ -69,6 +64,7 @@ import { SchedulerService } from "./scheduler-service";
 import { SearchService, SearchServiceOverrides } from "./search/search-service";
 import { ServerfulSearchService } from "./search/serverful-search-service";
 import { ServerlessSearchService } from "./search/serverless-search-service";
+import { Compliance, CompliancePolicyProps } from "./compliance";
 import {
   ServiceConstructProps,
   WorkerServiceConstructProps,
@@ -184,6 +180,7 @@ export interface ServiceProps<Service = any> {
     workflowService?: WorkflowServiceOverrides;
     entityService?: EntityServiceProps<Service>["entityServiceOverrides"];
   };
+  compliance?: CompliancePolicyProps;
 }
 
 export interface ServiceSystem<S> {
@@ -296,8 +293,14 @@ export class Service<S = any> extends Construct {
    * Enable local mode by setting environment variable EVENTUAL_LOCAL=1 in deployment environment.
    */
   public readonly local?: ServiceLocal;
-
+  /**
+   * The search service for this service.
+   */
   public readonly searchService: SearchService<S> | undefined;
+  /**
+   * Centralized control of Security and Compliance features.
+   */
+  public readonly compliancePolicy: Compliance;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
@@ -318,6 +321,13 @@ export class Service<S = any> extends Construct {
 
     const serviceScope = this;
     const systemScope = new Construct(this, "System");
+
+    this.compliancePolicy = new Compliance(
+      systemScope,
+      "Compliance",
+      props.compliance
+    );
+
     const eventualServiceScope = new Construct(systemScope, "EventualService");
 
     const accessRole = new Role(eventualServiceScope, "AccessRole", {
@@ -366,6 +376,7 @@ export class Service<S = any> extends Construct {
       serviceScope,
       systemScope,
       eventualServiceScope,
+      compliancePolicy: this.compliancePolicy,
     };
 
     const workerConstructProps: WorkerServiceConstructProps = {
@@ -737,7 +748,7 @@ export class Service<S = any> extends Construct {
 
   public metricAdvanceExecutionDuration(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.AdvanceExecutionDuration,
       unit: Unit.MILLISECONDS,
       ...options,
@@ -746,7 +757,7 @@ export class Service<S = any> extends Construct {
 
   public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.CallsInvoked,
       unit: Unit.COUNT,
       ...options,
@@ -755,7 +766,7 @@ export class Service<S = any> extends Construct {
 
   public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.InvokeCallsDuration,
       unit: Unit.MILLISECONDS,
       ...options,
@@ -764,7 +775,7 @@ export class Service<S = any> extends Construct {
 
   public metricLoadHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.LoadHistoryDuration,
       unit: Unit.MILLISECONDS,
       ...options,
@@ -773,7 +784,7 @@ export class Service<S = any> extends Construct {
 
   public metricSaveHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.SaveHistoryDuration,
       unit: Unit.MILLISECONDS,
       ...options,
@@ -784,7 +795,7 @@ export class Service<S = any> extends Construct {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryBytes,
       unit: Unit.BYTES,
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       ...options,
     });
   }
@@ -793,14 +804,14 @@ export class Service<S = any> extends Construct {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryEvents,
       unit: Unit.COUNT,
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       ...options,
     });
   }
 
   public metricMaxTaskAge(options?: MetricOptions): Metric {
     return this.metric({
-      statistic: Statistic.AVERAGE,
+      statistic: Stats.AVERAGE,
       metricName: OrchestratorMetrics.MaxTaskAge,
       unit: Unit.MILLISECONDS,
       ...options,

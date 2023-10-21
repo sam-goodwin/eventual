@@ -9,6 +9,9 @@ import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import type { EventService } from "./event-service";
+import { EventualResource } from "./resource";
+import type { Compliance } from "./compliance";
+import { SecureQueue } from "./secure/queue";
 import type { ServiceLocal } from "./service";
 import {
   WorkerServiceConstructProps,
@@ -16,7 +19,6 @@ import {
 } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import type { ServiceEntityProps } from "./utils";
-import { EventualResource } from "./resource";
 
 export type Subscriptions<Service> = ServiceEntityProps<
   Service,
@@ -59,6 +61,7 @@ export const Subscriptions: {
         return [
           sub.spec.name,
           new Subscription(subscriptionsServiceScope, sub.spec.name, {
+            compliancePolicy: props.compliancePolicy,
             build: props.build,
             bus: props.eventService.bus,
             serviceName: props.serviceName,
@@ -95,6 +98,7 @@ export interface SubscriptionProps {
   environment?: Record<string, string>;
   bus: IEventBus;
   local: ServiceLocal | undefined;
+  compliancePolicy: Compliance;
 }
 
 export class Subscription extends Construct implements EventualResource {
@@ -115,7 +119,9 @@ export class Subscription extends Construct implements EventualResource {
     super(scope, id);
     const subscription = props.subscription.spec;
 
-    this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
+    this.deadLetterQueue = new SecureQueue(this, "DeadLetterQueue", {
+      compliancePolicy: props.compliancePolicy,
+    });
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.build,
       serviceName: props.serviceName,

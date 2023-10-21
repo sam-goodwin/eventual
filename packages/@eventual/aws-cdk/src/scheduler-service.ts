@@ -1,5 +1,4 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ArnFormat, CfnResource, Resource, Stack } from "aws-cdk-lib/core";
 import {
   IGrantable,
   IRole,
@@ -9,15 +8,18 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
+import { ArnFormat, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
+import { SecureQueue } from "./secure/queue";
+import { ServiceConstructProps } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
 import { serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
-import { ServiceConstructProps } from "./service-common";
 
 export interface SchedulerProps extends ServiceConstructProps {
   /**
@@ -89,10 +91,14 @@ export class SchedulerService {
       }),
     });
 
-    this.dlq = new Queue(schedulerServiceScope, "DeadLetterQueue");
+    this.dlq = new SecureQueue(schedulerServiceScope, "DeadLetterQueue", {
+      compliancePolicy: props.compliancePolicy,
+    });
     this.dlq.grantSendMessages(this.schedulerRole);
 
-    this.queue = new Queue(schedulerServiceScope, "Queue");
+    this.queue = new SecureQueue(schedulerServiceScope, "Queue", {
+      compliancePolicy: props.compliancePolicy,
+    });
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
     this.forwarder = new ServiceFunction(schedulerServiceScope, "Forwarder", {
@@ -228,14 +234,10 @@ export class SchedulerService {
 }
 
 class ScheduleGroup extends Resource {
-  public readonly resource: CfnResource;
+  public readonly resource: CfnScheduleGroup;
   constructor(scope: Construct, id: string) {
     super(scope, id);
-
-    this.resource = new CfnResource(this, "Resource", {
-      type: "AWS::Scheduler::ScheduleGroup",
-      properties: {},
-    });
+    this.resource = new CfnScheduleGroup(this, "Resource");
   }
 
   public get ref() {

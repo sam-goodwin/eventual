@@ -1,4 +1,4 @@
-import { CfnResource } from "aws-cdk-lib/core";
+import { Resource } from "aws-cdk-lib/core";
 import {
   IGrantable,
   IPrincipal,
@@ -6,15 +6,17 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
+import { CfnPipe, CfnPipeProps } from "aws-cdk-lib/aws-pipes";
 import { Construct } from "constructs";
 
-export interface EventBridgePipeProps {
+export interface EventBridgePipeProps extends Omit<CfnPipeProps, "roleArn"> {
   role?: IRole;
-  source: string;
-  target: string;
-  sourceParameters: PipeSourceParameters;
-  targetParameters: PipeTargetParameters;
 }
+
+export type PipeSourceParameters = Exclude<
+  CfnPipeProps["sourceParameters"],
+  undefined
+>;
 
 /**
  * Note: this is an incomplete set of possible arguments for an sqs pipe target.
@@ -50,14 +52,10 @@ export interface PipeDynamoDBStreamParameters {
   MaximumBatchingWindowInSeconds: number;
 }
 
-export interface PipeSourceParameters {
-  DynamoDBStreamParameters: PipeDynamoDBStreamParameters;
-  FilterCriteria?: { Filters: { Pattern: string }[] };
-  [key: string]: any;
-}
-
-export class EventBridgePipe extends Construct implements IGrantable {
+export class EventBridgePipe extends Resource implements IGrantable {
   public grantPrincipal: IPrincipal;
+
+  private readonly resource: CfnPipe;
 
   constructor(scope: Construct, id: string, props: EventBridgePipeProps) {
     super(scope, id);
@@ -68,15 +66,12 @@ export class EventBridgePipe extends Construct implements IGrantable {
 
     this.grantPrincipal = pipeRole;
 
-    new CfnResource(scope, "Resource", {
-      type: "AWS::Pipes::Pipe",
-      properties: {
-        RoleArn: pipeRole.roleArn,
-        Source: props.source,
-        SourceParameters: props.sourceParameters,
-        Target: props.target,
-        TargetParameters: props.targetParameters,
-      },
+    this.resource = new CfnPipe(scope, "Resource", {
+      roleArn: pipeRole.roleArn,
+      source: props.source,
+      target: props.target,
+      sourceParameters: props.sourceParameters,
+      targetParameters: props.targetParameters,
     });
   }
 }

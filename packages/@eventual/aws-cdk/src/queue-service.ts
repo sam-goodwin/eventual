@@ -19,6 +19,7 @@ import {
 } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, formatQueueArn, serviceQueueArn } from "./utils";
+import { SecureQueue } from "./secure/queue";
 
 export type QueueHandlerFunctionProps = Omit<
   Partial<FunctionProps>,
@@ -132,7 +133,8 @@ class Queue extends Construct implements IQueue {
     const { handler, ...overrides } =
       props.serviceProps.queueOverrides?.[props.queue.name] ?? {};
 
-    this.queue = new sqs.Queue(this, "Queue", {
+    this.queue = new SecureQueue(this, "Queue", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       contentBasedDeduplication: props.queue.contentBasedDeduplication,
       deliveryDelay: props.queue.delay
         ? Duration.seconds(computeDurationSeconds(props.queue.delay))
@@ -148,10 +150,6 @@ class Queue extends Construct implements IQueue {
             computeDurationSeconds(props.queue.visibilityTimeout)
           )
         : undefined,
-      // TODO: support customer managed key
-      encryption: props.queue.encryption
-        ? sqs.QueueEncryption.SQS_MANAGED
-        : sqs.QueueEncryption.UNENCRYPTED,
       ...overrides,
     });
 

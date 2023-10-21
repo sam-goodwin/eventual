@@ -14,7 +14,7 @@
     "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
   },
   "dependencies": {
-    "aws-cdk": "^2.80.0",
+    "aws-cdk": "^2.102.0",
     "create-sst": "latest"
   },
   "devDependencies": {

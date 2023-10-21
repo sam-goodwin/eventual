@@ -23,6 +23,7 @@ import {
 import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
 import { EventualResource } from "./resource";
+import { SecureBucket } from "./secure/bucket";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<
@@ -140,6 +141,12 @@ export class BucketService<Service> {
         ],
       })
     );
+    if (this.props.compliancePolicy.isCustomerManagedKeys()) {
+      // data in the buckets are encrypted with a key that the customer owns
+      this.props.compliancePolicy.dataEncryptionKey.grantEncryptDecrypt(
+        grantee
+      );
+    }
   }
 
   private readonly ENV_MAPPINGS = {
@@ -173,10 +180,13 @@ class Bucket extends Construct implements IBucket {
   constructor(scope: Construct, props: BucketProps) {
     super(scope, props.bucket.name);
 
-    const bucketOverrides =
-      props.serviceProps.bucketOverrides?.[props.bucket.name];
+    const bucketOverrides = {
+      // then let the user override them
+      ...props.serviceProps.bucketOverrides?.[props.bucket.name],
+    };
 
-    this.bucket = new s3.Bucket(this, "Bucket", {
+    this.bucket = new SecureBucket(this, "Bucket", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       ...bucketOverrides,
       cors:
         props.serviceProps.cors &&

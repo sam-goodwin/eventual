@@ -7,18 +7,16 @@ import {
   ITable,
   ProjectionType,
   StreamViewType,
-  Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
-import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
+import { IBucket } from "aws-cdk-lib/aws-s3";
 import {
   DeduplicationScope,
   FifoThroughputLimit,
   IQueue,
-  Queue,
 } from "aws-cdk-lib/aws-sqs";
 import { RemovalPolicy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
@@ -31,13 +29,17 @@ import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
-import { SchedulerService } from "./scheduler-service";
-import { ServiceFunction } from "./service-function";
-import type { TaskService } from "./task-service.js";
-import type { SearchService } from "./search/search-service";
-import { ServiceConstructProps } from "./service-common";
 import { QueueService } from "./queue-service";
+import { SchedulerService } from "./scheduler-service";
+import type { SearchService } from "./search/search-service";
+import { SecureBucket } from "./secure/bucket";
+import { SecureLogGroup } from "./secure/log-group";
+import { SecureQueue } from "./secure/queue";
+import { SecureTable } from "./secure/table";
+import { ServiceConstructProps } from "./service-common";
+import { ServiceFunction } from "./service-function";
 import { SocketService } from "./socket-service";
+import type { TaskService } from "./task-service.js";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
@@ -119,22 +121,22 @@ export class WorkflowService {
 
     this.logGroup =
       props.overrides?.logGroup ??
-      new LogGroup(props.serviceScope, "WorkflowExecutionLogs", {
+      new SecureLogGroup(props.serviceScope, "WorkflowExecutionLogs", {
+        compliancePolicy: props.compliancePolicy,
         removalPolicy: RemovalPolicy.DESTROY,
         logGroupName: `${props.serviceName}-execution-logs`,
       });
 
-    this.history = new Bucket(workflowServiceScope, "HistoryBucket", {
-      // TODO: remove after testing
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+    this.history = new SecureBucket(workflowServiceScope, "HistoryBucket", {
+      compliancePolicy: props.compliancePolicy,
     });
 
     // Table - History, Executions
-    const executionsTable = (this.executionsTable = new Table(
+    const executionsTable = (this.executionsTable = new SecureTable(
       workflowServiceScope,
       "ExecutionTable",
       {
+        compliancePolicy: props.compliancePolicy,
         partitionKey: { name: "pk", type: AttributeType.STRING },
         sortKey: { name: "sk", type: AttributeType.STRING },
         billingMode: BillingMode.PAY_PER_REQUEST,
@@ -152,10 +154,11 @@ export class WorkflowService {
       projectionType: ProjectionType.ALL,
     });
 
-    this.executionHistoryTable = new Table(
+    this.executionHistoryTable = new SecureTable(
       workflowServiceScope,
       "ExecutionHistoryTable",
       {
+        compliancePolicy: props.compliancePolicy,
         partitionKey: { name: "pk", type: AttributeType.STRING },
         sortKey: { name: "sk", type: AttributeType.STRING },
         billingMode: BillingMode.PAY_PER_REQUEST,
@@ -163,7 +166,8 @@ export class WorkflowService {
       }
     );
 
-    this.queue = new Queue(workflowServiceScope, "Queue", {
+    this.queue = new SecureQueue(workflowServiceScope, "Queue", {
+      compliancePolicy: props.compliancePolicy,
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
@@ -211,19 +215,20 @@ export class WorkflowService {
       source: this.executionsTable.tableStreamArn!,
       sourceProps: {
         // will retry forever in the case of an SQS outage!
-        DynamoDBStreamParameters: {
+        dynamoDbStreamParameters: {
           // when CREATE/REPLACING a pipe, it can take up to 1 minute to start polling for events.
           // TRIM_HORIZON will catch any events created during that one minute (and last 24 hours for existing streams)
           // The assumption is that it is unlikely that the pipe will be replaced on an active service
           // TODO: check in with the Event Bridge team to see LATEST will work without dropping events
           //       for new streams.
-          StartingPosition: "TRIM_HORIZON",
-          MaximumBatchingWindowInSeconds: 1,
+          startingPosition: "TRIM_HORIZON",
+          maximumBatchingWindowInSeconds: 1,
         },
-        FilterCriteria: {
-          Filters: [
+
+        filterCriteria: {
+          filters: [
             {
-              Pattern: JSON.stringify({
+              pattern: JSON.stringify({
                 eventName: ["INSERT"],
                 dynamodb: {
                   NewImage: {
@@ -253,10 +258,10 @@ export class WorkflowService {
       sourceParameters: props.sourceProps,
       target: this.queue.queueArn,
       targetParameters: {
-        SqsQueueParameters: {
-          MessageGroupId: props.executionIdPath,
+        sqsQueueParameters: {
+          messageGroupId: props.executionIdPath,
         },
-        InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
+        inputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
       },
     });
 

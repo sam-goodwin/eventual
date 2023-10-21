@@ -154,6 +154,8 @@ export class EntityService<Service> {
   }
 
   public grantReadWriteEntityTables(grantee: IGrantable) {
+    // TODO: encr
+
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({

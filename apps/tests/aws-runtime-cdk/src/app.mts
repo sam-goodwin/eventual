@@ -13,10 +13,17 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Queue } from "aws-cdk-lib/aws-sqs";
-import { Duration } from "aws-cdk-lib/core";
+import { Aspects, Duration } from "aws-cdk-lib/core";
 import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension.js";
+import {
+  AwsSolutionsChecks,
+  HIPAASecurityChecks,
+  NagReportFormat,
+  NagPack,
+  NagPackProps,
+} from "cdk-nag";
 
 import type * as testServiceRuntime from "tests-runtime";
 
@@ -32,6 +39,22 @@ if (!assumeRoleArn) {
 }
 
 const app = new App();
+// these run linting rules on the CDK code and should all pass to enforce compliance
+enableNagPack(AwsSolutionsChecks);
+enableNagPack(HIPAASecurityChecks);
+function enableNagPack<P extends NagPackProps>(
+  Pack: new (props: P) => NagPack,
+  props?: P
+) {
+  Aspects.of(app).add(
+    new Pack({
+      reports: true,
+      reportFormats: [NagReportFormat.CSV, NagReportFormat.JSON],
+      verbose: true,
+      ...props,
+    } as P)
+  );
+}
 
 const stack = new Stack(app, "eventual-tests");
 
