@@ -25,9 +25,9 @@
     "esbuild": ">=0.16.x <1.0.0"
   },
   "devDependencies": {
-    "@aws-cdk/aws-apigatewayv2-alpha": "2.80.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.80.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.80.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-alpha": "2.102.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.102.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.102.0-alpha.0",
     "@types/aws-lambda": "8.10.115",
     "@types/aws4": "^1.11.2",
     "@types/jest": "^29.5.1",
