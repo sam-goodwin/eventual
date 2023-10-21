@@ -27,6 +27,11 @@ export class SecureBucket extends Bucket {
       encryptionKey: compliancePolicy.isCustomerManagedKeys()
         ? compliancePolicy.dataEncryptionKey
         : undefined,
+      bucketKeyEnabled:
+        compliancePolicy.isAWSManagedKeys() ||
+        compliancePolicy.isCustomerManagedKeys()
+          ? true
+          : undefined,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       // TODO: what is the right value here?
       // versioned: true,
