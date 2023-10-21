@@ -154,7 +154,12 @@ export class EntityService<Service> {
   }
 
   public grantReadWriteEntityTables(grantee: IGrantable) {
-    // TODO: encr
+    if (this.props.compliancePolicy.isCustomerManagedKeys()) {
+      // the Tables are encrypted with a CMK, so grant the permission to use it
+      this.props.compliancePolicy.dataEncryptionKey.grantEncryptDecrypt(
+        grantee
+      );
+    }
 
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(

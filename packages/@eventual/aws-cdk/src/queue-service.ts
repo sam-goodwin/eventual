@@ -72,6 +72,13 @@ export class QueueService<Service> {
   }
 
   public grantSendAndManageMessage(grantee: IGrantable) {
+    if (this.props.compliancePolicy.isCustomerManagedKeys()) {
+      // the Queues are encrypted with a CMK, so grant the permission to use it
+      this.props.compliancePolicy.dataEncryptionKey.grantEncryptDecrypt(
+        grantee
+      );
+    }
+
     // find any queue names that were provided by the service and not computed
     const queueNameOverrides = this.props.queueOverrides
       ? Object.values(
