@@ -99,6 +99,7 @@ export class BucketService<Service> {
   }
 
   public grantReadWriteBuckets(grantee: IGrantable) {
+    const stack = Stack.of(this.props.systemScope);
     // find any bucket names that were provided by the service and not computed
     const bucketNameOverrides = this.props.bucketOverrides
       ? Object.values(
@@ -115,7 +116,7 @@ export class BucketService<Service> {
         resources: [
           serviceBucketArn(
             this.props.serviceName,
-            bucketServiceBucketSuffix("*"),
+            bucketServiceBucketSuffix("*", stack.account, stack.region),
             false
           ),
           ...bucketNameOverrides.map(formatBucketArn),
@@ -134,7 +135,7 @@ export class BucketService<Service> {
         resources: [
           `${serviceBucketArn(
             this.props.serviceName,
-            bucketServiceBucketSuffix("*"),
+            bucketServiceBucketSuffix("*", stack.account, stack.region),
             false
           )}/*`,
           ...bucketNameOverrides.map((s) => formatBucketArn(`${s}/*`)),
@@ -180,10 +181,10 @@ class Bucket extends Construct implements IBucket {
   constructor(scope: Construct, props: BucketProps) {
     super(scope, props.bucket.name);
 
-    const bucketOverrides = {
-      // then let the user override them
-      ...props.serviceProps.bucketOverrides?.[props.bucket.name],
-    };
+    const stack = Stack.of(this);
+
+    const bucketOverrides =
+      props.serviceProps.bucketOverrides?.[props.bucket.name];
 
     this.bucket = new SecureBucket(this, "Bucket", {
       compliancePolicy: props.serviceProps.compliancePolicy,
@@ -222,7 +223,9 @@ class Bucket extends Construct implements IBucket {
         bucketOverrides?.bucketName ??
         bucketServiceBucketName(
           props.serviceProps.serviceName,
-          props.bucket.name
+          props.bucket.name,
+          stack.account,
+          stack.region
         ),
       autoDeleteObjects: bucketOverrides?.autoDeleteObjects ?? true,
       removalPolicy: bucketOverrides?.removalPolicy ?? RemovalPolicy.DESTROY,

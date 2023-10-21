@@ -55,8 +55,6 @@ export interface PipeDynamoDBStreamParameters {
 export class EventBridgePipe extends Resource implements IGrantable {
   public grantPrincipal: IPrincipal;
 
-  private readonly resource: CfnPipe;
-
   constructor(scope: Construct, id: string, props: EventBridgePipeProps) {
     super(scope, id);
 
@@ -66,7 +64,7 @@ export class EventBridgePipe extends Resource implements IGrantable {
 
     this.grantPrincipal = pipeRole;
 
-    this.resource = new CfnPipe(scope, "Resource", {
+    new CfnPipe(scope, "Resource", {
       roleArn: pipeRole.roleArn,
       source: props.source,
       target: props.target,
