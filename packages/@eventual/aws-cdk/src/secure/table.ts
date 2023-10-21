@@ -18,9 +18,6 @@ export class SecureTable extends Table {
     id: string,
     { compliancePolicy, ...props }: SecureTableProps
   ) {
-    if (!props.partitionKey) {
-      throw new Error("A partitionKey is required for SecureTable");
-    }
     super(scope, id, {
       billingMode: BillingMode.PAY_PER_REQUEST, // Or adjust as needed
       encryption: compliancePolicy.isAWSOwnedKeys()
