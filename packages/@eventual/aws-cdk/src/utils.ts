@@ -9,7 +9,7 @@ export const baseFnProps: Pick<
   FunctionProps,
   "runtime" | "architecture" | "environment"
 > = {
-  runtime: Runtime.NODEJS_18_X,
+  runtime: Runtime.NODEJS_LATEST,
   architecture: Architecture.ARM_64,
   environment: {
     NODE_OPTIONS: "--enable-source-maps",

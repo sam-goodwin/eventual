@@ -61,7 +61,7 @@ export abstract class BaseSearchService<Service>
       this,
       "CustomResourceHandler",
       {
-        runtime: aws_lambda.Runtime.NODEJS_18_X,
+        runtime: aws_lambda.Runtime.NODEJS_LATEST,
         handler:
           props.build.system.searchService.customResourceHandler.handler ??
           "index.default",

@@ -336,7 +336,7 @@ export class CommandService<Service = any> {
             "options-command"
           ),
           handler: "index.handler",
-          runtime: Runtime.NODEJS_18_X,
+          runtime: Runtime.NODEJS_LATEST,
           architecture: Architecture.ARM_64,
           memorySize: 512,
           // the headers will be replaced with the correct headers based on the cors configuration
