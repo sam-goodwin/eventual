@@ -21,6 +21,7 @@ import {
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
+import type { Compliance } from "./compliance";
 
 export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 
@@ -70,6 +71,7 @@ export class TaskService<Service = any> {
       taskServiceScope,
       "FallbackHandler",
       {
+        compliancePolicy: props.compliancePolicy,
         bundledFunction: props.build.system.taskService.fallbackHandler,
         build: props.build,
         functionNameSuffix: taskServiceFunctionSuffix(
@@ -83,6 +85,7 @@ export class TaskService<Service = any> {
     this.tasks = Object.fromEntries(
       props.build.tasks.map((t) => {
         const task = new Task(taskScope, t.spec.name, {
+          compliancePolicy: props.compliancePolicy,
           task: t,
           build: props.build,
           codeFile: t.entry,
@@ -249,6 +252,7 @@ export interface TaskProps {
   fallbackHandler: Function;
   overrides?: TaskHandlerProps;
   local?: ServiceLocal;
+  compliancePolicy: Compliance;
 }
 
 export class Task extends Construct implements EventualResource {
@@ -259,6 +263,7 @@ export class Task extends Construct implements EventualResource {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Worker", {
+      compliancePolicy: props.compliancePolicy,
       build: props.build,
       serviceName: props.serviceName,
       bundledFunction: props.task,

@@ -47,6 +47,7 @@ import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
+import { SecureFunction } from "./secure/function.js";
 
 export type ApiOverrides = Omit<SpecHttpApiProps, "apiDefinition">;
 
@@ -180,6 +181,7 @@ export class CommandService<Service = any> {
       commandsSystemScope,
       "SystemCommandHandler",
       {
+        compliancePolicy: props.compliancePolicy,
         build: this.props.build,
         bundledFunction:
           this.props.build.system.eventualService.systemCommandHandler,
@@ -242,6 +244,7 @@ export class CommandService<Service = any> {
             scope,
             commandNamespaceName(command),
             {
+              compliancePolicy: props.compliancePolicy,
               build: self.props.build,
               bundledFunction: manifest,
               functionNameSuffix: commandFunctionNameSuffix(command),
@@ -330,7 +333,8 @@ export class CommandService<Service = any> {
 
       let optionsFunction: Function | undefined;
       if (props.cors && !props.cors.disableOptionsEndpoint) {
-        optionsFunction = new Function(commandsSystemScope, "Options", {
+        optionsFunction = new SecureFunction(commandsSystemScope, "Options", {
+          compliancePolicy: props.compliancePolicy,
           functionName: serviceFunctionName(
             props.serviceName,
             "options-command"

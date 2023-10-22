@@ -127,6 +127,7 @@ class Socket extends Construct implements EventualResource, ISocket {
     super(scope, socketName);
 
     this.handler = new ServiceFunction(this, "DefaultHandler", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       build: props.serviceProps.build,
       bundledFunction: props.socket,
       functionNameSuffix: `socket-${socketName}-default`,

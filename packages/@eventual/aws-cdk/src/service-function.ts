@@ -4,10 +4,12 @@ import {
   BundledFunction,
   computeDurationSeconds,
 } from "@eventual/core-runtime";
+import { FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Duration, Stack } from "aws-cdk-lib/core";
-import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
+import type { Compliance } from "./compliance";
+import { SecureFunction } from "./secure/function";
 import { baseFnProps } from "./utils";
 
 export interface ServiceFunctionProps {
@@ -18,6 +20,7 @@ export interface ServiceFunctionProps {
   runtimeProps?: FunctionRuntimeProps;
   serviceName: string;
   functionNameSuffix: string;
+  compliancePolicy: Compliance;
 }
 
 /**
@@ -29,12 +32,13 @@ export interface ServiceFunctionProps {
  *
  * Deep Merged: environment
  */
-export class ServiceFunction extends Function {
+export class ServiceFunction extends SecureFunction {
   constructor(scope: Construct, id: string, props: ServiceFunctionProps) {
     super(scope, id, {
       ...baseFnProps,
       ...props.defaults,
       ...props.overrides,
+      compliancePolicy: props.compliancePolicy,
       functionName: serviceFunctionName(
         props.serviceName,
         props.functionNameSuffix

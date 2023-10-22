@@ -185,6 +185,7 @@ export class QueueHandler extends Construct implements EventualResource {
     const queueName = props.runtimeQueue.name;
 
     this.handler = new ServiceFunction(this, "Handler", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       build: props.serviceProps.build,
       bundledFunction: props.runtimeQueue.handler,
       functionNameSuffix: `queue-handler-${queueName}`,

@@ -123,6 +123,7 @@ export class Subscription extends Construct implements EventualResource {
       compliancePolicy: props.compliancePolicy,
     });
     this.handler = new ServiceFunction(this, "Handler", {
+      compliancePolicy: props.compliancePolicy,
       build: props.build,
       serviceName: props.serviceName,
       functionNameSuffix: subscriptionServiceFunctionSuffix(subscription.name),

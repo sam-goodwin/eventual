@@ -126,6 +126,7 @@ export class EntityService<Service> {
         entityServiceConstruct,
         "TransactionWorker",
         {
+          compliancePolicy: props.compliancePolicy,
           build: props.build,
           bundledFunction: props.build.system.entityService.transactionWorker,
           functionNameSuffix: "transaction-worker",
@@ -352,6 +353,7 @@ export class EntityStream extends Construct implements EventualResource {
 
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
+      compliancePolicy: props.serviceProps.compliancePolicy,
       bundledFunction: props.stream,
       functionNameSuffix: `entity-stream-${entityName}-${streamName}`,
       serviceName: props.serviceProps.serviceName,

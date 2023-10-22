@@ -4,6 +4,7 @@ import type { Function } from "aws-cdk-lib/aws-lambda";
 import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { Duration, Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
+import { SecureFunction } from "../secure/function";
 import type { ServiceConstructProps } from "../service-common";
 import type { ServiceEntityProps } from "../utils";
 import { SearchIndex } from "./search-index";
@@ -57,10 +58,11 @@ export abstract class BaseSearchService<Service>
     super(props.systemScope, "SearchService");
 
     this.indexRoot = new Construct(props.serviceScope, "Indices");
-    this.customResourceHandler = new aws_lambda.Function(
+    this.customResourceHandler = new SecureFunction(
       this,
       "CustomResourceHandler",
       {
+        compliancePolicy: props.compliancePolicy,
         runtime: aws_lambda.Runtime.NODEJS_LATEST,
         handler:
           props.build.system.searchService.customResourceHandler.handler ??

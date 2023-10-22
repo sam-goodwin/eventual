@@ -1,6 +1,7 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { SecureKey } from "./secure/key";
+import { aws_iam } from "aws-cdk-lib";
 
 export enum ComplianceStandard {
   HIPAA = "HIPAA",
@@ -62,6 +63,12 @@ export class Compliance extends Construct {
       this.logEncryptionKey = new SecureKey(this, "LogEncryptionKey", {
         enableKeyRotation: true,
       });
+      this.logEncryptionKey.grantEncryptDecrypt(
+        new aws_iam.ServicePrincipal(
+          aws_iam.ServicePrincipal.servicePrincipalName("logs.amazonaws.com")
+        )
+      );
+
       this.dataEncryptionKey = new SecureKey(this, "DataEncryptionKey", {
         enableKeyRotation: true,
       });

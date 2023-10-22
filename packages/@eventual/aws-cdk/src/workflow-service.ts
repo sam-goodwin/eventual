@@ -178,6 +178,7 @@ export class WorkflowService {
       workflowServiceScope,
       "Orchestrator",
       {
+        compliancePolicy: props.compliancePolicy,
         functionNameSuffix: `orchestrator-handler`,
         build: props.build,
         bundledFunction: props.build.system.workflowService.orchestrator,

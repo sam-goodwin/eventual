@@ -102,6 +102,7 @@ export class SchedulerService {
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
     this.forwarder = new ServiceFunction(schedulerServiceScope, "Forwarder", {
+      compliancePolicy: props.compliancePolicy,
       build: props.build,
       bundledFunction: props.build.system.schedulerService.forwarder,
       functionNameSuffix: "scheduler-forwarder",
@@ -112,6 +113,7 @@ export class SchedulerService {
     this.forwarder.grantInvoke(this.schedulerRole);
 
     this.handler = new ServiceFunction(schedulerServiceScope, "handler", {
+      compliancePolicy: props.compliancePolicy,
       build: props.build,
       bundledFunction: props.build.system.schedulerService.timerHandler,
       functionNameSuffix: "scheduler-handler",

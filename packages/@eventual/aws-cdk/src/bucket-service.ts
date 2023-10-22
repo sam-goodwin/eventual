@@ -272,6 +272,7 @@ export class BucketNotificationHandler
     const bucketName = props.handler.spec.bucketName;
 
     this.handler = new ServiceFunction(this, "Handler", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       build: props.serviceProps.build,
       bundledFunction: props.handler,
       functionNameSuffix: `bucket-handler-${bucketName}-${handlerName}`,
