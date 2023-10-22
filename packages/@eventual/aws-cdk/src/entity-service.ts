@@ -20,7 +20,6 @@ import {
   BillingMode,
   ITable,
   StreamViewType,
-  Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
@@ -43,6 +42,7 @@ import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
 import { EventualResource } from "./resource.js";
+import { SecureTable } from "./secure/table.js";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -233,7 +233,8 @@ class Entity extends Construct {
 
     const keyDefinition = props.entity.key;
 
-    const table = (this.table = new Table(this, "Table", {
+    const table = (this.table = new SecureTable(this, "Table", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       tableName: entityServiceTableName(
         props.serviceProps.serviceName,
         props.entity.name
