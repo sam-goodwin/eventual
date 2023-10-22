@@ -25,7 +25,7 @@ import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension.js";
 
-import { ComplianceStandard } from "@eventual/aws-cdk/src/compliance.js";
+import { ComplianceStandard } from "@eventual/aws-cdk";
 import { CfnPipe } from "aws-cdk-lib/aws-pipes";
 import type * as testServiceRuntime from "tests-runtime";
 
