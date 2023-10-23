@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.56.1 (2023-10-23)
+
+**Note:** Version bump only for package @eventual/testing
+
 # 0.56.0 (2023-10-19)
 
 ### Features
