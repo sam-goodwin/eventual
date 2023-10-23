@@ -1,21 +1,18 @@
 import { ENV_NAMES, taskServiceFunctionSuffix } from "@eventual/aws-runtime";
 import type { TaskFunction } from "@eventual/core-runtime";
-import {
-  AttributeType,
-  BillingMode,
-  ITable,
-  Table,
-} from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode, ITable } from "aws-cdk-lib/aws-dynamodb";
 import aws_iam, { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
+import { Duration, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import { grant } from "./grant";
 import type { LazyInterface } from "./proxy-construct";
+import { EventualResource } from "./resource";
 import type { SchedulerService } from "./scheduler-service";
+import { SecureTable } from "./secure/table";
 import type { ServiceLocal } from "./service";
 import {
   WorkerServiceConstructProps,
@@ -24,7 +21,7 @@ import {
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
-import { EventualResource } from "./resource";
+import type { Compliance } from "./compliance";
 
 export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 
@@ -61,20 +58,20 @@ export class TaskService<Service = any> {
   constructor(private props: TasksProps<Service>) {
     const taskServiceScope = new Construct(props.systemScope, "TaskService");
 
-    this.table = new Table(taskServiceScope, "Table", {
+    this.table = new SecureTable(taskServiceScope, "Table", {
+      compliancePolicy: props.compliancePolicy,
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
         type: AttributeType.STRING,
       },
-      // TODO: remove after testing
-      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     this.fallbackHandler = new ServiceFunction(
       taskServiceScope,
       "FallbackHandler",
       {
+        compliancePolicy: props.compliancePolicy,
         bundledFunction: props.build.system.taskService.fallbackHandler,
         build: props.build,
         functionNameSuffix: taskServiceFunctionSuffix(
@@ -88,6 +85,7 @@ export class TaskService<Service = any> {
     this.tasks = Object.fromEntries(
       props.build.tasks.map((t) => {
         const task = new Task(taskScope, t.spec.name, {
+          compliancePolicy: props.compliancePolicy,
           task: t,
           build: props.build,
           codeFile: t.entry,
@@ -254,6 +252,7 @@ export interface TaskProps {
   fallbackHandler: Function;
   overrides?: TaskHandlerProps;
   local?: ServiceLocal;
+  compliancePolicy: Compliance;
 }
 
 export class Task extends Construct implements EventualResource {
@@ -264,6 +263,7 @@ export class Task extends Construct implements EventualResource {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Worker", {
+      compliancePolicy: props.compliancePolicy,
       build: props.build,
       serviceName: props.serviceName,
       bundledFunction: props.task,
@@ -279,6 +279,8 @@ export class Task extends Construct implements EventualResource {
       runtimeProps: props.task.spec.options,
       overrides: props.overrides,
     });
+
+    // TODO: Dead Letter Queue?
 
     this.grantPrincipal = props.local
       ? new DeepCompositePrincipal(

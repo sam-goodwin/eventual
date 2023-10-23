@@ -1,14 +1,15 @@
-import { Function } from "aws-cdk-lib/aws-lambda";
-import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
-import { BuildOutput } from "./build";
-import { CommandService } from "./command-service";
-import { EntityService } from "./entity-service";
-import { LazyInterface } from "./proxy-construct";
-import { QueueService } from "./queue-service";
-import { SearchService } from "./search/search-service";
-import { Service } from "./service";
-import { SocketService } from "./socket-service";
+import type { Function } from "aws-cdk-lib/aws-lambda";
+import type { Construct } from "constructs";
+import type { BucketService } from "./bucket-service";
+import type { BuildOutput } from "./build";
+import type { CommandService } from "./command-service";
+import type { EntityService } from "./entity-service";
+import type { LazyInterface } from "./proxy-construct";
+import type { QueueService } from "./queue-service";
+import type { SearchService } from "./search/search-service";
+import type { Service } from "./service";
+import type { SocketService } from "./socket-service";
+import type { Compliance } from "./compliance";
 
 export interface ServiceConstructProps {
   /**
@@ -26,6 +27,7 @@ export interface ServiceConstructProps {
   readonly serviceScope: Construct;
   readonly systemScope: Construct;
   readonly eventualServiceScope: Construct;
+  readonly compliancePolicy: Compliance;
 }
 
 /**

@@ -2,23 +2,14 @@ import {
   serviceFunctionName,
   socketServiceSocketName,
 } from "@eventual/aws-runtime";
+import { Architecture, FunctionProps, Runtime } from "aws-cdk-lib/aws-lambda";
 import { ArnFormat, Stack } from "aws-cdk-lib/core";
-import {
-  Architecture,
-  FunctionProps,
-  Runtime,
-  RuntimeFamily,
-} from "aws-cdk-lib/aws-lambda";
-
-export const NODE_18_X = new Runtime("nodejs18.x", RuntimeFamily.NODEJS, {
-  supportsInlineCode: true,
-});
 
 export const baseFnProps: Pick<
   FunctionProps,
   "runtime" | "architecture" | "environment"
 > = {
-  runtime: NODE_18_X,
+  runtime: Runtime.NODEJS_LATEST,
   architecture: Architecture.ARM_64,
   environment: {
     NODE_OPTIONS: "--enable-source-maps",

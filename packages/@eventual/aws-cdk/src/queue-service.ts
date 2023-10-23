@@ -19,6 +19,7 @@ import {
 } from "./service-common";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, formatQueueArn, serviceQueueArn } from "./utils";
+import { SecureQueue } from "./secure/queue";
 
 export type QueueHandlerFunctionProps = Omit<
   Partial<FunctionProps>,
@@ -71,6 +72,13 @@ export class QueueService<Service> {
   }
 
   public grantSendAndManageMessage(grantee: IGrantable) {
+    if (this.props.compliancePolicy.isCustomerManagedKeys()) {
+      // the Queues are encrypted with a CMK, so grant the permission to use it
+      this.props.compliancePolicy.dataEncryptionKey.grantEncryptDecrypt(
+        grantee
+      );
+    }
+
     // find any queue names that were provided by the service and not computed
     const queueNameOverrides = this.props.queueOverrides
       ? Object.values(
@@ -132,7 +140,8 @@ class Queue extends Construct implements IQueue {
     const { handler, ...overrides } =
       props.serviceProps.queueOverrides?.[props.queue.name] ?? {};
 
-    this.queue = new sqs.Queue(this, "Queue", {
+    this.queue = new SecureQueue(this, "Queue", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       contentBasedDeduplication: props.queue.contentBasedDeduplication,
       deliveryDelay: props.queue.delay
         ? Duration.seconds(computeDurationSeconds(props.queue.delay))
@@ -148,10 +157,6 @@ class Queue extends Construct implements IQueue {
             computeDurationSeconds(props.queue.visibilityTimeout)
           )
         : undefined,
-      // TODO: support customer managed key
-      encryption: props.queue.encryption
-        ? sqs.QueueEncryption.SQS_MANAGED
-        : sqs.QueueEncryption.UNENCRYPTED,
       ...overrides,
     });
 
@@ -180,6 +185,7 @@ export class QueueHandler extends Construct implements EventualResource {
     const queueName = props.runtimeQueue.name;
 
     this.handler = new ServiceFunction(this, "Handler", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       build: props.serviceProps.build,
       bundledFunction: props.runtimeQueue.handler,
       functionNameSuffix: `queue-handler-${queueName}`,

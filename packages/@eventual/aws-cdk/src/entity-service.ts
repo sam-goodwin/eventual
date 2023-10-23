@@ -20,7 +20,6 @@ import {
   BillingMode,
   ITable,
   StreamViewType,
-  Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
@@ -43,6 +42,7 @@ import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
 import { EventualResource } from "./resource.js";
+import { SecureTable } from "./secure/table.js";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -126,6 +126,7 @@ export class EntityService<Service> {
         entityServiceConstruct,
         "TransactionWorker",
         {
+          compliancePolicy: props.compliancePolicy,
           build: props.build,
           bundledFunction: props.build.system.entityService.transactionWorker,
           functionNameSuffix: "transaction-worker",
@@ -154,6 +155,13 @@ export class EntityService<Service> {
   }
 
   public grantReadWriteEntityTables(grantee: IGrantable) {
+    if (this.props.compliancePolicy.isCustomerManagedKeys()) {
+      // the Tables are encrypted with a CMK, so grant the permission to use it
+      this.props.compliancePolicy.dataEncryptionKey.grantEncryptDecrypt(
+        grantee
+      );
+    }
+
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
@@ -226,7 +234,8 @@ class Entity extends Construct {
 
     const keyDefinition = props.entity.key;
 
-    const table = (this.table = new Table(this, "Table", {
+    const table = (this.table = new SecureTable(this, "Table", {
+      compliancePolicy: props.serviceProps.compliancePolicy,
       tableName: entityServiceTableName(
         props.serviceProps.serviceName,
         props.entity.name
@@ -344,6 +353,7 @@ export class EntityStream extends Construct implements EventualResource {
 
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
+      compliancePolicy: props.serviceProps.compliancePolicy,
       bundledFunction: props.stream,
       functionNameSuffix: `entity-stream-${entityName}-${streamName}`,
       serviceName: props.serviceProps.serviceName,

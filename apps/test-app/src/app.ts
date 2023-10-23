@@ -26,7 +26,7 @@ new ServiceDashboard(stack, "BenchmarkDashboard", {
 const bench = new NodejsFunction(stack, "BenchmarkFunc", {
   entry: require.resolve("test-app-runtime/lib/bench.js"),
   handler: "handle",
-  runtime: Runtime.NODEJS_16_X,
+  runtime: Runtime.NODEJS_LATEST,
   architecture: Architecture.ARM_64,
   bundling: {
     // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
