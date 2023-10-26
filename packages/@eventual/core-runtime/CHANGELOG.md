@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.56.2 (2023-10-26)
+
+### Bug Fixes
+
+- do not encode string as JSON when writing to S3 local ([#474](https://github.com/functionless/eventual/issues/474)) ([9a944b9](https://github.com/functionless/eventual/commit/9a944b97a7909f246f40175a2190585fa65a1bdf))
+
 ## 0.56.1 (2023-10-23)
 
 **Note:** Version bump only for package @eventual/core-runtime
