@@ -203,9 +203,27 @@ export const local = (yargs: Argv) =>
 
       // open up all of the user and service commands to the service.
       app.all("/*", ...apiMiddleware, async (req, res) => {
+        let buffer: Buffer | undefined;
+        const contentType = req.header("content-type");
+        if (
+          // check if it is a known binary type
+          contentType?.startsWith("video/") ||
+          contentType?.startsWith("image/") ||
+          contentType?.startsWith("audio/") ||
+          contentType?.startsWith("application/octet-stream")
+        ) {
+          buffer = await new Promise((resolve, reject) => {
+            const chunks: any[] = [];
+            req.on("data", (chunk) => chunks.push(chunk));
+            req.on("error", reject);
+            req.on("end", () => {
+              resolve(Buffer.concat(chunks));
+            });
+          });
+        }
         const request = new HttpRequest(`${url}${req.originalUrl}`, {
           method: req.method as HttpMethod,
-          body: req.body ? JSON.stringify(req.body) : undefined,
+          body: buffer ?? (req.body ? JSON.stringify(req.body) : undefined),
           headers: req.headers as Record<string, string>,
         });
         const resp = await localEnv.invokeCommandOrApi(request);
