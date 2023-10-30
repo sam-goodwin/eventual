@@ -257,13 +257,17 @@ export function serviceWebSocketName(serviceName: string, suffix: string) {
  * * contain only lower case characters or number, dots, and dashes.
  * * Must not contain duplicate dots
  * * must start and end with a number or letter
- * * must be unique with an AWS region
+ * * must be unique with an AWS partition (aws, aws-cn, aws-us-gov)
  *
  * https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
  */
-export function serviceBucketName(serviceName: string, suffix: string) {
+export function serviceBucketName(
+  serviceName: string,
+  suffix: string,
+  offsetLength?: number
+) {
   const serviceNameAndSeparatorLength = serviceName.length + 1;
-  const remaining = 63 - serviceNameAndSeparatorLength;
+  const remaining = 63 - serviceNameAndSeparatorLength - (offsetLength ?? 0);
   return sanitizeBucketName(`${serviceName}-${suffix.substring(0, remaining)}`);
 }
 
@@ -313,6 +317,10 @@ export function entityServiceTableName(
   return serviceFunctionName(serviceName, entityServiceTableSuffix(entityName));
 }
 
+// -[account (12)]-[region(9-13)]
+// region us-east-1 (9) - us-gov-east-1 (13)
+const ACCOUNT_REGION_OFFSET = 12 + 13 + 2;
+
 /**
  * Note: a bucket's name can be overridden by the user.
  */
@@ -322,10 +330,11 @@ export function bucketServiceBucketName(
   accountID: string,
   region: string
 ): string {
-  return serviceBucketName(
+  return `${serviceBucketName(
     serviceName,
-    bucketServiceBucketSuffix(bucketName, accountID, region)
-  );
+    bucketName,
+    ACCOUNT_REGION_OFFSET
+  )}-${accountID}-${region}`;
 }
 
 export function socketServiceSocketName(
