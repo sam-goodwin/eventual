@@ -302,7 +302,7 @@ export interface GetBucketMetadataResponse
    * Content length in bytes
    */
   contentLength: number;
-  etag?: string;
+  etag: string;
 }
 
 export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
@@ -316,7 +316,7 @@ export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
 }
 
 export interface PutBucketObjectResponse {
-  etag?: string;
+  etag: string;
 }
 
 export interface PutBucketOptions {

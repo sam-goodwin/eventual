@@ -192,6 +192,7 @@ export class LocalContainer {
   public executionHistoryStore: ExecutionHistoryStore;
   public executionStore: ExecutionStore;
   public taskStore: TaskStore;
+  public bucketStore: LocalBucketStore;
 
   public entityProvider: EntityProvider;
   public queueProvider: QueueProvider;
@@ -246,14 +247,17 @@ export class LocalContainer {
         data
       )
     );
-    const bucketStore = localPersistanceStore.register("buckets", (data) =>
-      LocalBucketStore.fromSerializedData(
-        {
-          localConnector: this.localConnector,
-        },
-        data
-      )
-    );
+    const bucketStore = (this.bucketStore = localPersistanceStore.register(
+      "buckets",
+      (data) =>
+        LocalBucketStore.fromSerializedData(
+          {
+            localConnector: this.localConnector,
+            baseUrl: props.serviceUrl,
+          },
+          data
+        )
+    ));
     const openSearchClient = new LocalOpenSearchClient();
     this.eventClient = new LocalEventClient(this.localConnector);
     this.metricsClient = new LocalMetricsClient();

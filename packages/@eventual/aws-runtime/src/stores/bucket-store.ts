@@ -71,7 +71,7 @@ export class AWSBucketStore implements BucketStore {
       ? {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
-          etag: result.ETag,
+          etag: result.ETag!,
           cacheControl: result.CacheControl,
           contentEncoding: result.ContentEncoding,
           contentType: result.ContentType,
@@ -105,7 +105,7 @@ export class AWSBucketStore implements BucketStore {
     return result.ContentLength !== undefined
       ? {
           contentLength: result.ContentLength,
-          etag: result.ETag,
+          etag: result.ETag!,
           metadata: result.Metadata,
         }
       : undefined;
@@ -133,7 +133,7 @@ export class AWSBucketStore implements BucketStore {
     );
 
     return {
-      etag: result.ETag,
+      etag: result.ETag!,
     };
   }
 

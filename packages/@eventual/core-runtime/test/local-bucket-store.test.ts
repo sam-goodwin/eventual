@@ -18,7 +18,11 @@ describe("persist", () => {
     const localPersistance = new LocalPersistanceStore(storagePath);
     const bucketStore = localPersistance.register(
       "bucket",
-      (_data) => new LocalBucketStore({ localConnector: NoOpLocalEnvConnector })
+      (_data) =>
+        new LocalBucketStore({
+          localConnector: NoOpLocalEnvConnector,
+          baseUrl: "",
+        })
     );
 
     await bucketStore.put("bucket", "key", Buffer.from("value"), {
@@ -43,7 +47,7 @@ describe("persist", () => {
     const localPersistance = new LocalPersistanceStore(storagePath);
     const bucketStore = localPersistance.register("bucket", (data) =>
       LocalBucketStore.fromSerializedData(
-        { localConnector: NoOpLocalEnvConnector },
+        { localConnector: NoOpLocalEnvConnector, baseUrl: "" },
         data
       )
     );

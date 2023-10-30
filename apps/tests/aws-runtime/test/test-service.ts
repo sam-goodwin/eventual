@@ -39,6 +39,7 @@ import type openapi from "openapi3-ts";
 import { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
+import { v4 as uuidv4 } from "uuid";
 
 const sqs = new SQSClient({});
 const dynamo = new DynamoDBClient({});
@@ -1550,3 +1551,18 @@ export const socketTest = command(
     return executionId;
   }
 );
+
+export const testBucket2 = bucket("testBucket2");
+
+export const getPresigned = command("getPresigned", {}, async () => {
+  const key = uuidv4();
+  const { url: putUrl } = await testBucket2.generatePresignedUrl(key, "put");
+  const { url: getUrl } = await testBucket2.generatePresignedUrl(key, "get");
+  const { url: headUrl } = await testBucket2.generatePresignedUrl(key, "head");
+  const { url: deleteUrl } = await testBucket2.generatePresignedUrl(
+    key,
+    "delete"
+  );
+
+  return { key, putUrl, getUrl, headUrl, deleteUrl };
+});

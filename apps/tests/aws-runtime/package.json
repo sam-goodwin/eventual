@@ -21,6 +21,7 @@
     "@eventual/cli": "workspace:^",
     "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
+    "uuid": "^9.0.1",
     "ws": "^8.14.1",
     "zod": "^3.21.4"
   },
@@ -31,6 +32,7 @@
     "@types/aws-lambda": "^8.10.115",
     "@types/jest": "^29.5.1",
     "@types/node": "^18",
+    "@types/uuid": "^9.0.4",
     "@types/ws": "^8.5.5",
     "aws-cdk": "^2.102.0",
     "esbuild": "^0.17.4",
@@ -42,6 +44,14 @@
     "typescript": "^5.0.4"
   },
   "jest": {
+    "displayName": "workspace",
+    "roots": [
+      "<rootDir>"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
+    ],
     "extensionsToTreatAsEsm": [
       ".ts"
     ],
@@ -49,7 +59,7 @@
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "transform": {
-      "^.+\\.tsx?$": [
+      "^.+\\.(t|j)sx?$": [
         "ts-jest",
         {
           "tsconfig": "tsconfig.json",

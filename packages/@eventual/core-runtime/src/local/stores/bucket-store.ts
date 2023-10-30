@@ -20,9 +20,11 @@ import { streamToBuffer } from "../../utils.js";
 import type { LocalEnvConnector } from "../local-container.js";
 import type { LocalSerializable } from "../local-persistance-store.js";
 import { paginateItems } from "./pagination.js";
+import { computeDurationSeconds } from "../../schedule.js";
 
 export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
+  baseUrl: string;
 }
 
 interface ObjectData extends PutBucketOptions {
@@ -286,14 +288,51 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
     };
   }
 
-  public generatePresignedUrl(
-    _bucketName: string,
-    _key: string,
-    _operation: PresignedUrlOperation,
-    _expires?: DurationSchedule | undefined
+  public async generatePresignedUrl(
+    bucketName: string,
+    key: string,
+    operation: PresignedUrlOperation,
+    expires?: DurationSchedule | undefined
   ): Promise<BucketGeneratePresignedResult> {
     // https://github.com/functionless/eventual/issues/341
-    throw new Error("Presigned urls are not supported in Eventual Local");
+    const expireDuration = expires
+      ? computeDurationSeconds(expires)
+      : // default 1 hour
+        3_600;
+    if (expireDuration > 604800) {
+      throw new Error(
+        "Presigned URL expiration must be less than or equal to 7 days (604800 seconds)"
+      );
+    }
+    const expiration = new Date(
+      this.props.localConnector.getTime().getTime() + expireDuration * 1000
+    );
+    const data: PresignUrlEnvelope = {
+      bucketName,
+      key,
+      operation,
+      expires: expiration.toISOString(),
+    };
+
+    return {
+      url: `${this.props.baseUrl}/__bucket/presigned/${Buffer.from(
+        JSON.stringify(data)
+      ).toString("base64url")}`,
+      expires: expiration.toISOString(),
+    };
+  }
+
+  public decodeAsyncUrlKey(
+    key: string,
+    assertOperation?: PresignedUrlOperation
+  ): PresignUrlEnvelope {
+    const data = JSON.parse(Buffer.from(key, "base64url").toString("utf-8"));
+    if (assertOperation && data.operation !== assertOperation) {
+      throw new Error(
+        "Presigned URL operation does not match expected operation"
+      );
+    }
+    return data;
   }
 
   public async list(
@@ -364,4 +403,11 @@ function shortHash(input: string): string {
     hash |= 0; // Convert to 32-bit integer
   }
   return Math.abs(hash).toString(16); // Convert the integer to a hex string
+}
+
+export interface PresignUrlEnvelope {
+  bucketName: string;
+  key: string;
+  operation: PresignedUrlOperation;
+  expires: string;
 }

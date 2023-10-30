@@ -1,17 +1,27 @@
 import { inferFromMemory } from "@eventual/compiler";
-import { HttpMethod, HttpRequest, SocketQuery } from "@eventual/core";
+import {
+  GetBucketMetadataResponse,
+  HttpMethod,
+  HttpRequest,
+  PresignedUrlOperation,
+  PutBucketOptions,
+  SocketQuery,
+} from "@eventual/core";
 import {
   LocalEnvironment,
   LocalPersistanceStore,
   NoPersistanceStore,
+  PresignedUrlResponse,
+  PresignedUrlSuccessResponse,
 } from "@eventual/core-runtime";
 import { ServiceSpec } from "@eventual/core/internal";
 import { EventualConfig, discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
-import express, { RequestHandler } from "express";
+import express, { RequestHandler, Response } from "express";
 import http from "http";
 import ora, { Ora } from "ora";
 import path from "path";
+import getBody from "raw-body";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 import { WebSocketServer } from "ws";
@@ -177,11 +187,69 @@ export const local = (yargs: Argv) =>
       const app = express();
       const server = http.createServer(app);
 
+      const presignedMiddleware: RequestHandler = async (req, res, next) => {
+        if (req.url.startsWith("/__bucket/presigned")) {
+          const [, , , token] = req.url.split("/");
+          if (!token) {
+            res.status(400).send("Missing token");
+            return;
+          }
+          if (req.method === "PUT") {
+            const body = req.body
+              ? JSON.stringify(req.body)
+              : await getBody(req);
+            const options: PutBucketOptions = {
+              cacheControl: req.headers["cache-control"] as string,
+              contentEncoding: req.headers["content-encoding"] as string,
+              contentType: req.headers["content-type"] as string,
+            };
+            const result = await localEnv.executePresignedUrl(
+              token,
+              "put",
+              options,
+              body
+            );
+            if (handleInvalidPresignedResult(res, result)) {
+              res.send(JSON.stringify(result.resp));
+            }
+          } else if (req.method === "GET") {
+            const result = await localEnv.executePresignedUrl(token, "get");
+            if (handleInvalidPresignedResult(res, result)) {
+              if (!result.resp) {
+                res.status(404).send();
+                return;
+              }
+              setPredignedMetadataHeaders(res, result.key, result.resp);
+              const body = await getBody(result.resp.body);
+              res.send(body);
+            }
+          } else if (req.method === "HEAD") {
+            const result = await localEnv.executePresignedUrl(token, "head");
+            if (handleInvalidPresignedResult(res, result)) {
+              if (!result.resp) {
+                res.status(404).send();
+                return;
+              }
+              setPredignedMetadataHeaders(res, result.key, result.resp);
+              res.status(201).end();
+            }
+          } else if (req.method === "DELETE") {
+            const result = await localEnv.executePresignedUrl(token, "delete");
+            if (handleInvalidPresignedResult(res, result)) {
+              res.status(200).end();
+            }
+          } else {
+            res.status(405).send("Method not allowed");
+          }
+          return;
+        }
+        next();
+      };
+
       const apiMiddleware: RequestHandler[] = [
+        presignedMiddleware,
         express.json({ strict: false, limit: maxBodySize }),
         (req, res, next) => {
-          next();
-
           const headers = res.getHeaders();
           if (!headers["Access-Control-Allow-Origin"]) {
             res.header(
@@ -198,6 +266,7 @@ export const local = (yargs: Argv) =>
           if (!headers["Access-Control-Allow-Credentials"]) {
             res.header("Access-Control-Allow-Credentials", "true");
           }
+          next();
         },
       ];
 
@@ -391,4 +460,34 @@ export async function resolveManifestLocal(
   } else {
     return manifest;
   }
+}
+
+function setPredignedMetadataHeaders(
+  res: Response,
+  key: string,
+  getResp: GetBucketMetadataResponse
+) {
+  // TODO: return they key to use as the file name?
+  res.setHeader("Content-Disposition", `attachment; filename=${key}`);
+  getResp.contentType &&
+    res.setHeader("Content-Type", getResp.contentType ?? "binary/octet-stream");
+  getResp.contentType && res.setHeader("Content-Length", getResp.contentLength);
+  res.setHeader("Content-Encoding", getResp.contentEncoding ?? "identity");
+  res.setHeader("Cache-Control", getResp.cacheControl ?? "no-cache");
+  res.setHeader("ETag", getResp.etag);
+}
+
+function handleInvalidPresignedResult<Op extends PresignedUrlOperation>(
+  res: Response,
+  result: PresignedUrlResponse<Op>
+): result is PresignedUrlSuccessResponse<Op> {
+  if ("error" in result) {
+    res.status(500).send(result.error);
+    return false;
+  } else if ("expired" in result) {
+    res.status(400).send("Url is expired");
+    return false;
+  }
+
+  return true;
 }
