@@ -8,6 +8,7 @@ import {
   SocketQuery,
 } from "@eventual/core";
 import {
+  LOCAL_BUCKET_PRESIGNED_URL_PREFIX,
   LocalEnvironment,
   LocalPersistanceStore,
   NoPersistanceStore,
@@ -191,7 +192,7 @@ export const local = (yargs: Argv) =>
        * Catches the url pattern of /__bucket/presigned/ and handles it like a s3 presigned url.
        */
       const presignedMiddleware: RequestHandler = async (req, res, next) => {
-        if (req.url.startsWith("/__bucket/presigned")) {
+        if (req.url.startsWith(LOCAL_BUCKET_PRESIGNED_URL_PREFIX)) {
           try {
             const [, , , token] = req.url.split("/");
             if (!token) {
@@ -199,9 +200,7 @@ export const local = (yargs: Argv) =>
               return;
             }
             if (req.method === "PUT") {
-              const body = req.body
-                ? JSON.stringify(req.body)
-                : await getBody(req);
+              const body = await getBody(req);
               // TODO: support more data like metadata?
               const options: PutBucketOptions = {
                 cacheControl: req.headers["cache-control"] as string,
@@ -246,6 +245,9 @@ export const local = (yargs: Argv) =>
               if (handleInvalidPresignedResult(res, result)) {
                 res.status(200).end();
               }
+            } else if (req.method === "OPTIONS") {
+              // CORS should succeed with the injected cors header from the cors middleware.
+              res.status(200).end();
             } else {
               res.status(405).send("Method not allowed");
             }
@@ -257,28 +259,27 @@ export const local = (yargs: Argv) =>
         next();
       };
 
+      const corsMiddleware: RequestHandler = (req, res, next) => {
+        const headers = res.getHeaders();
+        if (!headers["Access-Control-Allow-Origin"]) {
+          res.header("Access-Control-Allow-Origin", req.headers.origin ?? "*");
+        }
+        if (!headers["Access-Control-Allow-Methods"]) {
+          res.header("Access-Control-Allow-Methods", "*");
+        }
+        if (!headers["Access-Control-Allow-Headers"]) {
+          res.header("Access-Control-Allow-Headers", "*");
+        }
+        if (!headers["Access-Control-Allow-Credentials"]) {
+          res.header("Access-Control-Allow-Credentials", "true");
+        }
+        next();
+      };
+
       const apiMiddleware: RequestHandler[] = [
+        corsMiddleware,
         presignedMiddleware,
         express.json({ strict: false, limit: maxBodySize }),
-        (req, res, next) => {
-          const headers = res.getHeaders();
-          if (!headers["Access-Control-Allow-Origin"]) {
-            res.header(
-              "Access-Control-Allow-Origin",
-              req.headers.origin ?? "*"
-            );
-          }
-          if (!headers["Access-Control-Allow-Methods"]) {
-            res.header("Access-Control-Allow-Methods", "*");
-          }
-          if (!headers["Access-Control-Allow-Headers"]) {
-            res.header("Access-Control-Allow-Headers", "*");
-          }
-          if (!headers["Access-Control-Allow-Credentials"]) {
-            res.header("Access-Control-Allow-Credentials", "true");
-          }
-          next();
-        },
       ];
 
       // open up all of the user and service commands to the service.

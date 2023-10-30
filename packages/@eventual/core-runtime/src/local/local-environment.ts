@@ -277,7 +277,7 @@ export class LocalEnvironment {
       : never,
     content?: string | Buffer | Readable
   ): Promise<PresignedUrlResponse<Op>> {
-    const data = this.localContainer.bucketStore.decodeAsyncUrlKey(
+    const data = this.localContainer.bucketStore.decodeLocalPresignedToken(
       token,
       operation
     );

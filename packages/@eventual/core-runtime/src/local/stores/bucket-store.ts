@@ -37,6 +37,8 @@ type Buckets = Record<string, Record<string, ObjectData>>;
 
 const META_SUFFIX = ".eventual.meta.json";
 
+export const LOCAL_BUCKET_PRESIGNED_URL_PREFIX = "/__bucket/presigned/";
+
 export class LocalBucketStore implements BucketStore, LocalSerializable {
   constructor(
     private props: LocalBucketStoreProps,
@@ -315,14 +317,16 @@ export class LocalBucketStore implements BucketStore, LocalSerializable {
     };
 
     return {
-      url: `${this.props.baseUrl}/__bucket/presigned/${Buffer.from(
+      url: `${
+        this.props.baseUrl
+      }${LOCAL_BUCKET_PRESIGNED_URL_PREFIX}${Buffer.from(
         JSON.stringify(data)
       ).toString("base64url")}`,
       expires: expiration.toISOString(),
     };
   }
 
-  public decodeAsyncUrlKey(
+  public decodeLocalPresignedToken(
     key: string,
     assertOperation?: PresignedUrlOperation
   ): PresignUrlEnvelope {
