@@ -187,59 +187,70 @@ export const local = (yargs: Argv) =>
       const app = express();
       const server = http.createServer(app);
 
+      /**
+       * Catches the url pattern of /__bucket/presigned/ and handles it like a s3 presigned url.
+       */
       const presignedMiddleware: RequestHandler = async (req, res, next) => {
         if (req.url.startsWith("/__bucket/presigned")) {
-          const [, , , token] = req.url.split("/");
-          if (!token) {
-            res.status(400).send("Missing token");
-            return;
-          }
-          if (req.method === "PUT") {
-            const body = req.body
-              ? JSON.stringify(req.body)
-              : await getBody(req);
-            const options: PutBucketOptions = {
-              cacheControl: req.headers["cache-control"] as string,
-              contentEncoding: req.headers["content-encoding"] as string,
-              contentType: req.headers["content-type"] as string,
-            };
-            const result = await localEnv.executePresignedUrl(
-              token,
-              "put",
-              options,
-              body
-            );
-            if (handleInvalidPresignedResult(res, result)) {
-              res.send(JSON.stringify(result.resp));
+          try {
+            const [, , , token] = req.url.split("/");
+            if (!token) {
+              res.status(400).send("Missing token");
+              return;
             }
-          } else if (req.method === "GET") {
-            const result = await localEnv.executePresignedUrl(token, "get");
-            if (handleInvalidPresignedResult(res, result)) {
-              if (!result.resp) {
-                res.status(404).send();
-                return;
+            if (req.method === "PUT") {
+              const body = req.body
+                ? JSON.stringify(req.body)
+                : await getBody(req);
+              // TODO: support more data like metadata?
+              const options: PutBucketOptions = {
+                cacheControl: req.headers["cache-control"] as string,
+                contentEncoding: req.headers["content-encoding"] as string,
+                contentType: req.headers["content-type"] as string,
+              };
+              const result = await localEnv.executePresignedUrl(
+                token,
+                "put",
+                options,
+                body
+              );
+              if (handleInvalidPresignedResult(res, result)) {
+                res.send(JSON.stringify(result.resp));
               }
-              setPredignedMetadataHeaders(res, result.key, result.resp);
-              const body = await getBody(result.resp.body);
-              res.send(body);
-            }
-          } else if (req.method === "HEAD") {
-            const result = await localEnv.executePresignedUrl(token, "head");
-            if (handleInvalidPresignedResult(res, result)) {
-              if (!result.resp) {
-                res.status(404).send();
-                return;
+            } else if (req.method === "GET") {
+              const result = await localEnv.executePresignedUrl(token, "get");
+              if (handleInvalidPresignedResult(res, result)) {
+                if (!result.resp) {
+                  res.status(404).send();
+                  return;
+                }
+                setPredignedMetadataHeaders(res, result.key, result.resp);
+                const body = await getBody(result.resp.body);
+                res.send(body);
               }
-              setPredignedMetadataHeaders(res, result.key, result.resp);
-              res.status(201).end();
+            } else if (req.method === "HEAD") {
+              const result = await localEnv.executePresignedUrl(token, "head");
+              if (handleInvalidPresignedResult(res, result)) {
+                if (!result.resp) {
+                  res.status(404).send();
+                  return;
+                }
+                setPredignedMetadataHeaders(res, result.key, result.resp);
+                res.status(201).end();
+              }
+            } else if (req.method === "DELETE") {
+              const result = await localEnv.executePresignedUrl(
+                token,
+                "delete"
+              );
+              if (handleInvalidPresignedResult(res, result)) {
+                res.status(200).end();
+              }
+            } else {
+              res.status(405).send("Method not allowed");
             }
-          } else if (req.method === "DELETE") {
-            const result = await localEnv.executePresignedUrl(token, "delete");
-            if (handleInvalidPresignedResult(res, result)) {
-              res.status(200).end();
-            }
-          } else {
-            res.status(405).send("Method not allowed");
+          } catch (err) {
+            res.status(500).send((err as Error).message);
           }
           return;
         }
@@ -471,7 +482,7 @@ function setPredignedMetadataHeaders(
   res.setHeader("Content-Disposition", `attachment; filename=${key}`);
   getResp.contentType &&
     res.setHeader("Content-Type", getResp.contentType ?? "binary/octet-stream");
-  getResp.contentType && res.setHeader("Content-Length", getResp.contentLength);
+  res.setHeader("Content-Length", getResp.contentLength);
   res.setHeader("Content-Encoding", getResp.contentEncoding ?? "identity");
   res.setHeader("Cache-Control", getResp.cacheControl ?? "no-cache");
   res.setHeader("ETag", getResp.etag);
