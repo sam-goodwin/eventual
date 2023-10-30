@@ -529,6 +529,29 @@ function setupWS(executionId: string, ws: WebSocket) {
   });
 }
 
+test("test presigned urls", async () => {
+  const serviceClient = new ServiceClient<typeof TestService>({
+    serviceUrl: url,
+  });
+
+  const data = { test: "test me" };
+
+  const { putUrl, headUrl, getUrl, deleteUrl } =
+    await serviceClient.getPresigned();
+  await fetch(putUrl, {
+    body: JSON.stringify(data),
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+  });
+  const headResult = await fetch(headUrl, { method: "HEAD" });
+  expect(headResult.headers.get("Content-Type")).toEqual("application/json");
+  const getResult = await fetch(getUrl, { method: "GET" });
+  expect(await getResult.json()).toEqual(data);
+  await fetch(deleteUrl, { method: "DELETE" });
+  const getResult2 = await fetch(getUrl, { method: "GET" });
+  expect(getResult2.status).toEqual(404);
+});
+
 if (!process.env.TEST_LOCAL) {
   test("index.search", async () => {
     const serviceClient = new ServiceClient<typeof TestService>({

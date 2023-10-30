@@ -1,16 +1,24 @@
-import {
+import type {
   EntityStreamItem,
+  GetBucketMetadataResponse,
+  GetBucketObjectOptions,
+  GetBucketObjectResponse,
   HttpRequest,
   HttpResponse,
+  PresignedUrlOperation,
+  PutBucketObjectResponse,
+  PutBucketOptions,
   SocketConnectRequest,
   SocketDisconnectRequest,
   SocketMessageRequest,
   SocketResponse,
 } from "@eventual/core";
 import {
+  assertNever,
   getEventualResources,
   type ServiceSpec,
 } from "@eventual/core/internal";
+import type { Readable } from "stream";
 import { ulid } from "ulidx";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
@@ -254,4 +262,88 @@ export class LocalEnvironment {
   ): Promise<SocketResponse | void> {
     return this.localContainer.socketWorker(socketName, request);
   }
+
+  public async executePresignedUrl<Op extends PresignedUrlOperation>(
+    token: string,
+    operation: Op,
+    options?: Op extends "get"
+      ? GetBucketObjectOptions
+      : Op extends "put"
+      ? PutBucketOptions
+      : Op extends "delete"
+      ? undefined
+      : Op extends "head"
+      ? GetBucketObjectOptions
+      : never,
+    content?: string | Buffer | Readable
+  ): Promise<PresignedUrlResponse<Op>> {
+    const data = this.localContainer.bucketStore.decodeLocalPresignedToken(
+      token,
+      operation
+    );
+    if (
+      new Date(data.expires).getTime() < this.localConnector.getTime().getTime()
+    ) {
+      return { expired: true };
+    }
+    if (operation === "get") {
+      return {
+        key: data.key,
+        resp: (await this.localContainer.bucketStore.get(
+          data.bucketName,
+          data.key,
+          options as GetBucketObjectOptions | undefined
+        )) as any,
+      };
+    } else if (operation === "delete") {
+      return {
+        key: data.key,
+        resp: (await this.localContainer.bucketStore.delete(
+          data.bucketName,
+          data.key
+        )) as any,
+      };
+    } else if (operation === "head") {
+      return {
+        key: data.key,
+        resp: (await this.localContainer.bucketStore.head(
+          data.bucketName,
+          data.key,
+          options as GetBucketObjectOptions | undefined
+        )) as any,
+      };
+    } else if (operation === "put") {
+      if (!content) {
+        throw new Error("Content is required for put operation");
+      }
+      return {
+        key: data.key,
+        resp: (await this.localContainer.bucketStore.put(
+          data.bucketName,
+          data.key,
+          content,
+          options as PutBucketOptions | undefined
+        )) as any,
+      };
+    }
+    return assertNever(operation);
+  }
+}
+
+export type PresignedUrlResponse<Op extends PresignedUrlOperation> =
+  | PresignedUrlSuccessResponse<Op>
+  | { error: string }
+  | { expired: true };
+
+export interface PresignedUrlSuccessResponse<Op extends PresignedUrlOperation> {
+  key: string;
+  resp: Op extends "get"
+    ? GetBucketObjectResponse | undefined
+    : Op extends "put"
+    ? PutBucketObjectResponse
+    : Op extends "delete"
+    ? void
+    : Op extends "head"
+    ? GetBucketMetadataResponse | undefined
+    : never;
 }
