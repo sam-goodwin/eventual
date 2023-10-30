@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.57.0 (2023-10-30)
+
+### Features
+
+- local support for presigned url ([#476](https://github.com/functionless/eventual/issues/476)) ([c4c7779](https://github.com/functionless/eventual/commit/c4c77799a1358533c8af304627039b140faa002a))
+
 ## 0.56.2 (2023-10-26)
 
 ### Bug Fixes
