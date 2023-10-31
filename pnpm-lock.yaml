@@ -1009,7 +1009,7 @@ importers:
         version: 2.102.0
       create-sst:
         specifier: latest
-        version: 2.25.2
+        version: 2.32.2
     devDependencies:
       '@eventual/project':
         specifier: workspace:^
@@ -7460,8 +7460,8 @@ packages:
   /create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  /create-sst@2.25.2:
-    resolution: {integrity: sha512-dlguHq0Mo71QLlcoiBo57FdfT/eG+sXhifxYY7wX8m/+WcEr8eWYHVqGhhD+odpEsNyZzRFN4PNMqkb6slISbQ==}
+  /create-sst@2.32.2:
+    resolution: {integrity: sha512-Fg3FNiOts6UCCyQRXHhLsKWpP3OZ478vIT9XTmmEVQ2zUJnOU6/72dEIZuI4crWkTKK4suoMzopvuXp2nkzhGw==}
     hasBin: true
     dependencies:
       cli-spinners: 2.9.0
