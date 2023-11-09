@@ -1,4 +1,4 @@
 export function deepClone<T>(item: T): T {
   // TODO: more efficient deep clone
-  return JSON.parse(JSON.stringify(item));
+  return item === undefined ? item : JSON.parse(JSON.stringify(item));
 }
