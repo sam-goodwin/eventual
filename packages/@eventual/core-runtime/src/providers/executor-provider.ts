@@ -54,7 +54,7 @@ export class RemoteExecutorProvider<Context = undefined>
     executor: WorkflowExecutor<any, any, any>
   ): Promise<{ storedBytes: number }> {
     // provides a shallow copy of the history events.
-    const historyEvents = executor.history.slice(0);
+    const historyEvents = executor.historyCloned.slice(0);
     historyEvents.push(...newHistoryEvents);
     const { bytes } = await this.props.executionHistoryStateStore.updateHistory(
       {
