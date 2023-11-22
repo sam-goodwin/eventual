@@ -1,3 +1,4 @@
+import type { Agent } from "../agent.js";
 import type { Bucket } from "../bucket.js";
 import type { Entity } from "../entity/entity.js";
 import type { Event } from "../event.js";
@@ -12,6 +13,7 @@ import type { Workflow } from "../workflow.js";
 
 type Resource =
   | AnyCommand
+  | Agent
   | Bucket
   | Entity
   | Event

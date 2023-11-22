@@ -4,7 +4,8 @@
   "type": "commonjs",
   "files": [
     "bin",
-    "lib"
+    "lib",
+    "samples"
   ],
   "bin": {
     "create-eventual": "./bin/index.js"

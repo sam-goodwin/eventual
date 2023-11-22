@@ -1,5 +1,6 @@
 import type {
   ChildExecution,
+  Execution,
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
@@ -19,6 +20,7 @@ import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
+import type { z } from "zod";
 
 export interface WorkflowHandler<Input = any, Output = any> {
   (input: Input, context: WorkflowContext): Promise<Output>;
@@ -57,6 +59,12 @@ export interface WorkflowDefinitionOptions {
    * @default - workflow will never timeout.
    */
   timeout?: DurationSchedule;
+}
+
+export interface WorkflowDefinitionOptionsWithSchema<
+  Input extends z.ZodRawShape | undefined = z.ZodRawShape | undefined
+> extends WorkflowDefinitionOptions {
+  input?: Input;
 }
 
 export type WorkflowOutput<W extends Workflow> = W extends Workflow<
@@ -111,6 +119,8 @@ export interface Workflow<
       "workflow"
     >
   ): Promise<ExecutionHandle<Workflow<Name, Input, Output>>>;
+
+  getExecution(executionId: string): Promise<Execution<Output>>;
 }
 
 /**
@@ -145,6 +155,15 @@ export function workflow<
   Output = any
 >(
   name: Name,
+  definition: WorkflowHandler<Input, Output>
+): Workflow<Name, Input, Output>;
+export function workflow<
+  Name extends string = string,
+  Input extends z.ZodRawShape = any,
+  Output = any
+>(
+  name: Name,
+  opts: WorkflowDefinitionOptionsWithSchema<Input>,
   definition: WorkflowHandler<Input, Output>
 ): Workflow<Name, Input, Output>;
 export function workflow<

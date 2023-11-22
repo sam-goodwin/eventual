@@ -29,6 +29,7 @@
     "@elastic/elasticsearch": "^8.7.0",
     "@opensearch-project/opensearch": "^2.2.1",
     "itty-router": "^2.6.6",
+    "openai": "^4.17.3",
     "openapi3-ts": "^3.1.2",
     "ulidx": "^0.3.0",
     "zod": "^3.21.4"

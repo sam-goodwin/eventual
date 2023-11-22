@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
 import type {
@@ -77,7 +78,7 @@ export interface TaskInvocationOptions {
 /**
  * Task options available at definition time.
  */
-export interface TaskOptions
+export interface TaskOptions<Input extends z.ZodRawShape = any>
   extends Omit<TaskInvocationOptions, "timeout">,
     FunctionRuntimeProps,
     FunctionBundleProps {
@@ -87,6 +88,8 @@ export interface TaskOptions
    * @default - workflow will wait forever.
    */
   timeout?: DurationSchedule;
+  description?: string;
+  input: Input;
 }
 
 export type TaskArguments<Input = any> = [Input] extends [undefined]
@@ -250,12 +253,20 @@ export function task<Name extends string, Input = any, Output = any>(
   taskID: Name,
   handler: TaskHandler<Input, Output>
 ): Task<Name, Input, Output>;
-export function task<Name extends string, Input = any, Output = any>(
+export function task<
+  Name extends string,
+  Input extends z.ZodRawShape = z.ZodRawShape,
+  Output = any
+>(
   taskID: Name,
-  opts: TaskOptions,
-  handler: TaskHandler<Input, Output>
-): Task<Name, Input, Output>;
-export function task<Name extends string, Input = any, Output = any>(
+  opts: TaskOptions<Input>,
+  handler: TaskHandler<z.infer<z.ZodObject<Input>>, Output>
+): Task<Name, z.infer<z.ZodObject<Input>>, Output>;
+export function task<
+  Name extends string,
+  Input extends any = any,
+  Output = any
+>(
   ...args:
     | [
         sourceLocation: SourceLocation,
