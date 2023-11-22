@@ -8,7 +8,6 @@
   Develop massively-distributed systems using APIs, Messaging and Workflows. Test locally, then deploy to your own cloud infrastructure.
   </h3>
   
-  
   <a href="https://badge.fury.io/js/@eventual%2Fcore.svg">
     <img src="https://badge.fury.io/js/@eventual%2Fcore.svg" />
   </a>
@@ -23,15 +22,9 @@
   </a>
 </div>
 
----
-
-> 🛠&nbsp; Join the waitlist for [eventualAi](https://eventual.ai) - a companion autonomous software development team of smart agents who know how to use the [eventualCloud](https://eventual.ai/cloud) framework and apply Domain Driven Design (DDD) principles to translate business requirements into functioning services!
-
----
-
 ## Overview
 
-**[Website](https://eventual.ai/) • [API Docs](https://docs.eventual.ai) • [Quick Start](https://docs.eventual.ai/quick-start)**
+[API Docs](https://docs.eventual.ai)
 
 Eventual is an open source TypeScript framework that offers "core abstractions" — including APIs, Messaging and long-running, durable Workflows — to shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture.
 
