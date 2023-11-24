@@ -1566,3 +1566,37 @@ export const getPresigned = command("getPresigned", {}, async () => {
 
   return { key, putUrl, getUrl, headUrl, deleteUrl };
 });
+
+const mutateEntity = entity("mutate", {
+  partition: ["pk"],
+  attributes: {
+    pk: z.string(),
+    obj: z.object({
+      key: z.string(),
+    }),
+  },
+});
+
+// see: https://github.com/functionless/eventual/pull/479
+export const mutateEvents = workflow("mutateEvents", async () => {
+  await mutateEntity.put({
+    pk: "pk",
+    obj: {
+      key: "v1",
+    },
+  });
+
+  let e = await mutateEntity.get({
+    pk: "pk",
+  });
+
+  e!.obj.key = "v2";
+
+  await mutateEntity.put(e!);
+
+  e = await mutateEntity.get({
+    pk: "pk",
+  });
+
+  return e!.obj.key;
+});
