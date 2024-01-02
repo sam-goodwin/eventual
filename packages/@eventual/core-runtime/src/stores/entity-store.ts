@@ -634,14 +634,12 @@ function formatNormalizedQueryPart(
 export function convertNormalizedEntityKeyToMap(
   key: NormalizedEntityCompositeKey
 ): KeyMap<any, any, any> {
-  console.log("input key", JSON.stringify(key));
   const generatedKey = Object.fromEntries([
     ...key.partition.parts.map(({ field, value }) => [field, value]),
     ...(key.sort
       ? key.sort.parts.map(({ field, value }) => [field, value])
       : []),
   ]);
-  console.log("generated key", JSON.stringify(generatedKey));
   return generatedKey;
 }
 

@@ -302,18 +302,10 @@ export function createTransactionExecutor(
         }
       });
 
-      console.log(JSON.stringify(transactionItems, undefined, 4));
-
       try {
-        /**
-         * Run the transaction
-         */
-        const result =
-          transactionItems.length > 0
-            ? await entityStore.transactWrite(transactionItems)
-            : undefined;
-
-        console.log(JSON.stringify(result, undefined, 4));
+        if (transactionItems.length > 0) {
+          await entityStore.transactWrite(transactionItems);
+        }
       } catch (err) {
         /**
          * If the transaction failed, check if it is retryable or not.

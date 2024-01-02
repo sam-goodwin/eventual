@@ -2129,7 +2129,7 @@ describe("signals", () => {
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
           awaitTimerCall(Schedule.time(testTime), 2),
-          taskCall(myTask.name, "hi", 3),
+          taskCall(myTask.name, undefined, 3),
         ],
       });
     });
@@ -2139,16 +2139,16 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
-            signalReceived("MyOtherSignal", "hi2"),
+            signalReceived("MyOtherSignal", undefined),
+            signalReceived("MyOtherSignal", undefined),
           ],
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
           awaitTimerCall(Schedule.time(testTime), 2),
-          taskCall(myTask.name, "hi", 3),
-          taskCall(myTask.name, "hi2", 4),
+          taskCall(myTask.name, undefined, 3),
+          taskCall(myTask.name, undefined, 4),
         ],
       });
     });
@@ -2158,10 +2158,10 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             timerScheduled(6, time(testTime)),
             timerCompleted(6),
           ],
@@ -2182,9 +2182,9 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             taskSucceeded("task1", 3),
             timerCompleted(2),
             timerScheduled(6, time(testTime)),
@@ -2207,10 +2207,10 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             taskSucceeded("task1", 3),
             timerScheduled(6, time(testTime)),
             timerCompleted(6),
@@ -3508,7 +3508,8 @@ describe("using then, catch, finally", () => {
                       x++;
                       return myTask0();
                     }),
-                  cwf().catch(() => {
+                  // @ts-ignore
+                  cwf("workflow1", undefined).catch(() => {
                     x++;
                     return myTask0();
                   }),

@@ -70,8 +70,6 @@ export class WorkflowClient {
       input !== undefined
         ? hashCode(JSON.stringify(input)).toString(16)
         : undefined;
-    console.debug("execution input:", input);
-    console.debug("execution input hash:", inputHash);
 
     const execution: InProgressExecution = {
       id: executionId,
@@ -131,7 +129,6 @@ export class WorkflowClient {
 
       return { executionId, alreadyRunning: false };
     } catch (err) {
-      console.log(err);
       throw new Error(
         "Something went wrong starting a workflow: " + inspect(err)
       );

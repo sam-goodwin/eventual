@@ -5,6 +5,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 test("esbuild for web", async () => {
   await esbuild.build({
+    outfile: "/dev/null",
     bundle: true,
     target: "es2022",
     platform: "browser",
@@ -21,8 +22,8 @@ new HttpEventualClient();`,
 });
 
 test("esbuild for node", async () => {
-  console.log(path.join(__dirname, "../../.."));
   await esbuild.build({
+    outfile: "/dev/null",
     bundle: true,
     target: "es2022",
     platform: "node",

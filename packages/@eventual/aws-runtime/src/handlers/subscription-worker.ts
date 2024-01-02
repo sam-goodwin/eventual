@@ -36,7 +36,6 @@ export const processEvent = createSubscriptionWorker({
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {
-  console.debug("received", event);
   await processEvent([
     {
       name: event["detail-type"],

@@ -49,4 +49,4 @@ declare function is<T>(
 
 type IsExact<T, U> = T extends U ? (U extends T ? true : false) : false;
 
-declare function assertNever(_value: never);
+declare function assertNever(_value: never): any;

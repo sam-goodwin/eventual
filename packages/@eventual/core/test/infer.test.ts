@@ -17,12 +17,10 @@ test("Person", () => {
     name: "John",
   };
 
-  const wf = workflow("personTest", async () => {
+  workflow("personTest", async () => {
     // 'optional' should maintain '?' modifier
     Person.put({
       name: "John",
     });
   });
-
-  console.log(person, wf);
 });

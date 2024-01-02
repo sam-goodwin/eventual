@@ -13,8 +13,6 @@ const endpoint = process.env.OS_ENDPOINT;
 let client: Client;
 
 export const handle: CloudFormationCustomResourceHandler = async (event) => {
-  console.log(event);
-  console.log(JSON.stringify(event));
   client ??= await (async () => {
     const credentials = await defaultProvider()();
     return new Client({
