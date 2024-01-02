@@ -66,17 +66,15 @@ const context: WorkflowContext = {
 
 const workflow = (() => {
   let n = 0;
-  return <Input = any, Output = any>(
-    handler: WorkflowHandler<Input, Output>
-  ) => {
-    return _workflow<any, Input, Output>(`wf${n++}`, handler);
+  return <H extends WorkflowHandler>(handler: H) => {
+    return _workflow<any, H>(`wf${n++}`, handler);
   };
 })();
 
 const myTask = task("my-task", async () => {});
 const myTask0 = task("my-task-0", async () => {});
 const myTask2 = task("my-task-2", async () => {});
-const handleErrorTask = task("handle-error", async () => {});
+const handleErrorTask = task("handle-error", async (_err?: any) => {});
 const processItemTask = task("processItem", (_item?: string) => {});
 const beforeTask = task("before", (_v: string) => {});
 const insideTask = task("inside", (_v: string) => {
@@ -2016,14 +2014,11 @@ describe("signals", () => {
           mySignalHappened++;
         }
       );
-      const myOtherSignalHandler = onSignal(
-        "MyOtherSignal",
-        async function (payload) {
-          myOtherSignalHappened++;
-          await myTask(payload);
-          myOtherSignalCompleted++;
-        }
-      );
+      const myOtherSignalHandler = onSignal("MyOtherSignal", async function () {
+        myOtherSignalHappened++;
+        await myTask();
+        myOtherSignalCompleted++;
+      });
 
       await time(testTime);
 
@@ -3513,7 +3508,7 @@ describe("using then, catch, finally", () => {
                       x++;
                       return myTask0();
                     }),
-                  cwf("workflow1", undefined).catch(() => {
+                  cwf().catch(() => {
                     x++;
                     return myTask0();
                   }),

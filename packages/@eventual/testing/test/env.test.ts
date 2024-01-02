@@ -59,21 +59,19 @@ const {
 
 const task = (() => {
   let n = 0;
-  return <Input = any, Output = any>(handler: TaskHandler<Input, Output>) => {
+  return <H extends TaskHandler>(handler: H) => {
     // eslint-disable-next-line no-empty
     while (getEventualResource("Task", `task${++n}`)) {}
-    return _task<string, Input, Output>(`task${n}`, handler);
+    return _task<string, H>(`task${n}`, handler);
   };
 })();
 
 const workflow = (() => {
   let n = 0;
-  return <Input = any, Output = any>(
-    handler: WorkflowHandler<Input, Output>
-  ) => {
+  return <H extends WorkflowHandler>(handler: H) => {
     // eslint-disable-next-line no-empty
     while (getEventualResource("Workflow", `wf${++n}`)) {}
-    return _workflow<any, Input, Output>(`wf${n}`, handler);
+    return _workflow<any, H>(`wf${n}`, handler);
   };
 })();
 

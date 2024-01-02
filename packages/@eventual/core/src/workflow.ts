@@ -19,6 +19,7 @@ import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
+import type { FunctionInput } from "./function-input.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
   (input: Input, context: WorkflowContext): Promise<Output>;
@@ -43,6 +44,15 @@ export interface WorkflowExecutionOptions {
    * @default - workflow will never timeout.
    */
   timeout?: Schedule;
+  /**
+   * Name of the workflow execution.
+   *
+   * Only one workflow can exist for an ID. Requests to start a workflow
+   * with the name of an existing workflow will fail.
+   *
+   * @default - a unique name is generated.
+   */
+  executionName?: string;
 }
 
 /**
@@ -88,6 +98,7 @@ export interface Workflow<
   in Input = any,
   Output = any
 > extends WorkflowSpec<Name> {
+  // input?: (i: Input) => any;
   options?: WorkflowDefinitionOptions;
   kind: "Workflow";
 
@@ -106,11 +117,8 @@ export interface Workflow<
    * Starts a workflow execution
    */
   startExecution(
-    request: Omit<
-      StartExecutionRequest<Workflow<Name, Input, Output>>,
-      "workflow"
-    >
-  ): Promise<ExecutionHandle<Workflow<Name, Input, Output>>>;
+    request: StartExecutionRequest<Input>
+  ): Promise<ExecutionHandle<Output>>;
 }
 
 /**
@@ -139,23 +147,17 @@ export interface Workflow<
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<
-  Name extends string = string,
-  Input = any,
-  Output = any
->(
+export function workflow<Name extends string, Handler extends WorkflowHandler>(
   name: Name,
-  definition: WorkflowHandler<Input, Output>
-): Workflow<Name, Input, Output>;
-export function workflow<
-  Name extends string = string,
-  Input = any,
-  Output = any
->(
+  definition: Handler
+): Workflow<Name, FunctionInput<Handler>, Awaited<ReturnType<Handler>>>;
+
+export function workflow<Name extends string, Handler extends WorkflowHandler>(
   name: Name,
   opts: WorkflowDefinitionOptions,
-  definition: WorkflowHandler<Input, Output>
-): Workflow<Name, Input, Output>;
+  definition: Handler
+): Workflow<Name, FunctionInput<Handler>, Awaited<ReturnType<Handler>>>;
+
 export function workflow<
   Name extends string = string,
   Input = any,
@@ -217,16 +219,16 @@ export function workflow<
 
   Object.defineProperty(workflow, "name", { value: name, writable: false });
 
-  workflow.startExecution = async function (input) {
+  workflow.startExecution = async function (req) {
     const serviceClient =
       getEventualHook().getEventualProperty<ServiceClientProperty>(
         createEventualProperty(PropertyKind.ServiceClient, {})
       );
     return await serviceClient.startExecution<Workflow<Name, Input, Output>>({
       workflow: name,
-      executionName: input.executionName,
-      input: input.input,
-      timeout: input.timeout,
+      executionName: req.executionName,
+      input: req.input!,
+      timeout: req.timeout,
       ...opts,
     });
   };

@@ -5,7 +5,7 @@ import {
   FailedExecution,
   FailExecutionRequest,
   InProgressExecution,
-  StartExecutionRequest,
+  DirectStartExecutionRequest,
   SucceededExecution,
   SucceedExecutionRequest,
   Workflow,
@@ -52,8 +52,8 @@ export class WorkflowClient {
     timeout,
     ...request
   }:
-    | StartExecutionRequest<W>
-    | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
+    | DirectStartExecutionRequest<W>
+    | DirectStartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
     if (
       typeof workflow === "string" &&
       !this.workflowProvider.workflowExists(workflow)
@@ -191,8 +191,8 @@ export class WorkflowClient {
   }
 }
 
-export interface StartChildExecutionRequest<W extends Workflow = Workflow>
-  extends StartExecutionRequest<W>,
+export interface DirectStartChildExecutionRequest<W extends Workflow = Workflow>
+  extends DirectStartExecutionRequest<W>,
     WorkflowExecutionOptions {
   parentExecutionId: ExecutionID;
   /**

@@ -30,6 +30,7 @@
     { "path": "packages/@eventual/testing" },
     { "path": "packages/@eventual/testing/tsconfig.cjs.json" },
     { "path": "packages/@eventual/testing/tsconfig.test.json" },
-    { "path": "packages/create-eventual" }
+    { "path": "packages/create-eventual" },
+    { "path": "examples/sst-nextjs/tsconfig.json" }
   ]
 }

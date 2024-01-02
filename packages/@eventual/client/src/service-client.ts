@@ -1,4 +1,14 @@
-import { Command } from "@eventual/core";
+import type {
+  Command,
+  Event,
+  Execution,
+  ExecutionHandle,
+  SendSignalProps,
+  Signal,
+  Socket,
+  StartExecutionRequest,
+  Workflow,
+} from "@eventual/core";
 import {
   HttpServiceClient,
   HttpServiceClientProps,
@@ -104,14 +114,30 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
   ? Name
   : never;
 
-type ServiceClientMethod<T> = T extends Command<
-  any,
-  infer Input,
-  infer Output,
-  any,
-  any,
-  any
->
+type ServiceClientMethod<T> = T extends Workflow<any, infer Input, infer Output>
+  ? {
+      startExecution: [undefined] extends [Input]
+        ? (
+            req?: StartExecutionRequest<Input>
+          ) => Promise<ExecutionHandle<Output>>
+        : (
+            req: StartExecutionRequest<Input>
+          ) => Promise<ExecutionHandle<Output>>;
+      getHandle: (executionId: string) => Promise<ExecutionHandle<Output>>;
+      getStatus(executionId: string): Promise<Execution<Output>>;
+      sendSignal<Payload = any>(
+        executionId: string,
+        signal: string | Signal<Payload>,
+        ...args: SendSignalProps<Payload>
+      ): Promise<void>;
+    }
+  : T extends Event<infer Payload>
+  ? {
+      emit: (payload: Payload) => Promise<void>;
+    }
+  : T extends Socket
+  ? never
+  : T extends Command<any, infer Input, infer Output, any, any, any>
   ? [Input] extends [undefined]
     ? {
         (
@@ -134,7 +160,9 @@ type ServiceClientMethod<T> = T extends Command<
 type KeysWhereNameIsSame<Service> = {
   [k in keyof Service]: k extends Extract<Service[k], { name: string }>["name"]
     ? // we only want commands to show up
-      Service[k] extends { kind: "Command" }
+      Service[k] extends {
+        kind: "Command" | "Workflow" | "Event";
+      }
       ? k
       : never
     : never;
