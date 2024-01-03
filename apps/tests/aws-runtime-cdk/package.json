@@ -6,7 +6,7 @@
   "main": "lib/index.js",
   "scripts": {
     "cdk": "cdk",
-    "nag": "ts-node-esm ./scripts/report-violations.ts"
+    "nag": "tsx ./scripts/report-violations.ts"
   },
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.110.1-alpha.0",
