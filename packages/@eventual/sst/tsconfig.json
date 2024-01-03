@@ -9,7 +9,7 @@
     "inlineSourceMap": true
   },
   "references": [
-    { "path": "../aws-cdk/tsconfig.cjs.json" },
+    { "path": "../aws-cdk/tsconfig.json" },
     { "path": "../aws-runtime/tsconfig.json" },
     { "path": "../core/tsconfig.json" },
     { "path": "../compiler/tsconfig.json" },

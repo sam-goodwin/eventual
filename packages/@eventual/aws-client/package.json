@@ -2,12 +2,10 @@
   "name": "@eventual/aws-client",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js"
     }
   },
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
+  "module": "./lib/index.js",
   "version": "0.57.0",
   "scripts": {
     "test": "jest --passWithNoTests"

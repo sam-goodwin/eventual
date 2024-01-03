@@ -5,7 +5,8 @@
     "noEmit": true,
     "module": "Node16",
     "target": "ESNext",
-    "moduleResolution": "Node16"
+    "moduleResolution": "Node16",
+    "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

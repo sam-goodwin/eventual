@@ -4,7 +4,7 @@
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/esm"
+    "outDir": "lib"
   },
   "references": [{ "path": "../core" }]
 }

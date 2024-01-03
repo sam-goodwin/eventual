@@ -9,7 +9,7 @@ import {
 } from "@eventual/project";
 import fs from "fs/promises";
 import path from "path";
-import { sampleServiceCode, sampleSSTCode } from "./sample-code";
+import { sampleServiceCode, sampleSSTCode } from "./sample-code.js";
 
 export interface CreateSSTProps {
   projectName: string;

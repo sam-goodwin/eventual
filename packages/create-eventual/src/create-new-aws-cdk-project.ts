@@ -7,7 +7,7 @@ import {
 } from "@eventual/project";
 import fs from "fs/promises";
 import path from "path";
-import { sampleCDKApp } from "./sample-code";
+import { sampleCDKApp } from "./sample-code.js";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const version: string = require("../package.json").version;

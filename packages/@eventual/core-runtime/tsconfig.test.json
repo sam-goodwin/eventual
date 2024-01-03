@@ -2,7 +2,8 @@
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

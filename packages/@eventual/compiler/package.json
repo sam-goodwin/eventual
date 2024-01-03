@@ -7,8 +7,7 @@
   },
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js"
     },
     "./bin/eventual-bundle.mjs": {
       "require": "./bin/eventual-bundle.mjs"
@@ -17,9 +16,8 @@
       "require": "./bin/eventual-infer.mjs"
     }
   },
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
-  "types:": "lib/esm/index.d.ts",
+  "module": "./lib/index.js",
+  "types:": "lib//index.d.ts",
   "files": [
     "bin",
     "lib"
@@ -47,6 +45,10 @@
     "typescript": "^5.3.3"
   },
   "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/",
+      "/packages/@eventual/core/"
+    ],
     "extensionsToTreatAsEsm": [
       ".ts"
     ],

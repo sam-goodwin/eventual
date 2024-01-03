@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "rootDir": "src",
-    "outDir": "lib/esm",
+    "outDir": "lib",
     "paths": {
       "@eventual/injected/entry": ["./src/injected/entry.ts"],
       "@eventual/injected/spec": ["src/injected/service-spec.ts"]

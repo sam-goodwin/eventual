@@ -3,20 +3,16 @@
   "version": "0.57.0",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js"
     },
     "./internal": {
-      "import": "./lib/esm/internal/index.js",
-      "require": "./lib/cjs/internal/index.js"
+      "import": "./lib/internal/index.js"
     },
     "./constants": {
-      "import": "./lib/esm/constants.js",
-      "require": "./lib/cjs/constants.js"
+      "import": "./lib/constants.js"
     }
   },
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
+  "module": "./lib/index.js",
   "files": [
     "constants",
     "internal",

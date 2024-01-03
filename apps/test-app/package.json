@@ -2,7 +2,8 @@
   "name": "test-app",
   "private": true,
   "version": "0.0.0",
-  "main": "lib/index.js",
+  "type": "module",
+  "module": "lib/index.js",
   "scripts": {
     "test": "cdk synth",
     "cdk": "cdk",
