@@ -1,6 +1,9 @@
 {
   "name": "@eventual/compiler",
   "version": "0.57.0",
+  "type": "module",
+  "module": "lib/index.js",
+  "types:": "lib/index.d.ts",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.mjs",
     "eventual-infer": "./bin/eventual-infer.mjs"
@@ -16,9 +19,6 @@
       "require": "./bin/eventual-infer.mjs"
     }
   },
-  "type": "module",
-  "module": "./lib/index.js",
-  "types:": "lib/index.d.ts",
   "files": [
     "bin",
     "lib"

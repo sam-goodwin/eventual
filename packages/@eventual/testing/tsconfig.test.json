@@ -3,9 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "allowJs": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

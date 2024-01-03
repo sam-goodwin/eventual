@@ -37,6 +37,10 @@
       "node_modules",
       "src"
     ],
+    "transformIgnorePatterns": [
+      "node_modules/",
+      "node_modules/@eventual/core"
+    ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },

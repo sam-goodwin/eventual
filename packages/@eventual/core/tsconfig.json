@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "include": ["src", "src/internal/result.ts"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "references": []
 }

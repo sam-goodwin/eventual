@@ -3,12 +3,9 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "module": "NodeNext",
-    "target": "ESNext",
-    "moduleResolution": "NodeNext",
     "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../core/tsconfig.json" }]
 }

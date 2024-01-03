@@ -1,6 +1,8 @@
 {
   "name": "@eventual/core",
   "version": "0.57.0",
+  "type": "module",
+  "module": "./lib/index.js",
   "exports": {
     ".": {
       "import": "./lib/index.js"
@@ -12,11 +14,7 @@
       "import": "./lib/constants.js"
     }
   },
-  "type": "module",
-  "module": "./lib/index.js",
   "files": [
-    "constants",
-    "internal",
     "lib"
   ],
   "scripts": {

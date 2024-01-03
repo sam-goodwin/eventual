@@ -1,6 +1,9 @@
 {
   "extends": "./tsconfig-base.json",
   "compilerOptions": {
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   }
 }
