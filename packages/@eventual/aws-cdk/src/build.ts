@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-interface */
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { BuildManifest, QueueRuntime } from "@eventual/core-runtime";
 import {
@@ -16,8 +19,11 @@ import { execSync } from "child_process";
 import fs from "fs";
 import type openapi from "openapi3-ts";
 import path from "path";
+import { createRequire } from "module";
+import { fileURLToPath } from "url";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+const _require = createRequire(import.meta.url);
+
 export interface BuildOutput extends BuildManifest {}
 
 export class BuildOutput {
@@ -47,7 +53,7 @@ export class BuildOutput {
 
 export function buildServiceSync(request: BuildAWSRuntimeProps): BuildOutput {
   execSync(
-    `node ${require.resolve("./build-cli.js")} ${Buffer.from(
+    `node ${_require.resolve("./build-cli.js")} ${Buffer.from(
       JSON.stringify(request)
     ).toString("base64")}`
   );
@@ -437,5 +443,7 @@ function runtimeHandlersEntrypoint(name: string) {
 }
 
 function runtimeEntrypoint() {
-  return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
+  const moduleURL = import.meta.resolve("@eventual/aws-runtime");
+  const moduleFilePath = fileURLToPath(moduleURL);
+  return path.dirname(moduleFilePath);
 }

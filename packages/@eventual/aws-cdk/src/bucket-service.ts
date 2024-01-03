@@ -15,15 +15,19 @@ import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { CorsOptions } from "./command-service";
-import { EventualResource } from "./resource";
-import { SecureBucket } from "./secure/bucket";
+import type { CorsOptions } from "./command-service.js";
+import { EventualResource } from "./resource.js";
+import { SecureBucket } from "./secure/bucket.js";
 import {
   configureWorkerCalls,
   WorkerServiceConstructProps,
-} from "./service-common";
-import { ServiceFunction } from "./service-function";
-import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
+} from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import {
+  formatBucketArn,
+  serviceBucketArn,
+  ServiceEntityProps,
+} from "./utils.js";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<

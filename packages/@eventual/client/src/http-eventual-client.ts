@@ -15,9 +15,10 @@ import {
   type SendTaskFailureRequest,
   type SendTaskHeartbeatResponse,
   type SendTaskSuccessRequest,
-  type StartExecutionRequest,
+  type DirectStartExecutionRequest,
   type Transaction,
   type Workflow,
+  WorkflowOutput,
 } from "@eventual/core";
 import type {
   EventualService,
@@ -49,8 +50,8 @@ export class HttpEventualClient implements EventualServiceClient {
   }
 
   public async startExecution<W extends Workflow>(
-    request: StartExecutionRequest<W>
-  ): Promise<ExecutionHandle<W>> {
+    request: DirectStartExecutionRequest<W>
+  ): Promise<ExecutionHandle<WorkflowOutput<W>>> {
     // serialize the workflow object to a string
     const workflow =
       typeof request.workflow === "string"

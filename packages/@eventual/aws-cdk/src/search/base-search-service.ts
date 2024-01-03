@@ -4,15 +4,15 @@ import type { Function } from "aws-cdk-lib/aws-lambda";
 import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { Duration, Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { SecureFunction } from "../secure/function";
-import type { ServiceConstructProps } from "../service-common";
-import type { ServiceEntityProps } from "../utils";
-import { SearchIndex } from "./search-index";
+import { SecureFunction } from "../secure/function.js";
+import type { ServiceConstructProps } from "../service-common.js";
+import type { ServiceEntityProps } from "../utils.js";
+import { SearchIndex } from "./search-index.js";
 import type {
   SearchPrincipal,
   SearchService,
   ServiceIndices,
-} from "./search-service";
+} from "./search-service.js";
 
 export type SearchIndexOverrides<Service> = ServiceEntityProps<
   Service,

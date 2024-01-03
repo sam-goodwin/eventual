@@ -1,4 +1,4 @@
 {
-  "app": "ts-node --esm ./src/app.mts",
+  "app": "tsx ./src/app.mts",
   "watch": "."
 }

@@ -79,7 +79,6 @@ export const asyncTask = task(
   "asyncTask",
   async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {
-      console.log(testQueueUrl);
       if (!process.env.EVENTUAL_LOCAL) {
         await sqs.send(
           new SendMessageCommand({
@@ -109,9 +108,7 @@ const fail = task("fail", async (value: string) => {
 export const workflow1 = workflow(
   "my-workflow",
   async ({ name }: { name: string }) => {
-    console.log("before");
     const result = await hello2(name);
-    console.log("after");
     return `you said ${result}`;
   }
 );
@@ -159,8 +156,6 @@ export const parentWorkflow = workflow("parentWorkflow", async () => {
   while (true) {
     const n = await mySignal.expectSignal({ timeout: duration(10, "seconds") });
 
-    console.log(n);
-
     if (n > 10) {
       child.sendSignal(doneSignal);
       break;
@@ -188,8 +183,6 @@ export const childWorkflow = workflow(
     if (!parentId) {
       throw new Error("I need an adult");
     }
-
-    console.log(`Hi, I am ${input.name}`);
 
     mySignal.onSignal((n) => {
       last = n;
@@ -414,7 +407,6 @@ export const onSignalEvent = subscription(
     events: [signalEvent],
   },
   async ({ executionId, signalId, proxy }) => {
-    console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {
       // if configured to proxy, re-route this event through the signalEvent
       // reason: to test that we can emit events from within an event handler
@@ -618,7 +610,6 @@ export const counterWatcher = counter.stream(
   "counterWatcher",
   { operations: ["modify", "remove"], includeOld: true },
   async (item) => {
-    console.log(item);
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
       await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
@@ -635,7 +626,6 @@ export const counterNamespaceWatcher = counter.batchStream(
   async (items) => {
     await Promise.all(
       items.map(async (item) => {
-        console.log(item);
         const value = await counter.get(item.key);
         await counter.put({
           namespace: "default",
@@ -643,7 +633,6 @@ export const counterNamespaceWatcher = counter.batchStream(
           n: (value?.n ?? 0) + 1,
           optional: undefined,
         });
-        console.log("send signal to", value!.id);
         await entitySignal.sendSignal(value!.id);
       })
     );
@@ -786,7 +775,6 @@ export const entityWorkflow = workflow(
     // and then validate the order value against the final value at the end.
     entityOrderSignal.onSignal(({ n }) => {
       if (n > orderValue) {
-        console.log(`Ordered Value: ${orderValue} ${n}`);
         orderValue = n;
       } else {
         orderError = `order value ${n} is less than or equal to previous value ${orderValue}, the stream handler executed out of order!`;
@@ -986,12 +974,10 @@ const noise = task(
           throw err;
         }
       }
-      console.log(n);
       if (n === x) {
         transact = gitErDone({ id });
       }
     }
-    console.log("waiting...");
     try {
       return await transact;
     } catch (err) {
@@ -1332,9 +1318,8 @@ const simpleEvent = event<{ value: string }>("simpleEvent");
 export const simpleEventHandler = subscription(
   "simpleEventHandler",
   { events: [simpleEvent] },
-  (payload) => {
-    console.log("hi", payload);
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  (_payload) => {}
 );
 
 export const blogIndex = index("blogIndex", {
@@ -1421,13 +1406,11 @@ export interface SocketMessage {
 
 const jsonSocket = socket.use({
   message: ({ request: { body }, context, next }) => {
-    console.log(body);
     const data = body
       ? body instanceof Buffer
         ? (JSON.parse(body.toString("utf-8")) as SocketMessage)
         : (JSON.parse(body) as SocketMessage)
       : undefined;
-    console.log("data", data);
     if (!data) {
       throw new Error("Expected data");
     }
@@ -1445,24 +1428,20 @@ export const socket1 = jsonSocket
   })
   .socket("socket1", {
     $connect: async ({ connectionId }, { id, n }) => {
-      console.log("sending signal to", id);
       await socketConnectSignal.sendSignal(id, {
         connectionId,
         n: Number(n),
       });
-      console.log("signal sent to", id);
     },
     $disconnect: async () => undefined,
     $default: async ({ connectionId }, { data }) => {
       if (!data.id) {
         throw new Error("Invalid id");
       }
-      console.log("sending signal to", data.id);
       await socketMessageSignal.sendSignal(data.id, {
         ...data,
         connectionId,
       });
-      console.log("signal sent to", data.id);
     },
   });
 

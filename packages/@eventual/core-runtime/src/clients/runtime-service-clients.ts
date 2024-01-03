@@ -16,9 +16,10 @@ import {
   SendTaskHeartbeatRequest,
   SendTaskHeartbeatResponse,
   SendTaskSuccessRequest,
-  StartExecutionRequest,
+  DirectStartExecutionRequest,
   Transaction,
   Workflow,
+  WorkflowOutput,
 } from "@eventual/core";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
@@ -73,8 +74,8 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
   }
 
   public async startExecution<W extends Workflow = Workflow>(
-    request: StartExecutionRequest<W>
-  ): Promise<ExecutionHandle<W>> {
+    request: DirectStartExecutionRequest<W>
+  ): Promise<ExecutionHandle<WorkflowOutput<W>>> {
     if (!this.props.workflowClient) {
       return this.fallbackServiceClient.startExecution(request);
     }

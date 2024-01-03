@@ -6,7 +6,7 @@ tsNode.register({
   esm: true,
 });
 
-import { cli } from "../lib/esm/cli.js";
+import { cli } from "../lib/cli.js";
 
 //Get rid of experimental fetch warning
 process.removeAllListeners("warning");

@@ -4,13 +4,13 @@ import {
   EngineVersion,
 } from "aws-cdk-lib/aws-opensearchservice";
 import { RemovalPolicy } from "aws-cdk-lib/core";
-import { grant } from "../grant";
+import { grant } from "../grant.js";
 import {
   BaseSearchService,
   BaseSearchServiceProps,
-} from "./base-search-service";
-import type { SearchPrincipal } from "./search-service";
-import type { ServerlessSearchService } from "./serverless-search-service";
+} from "./base-search-service.js";
+import type { SearchPrincipal } from "./search-service.js";
+import type { ServerlessSearchService } from "./serverless-search-service.js";
 
 export interface ServerfulSearchServiceProps<Service>
   extends BaseSearchServiceProps<Service>,

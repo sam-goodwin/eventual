@@ -1,14 +1,14 @@
 {
   "name": "@eventual/aws-client",
+  "version": "0.57.0",
+  "type": "module",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js"
     }
   },
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
-  "version": "0.57.0",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
@@ -25,9 +25,7 @@
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^18",
-    "ts-node": "^10.9.1",
-    "typescript": "^5"
+    "ts-node": "^10.9.1"
   },
   "publishConfig": {
     "access": "public"

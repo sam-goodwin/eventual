@@ -90,12 +90,6 @@ export class LogAgent {
 
     const executions = groupBy(logsToSend, (l) => l.context.executionId);
 
-    console.debug(
-      `Sending ${logsToSend.length} logs for ${
-        Object.keys(executions).length
-      } executions`
-    );
-
     // TODO retry - https://github.com/functionless/eventual/issues/235
     const results = await Promise.allSettled(
       Object.entries(executions).map(([execution, entries]) => {

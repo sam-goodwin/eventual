@@ -53,7 +53,7 @@ export async function build(
   });
   const outfile = path.join(codeDir, "index.mjs");
 
-  const bundle = await esbuild.build({
+  const esbuildParams = {
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
     sourcesContent: false,
@@ -93,7 +93,8 @@ export async function build(
     entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
     outfile,
-  });
+  } satisfies esbuild.BuildOptions;
+  const bundle = await esbuild.build(esbuildParams);
 
   await writeEsBuildMetafile(
     bundle,

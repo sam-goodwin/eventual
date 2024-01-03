@@ -36,8 +36,6 @@ export function createApiGCommandWorker({
   return async function (
     event: APIGatewayProxyEventV2
   ): Promise<APIGatewayProxyResultV2> {
-    console.debug("event", event);
-
     const serviceUrl = `https://${event.requestContext.domainName}`;
     const serviceClient = serviceClientBuilder
       ? serviceClientBuilder(serviceUrl)
@@ -96,7 +94,6 @@ export function createApiGCommandWorker({
       body: responseBody.toString("base64"),
       isBase64Encoded: true,
     };
-    console.debug("httpResponse", httpResponse);
     return httpResponse;
   };
 }

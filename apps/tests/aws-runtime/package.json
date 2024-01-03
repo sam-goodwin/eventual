@@ -30,18 +30,16 @@
     "@aws-sdk/types": "^3.341.0",
     "@jest/globals": "^29.5.0",
     "@types/aws-lambda": "^8.10.115",
-    "@types/jest": "^29.5.1",
-    "@types/node": "^18",
     "@types/uuid": "^9.0.4",
     "@types/ws": "^8.5.5",
-    "aws-cdk": "^2.102.0",
+    "aws-cdk": "^2.110.1",
     "esbuild": "^0.17.4",
     "jest": "^29",
     "node-fetch": "^3.3.0",
     "openapi3-ts": "^3.1.2",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
+    "tsx": "^4.7.0"
   },
   "jest": {
     "displayName": "workspace",
@@ -54,6 +52,11 @@
     ],
     "extensionsToTreatAsEsm": [
       ".ts"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/",
+      "node_modules/@eventual/core/lib/",
+      "node_modules/@eventual/client/lib/"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

@@ -5,3 +5,4 @@ packages:
   - "apps/*"
   - "apps/tests/*"
   - "apps/test-app-sst/services"
+  - "examples/*"

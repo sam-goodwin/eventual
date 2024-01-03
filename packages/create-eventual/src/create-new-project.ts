@@ -1,7 +1,7 @@
 import { discoverPackageManager, PackageManager } from "@eventual/project";
 import inquirer from "inquirer";
-import { createAwsCdkProject } from "./create-new-aws-cdk-project";
-import { createSSTProject } from "./create-new-sst-project";
+import { createAwsCdkProject } from "./create-new-aws-cdk-project.js";
+import { createSSTProject } from "./create-new-sst-project.js";
 
 export enum ProjectType {
   AWS_CDK = "aws-cdk",

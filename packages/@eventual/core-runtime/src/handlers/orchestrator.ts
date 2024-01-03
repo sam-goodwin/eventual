@@ -49,7 +49,6 @@ import {
   isFailed,
   normalizeError,
   normalizeFailedResult,
-  resultToString,
 } from "../result.js";
 import { computeScheduleDate } from "../schedule.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
@@ -170,11 +169,6 @@ export async function orchestrateExecution({
     // get the workflow
     const workflow = deps.workflowProvider.lookupWorkflow(workflowName);
 
-    deps.logAgent?.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
-      "Incoming Events",
-      JSON.stringify(events),
-    ]);
-
     const maxTaskAge = recordEventMetrics(metrics, events, executionTime);
 
     // if it is the first execution, record metrics for and start the timeout if configured
@@ -244,21 +238,6 @@ export async function orchestrateExecution({
         metrics?.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
           executor.history.length
-        );
-
-        deps.logAgent?.logWithContext(
-          executionLogContext,
-          LogLevel.DEBUG,
-          () => [
-            result
-              ? "Workflow returned a result with: " + resultToString(result)
-              : "Workflow did not return a result.",
-          ]
-        );
-        deps.logAgent?.logWithContext(
-          executionLogContext,
-          LogLevel.DEBUG,
-          () => [`Found ${calls.length} new calls. ${JSON.stringify(calls)}`]
         );
 
         // try to execute all calls
@@ -338,10 +317,7 @@ export async function orchestrateExecution({
     await flushPromise;
   } catch (err) {
     console.error(inspect(err));
-    deps.logAgent?.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
-      "orchestrator error",
-      inspect(err),
-    ]);
+
     throw err;
   } finally {
     await metrics?.flush();
@@ -354,20 +330,10 @@ export async function orchestrateExecution({
     workflow: Workflow,
     executionId: string,
     propertyRetriever: AllPropertyRetriever,
-    logAgent?: LogAgent
+    _logAgent?: LogAgent
   ): Promise<WorkflowExecutor<any, any, ExecutorRunContext>> {
-    logAgent?.logWithContext({ executionId }, LogLevel.DEBUG, [
-      "Retrieve Executor",
-    ]);
-
     return timed(metrics, OrchestratorMetrics.LoadHistoryDuration, () =>
       deps.executorProvider.getExecutor(executionId, (history) => {
-        deps.logAgent?.logWithContext(
-          executionLogContext,
-          LogLevel.DEBUG,
-          () => ["History Events", JSON.stringify(history)]
-        );
-
         metrics?.setProperty(
           OrchestratorMetrics.LoadedHistoryEvents,
           history.length
@@ -426,10 +392,7 @@ export async function orchestrateExecution({
         ),
         metrics
       );
-      deps.logAgent?.logWithContext(executionLogContext, LogLevel.INFO, [
-        "Workflow Succeeded",
-        JSON.stringify(result.value, undefined, 4),
-      ]);
+
       return createEvent<WorkflowSucceeded>(
         {
           type: WorkflowEventType.WorkflowSucceeded,

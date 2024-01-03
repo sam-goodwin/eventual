@@ -18,7 +18,6 @@ interface ErrorHandlerRequest {
 }
 
 export default async (lambdaRequest: ErrorHandlerRequest) => {
-  console.log("Received fallback to request: " + JSON.stringify(lambdaRequest));
   try {
     const parsed = JSON.parse(
       lambdaRequest.responsePayload.errorMessage

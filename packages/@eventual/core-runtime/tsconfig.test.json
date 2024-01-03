@@ -1,8 +1,9 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.test.json",
   "compilerOptions": {
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

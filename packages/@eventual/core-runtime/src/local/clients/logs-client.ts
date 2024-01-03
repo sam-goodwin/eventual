@@ -95,6 +95,12 @@ export class LocalLogsClient implements LogsClient, LocalSerializable {
     executionId: string,
     ...logEntries: LogEntry[]
   ): Promise<void> {
+    if (!(executionId in this.logEntries)) {
+      // HACK: disable that first annoying AF Workflow Started message when running in local
+      if (logEntries[0]?.message === "Workflow Started") {
+        logEntries = logEntries.slice(1);
+      }
+    }
     (this.logEntries[executionId] ??= []).push(...logEntries);
     logEntries.forEach((l) => {
       console.log(

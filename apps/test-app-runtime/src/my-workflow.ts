@@ -2,7 +2,6 @@ import { task, workflow } from "@eventual/core";
 
 export default workflow("my-workflow", async ({ name }: { name: string }) => {
   const result = await Promise.all([hello(name), hello2(name)]);
-  console.log(result);
   const result2 = await hello(name);
   return `you said ${result2} ${result}`;
 });

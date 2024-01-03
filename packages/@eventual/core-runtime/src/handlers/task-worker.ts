@@ -1,5 +1,4 @@
 import {
-  LogLevel,
   ServiceContext,
   TaskNotFoundError,
   type ExecutionID,
@@ -98,9 +97,6 @@ export function createTaskWorker({
         getEndTime = () => new Date()
       ) => {
         try {
-          const taskHandle = logAgent.isLogLevelSatisfied(LogLevel.DEBUG)
-            ? `${request.taskName}:${request.seq} for execution ${request.executionId} on retry ${request.retry}`
-            : request.taskName;
           metrics.resetDimensions(false);
           metrics.setNamespace(MetricsCommon.EventualNamespace);
           metrics.putDimensions({
@@ -129,7 +125,6 @@ export function createTaskWorker({
             ))
           ) {
             metrics.putMetric(TaskMetrics.ClaimRejected, 1, Unit.Count);
-            console.debug(`Task ${taskHandle} already claimed.`);
             return;
           }
           if (request.heartbeat) {
@@ -142,10 +137,6 @@ export function createTaskWorker({
             });
           }
           metrics.putMetric(TaskMetrics.ClaimRejected, 0, Unit.Count);
-
-          logAgent.logWithContext(taskLogContext, LogLevel.DEBUG, [
-            `Processing ${taskHandle}.`,
-          ]);
 
           const task = taskProvider.getTask(request.taskName);
 
@@ -239,10 +230,6 @@ export function createTaskWorker({
                 metrics.setProperty(TaskMetrics.AsyncResult, 0);
               }
 
-              logAgent.logWithContext(taskLogContext, LogLevel.DEBUG, [
-                `Task ${taskHandle} succeeded, reporting back to execution.`,
-              ]);
-
               const endTime = getEndTime(start);
               return createEvent<TaskSucceeded>(
                 {
@@ -256,10 +243,6 @@ export function createTaskWorker({
               const [error, message] = extendsError(err)
                 ? [err.name, err.message]
                 : ["Error", JSON.stringify(err)];
-
-              logAgent.logWithContext(taskLogContext, LogLevel.DEBUG, [
-                `Task ${taskHandle} failed, reporting failure back to execution: ${error}: ${message}`,
-              ]);
 
               const endTime = getEndTime(start);
               return createEvent<TaskFailed>(

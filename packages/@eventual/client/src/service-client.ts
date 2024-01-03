@@ -63,18 +63,21 @@ export const ServiceClient: {
  * and input/output contract.
  */
 export function proxyServiceClient(
-  this: { httpClient: HttpServiceClient },
+  this: {
+    httpClient: HttpServiceClient;
+  },
   namespace?: string
 ) {
   return new Proxy(this, {
-    get: (_, commandName: string) =>
-      ((input: any, options?: { headers?: Record<string, string> }) =>
+    get:
+      (_, commandName: string) =>
+      (input: any, options?: { headers?: Record<string, string> }) =>
         this.httpClient.rpc({
           command: commandName,
           payload: input,
           headers: options?.headers,
           namespace,
-        })) satisfies ServiceClientMethod<any>,
+        }),
   });
 }
 
@@ -134,7 +137,9 @@ type ServiceClientMethod<T> = T extends Command<
 type KeysWhereNameIsSame<Service> = {
   [k in keyof Service]: k extends Extract<Service[k], { name: string }>["name"]
     ? // we only want commands to show up
-      Service[k] extends { kind: "Command" }
+      Service[k] extends {
+        kind: "Command";
+      }
       ? k
       : never
     : never;

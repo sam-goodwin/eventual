@@ -5,6 +5,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 test("esbuild for web", async () => {
   await esbuild.build({
+    outfile: "/dev/null",
     bundle: true,
     target: "es2022",
     platform: "browser",
@@ -12,7 +13,7 @@ test("esbuild for web", async () => {
     external: ["https"],
     nodePaths: [path.join(__dirname, "../../..")],
     stdin: {
-      contents: `const {HttpEventualClient} = require('@eventual/client');
+      contents: `import {HttpEventualClient} from "@eventual/client";
 new HttpEventualClient();`,
       loader: "ts",
       resolveDir: __dirname,
@@ -21,14 +22,14 @@ new HttpEventualClient();`,
 });
 
 test("esbuild for node", async () => {
-  console.log(path.join(__dirname, "../../.."));
   await esbuild.build({
+    outfile: "/dev/null",
     bundle: true,
     target: "es2022",
     platform: "node",
     nodePaths: [path.join(__dirname, "../../..")],
     stdin: {
-      contents: `const {HttpEventualClient} = require('@eventual/client');
+      contents: `import {HttpEventualClient} from "@eventual/client";
 new HttpEventualClient();`,
       loader: "ts",
       resolveDir: __dirname,

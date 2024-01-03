@@ -20,25 +20,25 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { RemovalPolicy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { BucketService } from "./bucket-service";
+import { BucketService } from "./bucket-service.js";
 import {
   EventBridgePipe,
   PipeSourceParameters,
-} from "./constructs/event-bridge-pipe";
-import { EntityService } from "./entity-service";
-import { EventService } from "./event-service";
-import { grant } from "./grant";
-import { LazyInterface } from "./proxy-construct";
-import { QueueService } from "./queue-service";
-import { SchedulerService } from "./scheduler-service";
-import type { SearchService } from "./search/search-service";
-import { SecureBucket } from "./secure/bucket";
-import { SecureLogGroup } from "./secure/log-group";
-import { SecureQueue } from "./secure/queue";
-import { SecureTable } from "./secure/table";
-import { ServiceConstructProps } from "./service-common";
-import { ServiceFunction } from "./service-function";
-import { SocketService } from "./socket-service";
+} from "./constructs/event-bridge-pipe.js";
+import { EntityService } from "./entity-service.js";
+import { EventService } from "./event-service.js";
+import { grant } from "./grant.js";
+import { LazyInterface } from "./proxy-construct.js";
+import { QueueService } from "./queue-service.js";
+import { SchedulerService } from "./scheduler-service.js";
+import type { SearchService } from "./search/search-service.js";
+import { SecureBucket } from "./secure/bucket.js";
+import { SecureLogGroup } from "./secure/log-group.js";
+import { SecureQueue } from "./secure/queue.js";
+import { SecureTable } from "./secure/table.js";
+import { ServiceConstructProps } from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import { SocketService } from "./socket-service.js";
 import type { TaskService } from "./task-service.js";
 
 export interface WorkflowsProps extends ServiceConstructProps {

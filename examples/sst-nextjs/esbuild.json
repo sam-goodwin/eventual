@@ -1,0 +1,30 @@
+{
+  "mainFields": [
+    "module",
+    "main"
+  ],
+  "logLevel": "debug",
+  "sourcemap": true,
+  "sourcesContent": false,
+  "plugins": [
+    {
+      "name": "plugin:alias-path"
+    }
+  ],
+  "conditions": [
+    "module",
+    "import",
+    "require"
+  ],
+  "platform": "node",
+  "format": "esm",
+  "target": "es2022",
+  "bundle": true,
+  "entryPoints": [
+    "/Users/samgoodwin/workspaces/eventual/packages/@eventual/aws-runtime/lib/esm/handlers/system-command-handler.js"
+  ],
+  "banner": {
+    "js": "import { createRequire as topLevelCreateRequire } from 'module'\nconst require = topLevelCreateRequire(import.meta.url)\nimport { fileURLToPath as topLevelFileURLToPath } from 'url';\nimport { dirname as topLevelDirname } from 'path';\n\nvar __filename = topLevelFileURLToPath(import.meta.url);\nvar __dirname = topLevelDirname(__filename);"
+  },
+  "outfile": "/Users/samgoodwin/workspaces/eventual/examples/sst-nextjs/.eventual/backend/systemDefault/index.mjs"
+}
