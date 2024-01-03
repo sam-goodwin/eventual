@@ -20,7 +20,7 @@
     "aws-cdk-lib": "2.102.0",
     "chalk": "^5.2.0",
     "fs-extra": "^11.1.0",
-    "typescript": "^5",
+    "typescript": "^5.3.3",
     "vitest": "^0.26.2"
   },
   "dependencies": {

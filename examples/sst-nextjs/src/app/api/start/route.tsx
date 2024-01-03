@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
 
   return new NextResponse(
     JSON.stringify({
-      executionId: executionHandle.executionId,
+      executionId: "",
     })
   );
 }

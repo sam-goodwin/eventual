@@ -42,7 +42,7 @@
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "type-fest": "^3.11.0",
-    "typescript": "^5",
+    "typescript": "^5.3.3",
     "ulidx": "^0.3.0"
   },
   "jest": {

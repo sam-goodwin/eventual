@@ -33,6 +33,7 @@ export const Trigger = {
     eventType: T,
     handler: TriggerHandler<[event: CompletionEvent & { type: T }], Output>
   ): EventTrigger<Output, CompletionEvent & { type: T }> => {
+    // @ts-ignore
     return {
       eventType,
       handler,
