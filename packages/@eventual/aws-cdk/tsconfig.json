@@ -1,14 +1,18 @@
 {
   "extends": "../../../tsconfig-base",
   "include": ["src", "src/package.json"],
-  "exclude": ["lib", "node_modules"],
+  "exclude": ["lib", "node_modules", "src/build-cli.cts"],
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@find-build-cli": ["src/build-cli.mts"]
+    }
   },
   "references": [
     { "path": "../aws-runtime/tsconfig.json" },

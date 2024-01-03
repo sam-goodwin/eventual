@@ -17,6 +17,8 @@ import fs from "fs";
 import type openapi from "openapi3-ts";
 import path from "path";
 
+import { findBuildCLI } from "@find-build-cli";
+
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface BuildOutput extends BuildManifest {}
 
@@ -47,9 +49,9 @@ export class BuildOutput {
 
 export function buildServiceSync(request: BuildAWSRuntimeProps): BuildOutput {
   execSync(
-    `node ${require.resolve("./build-cli.js")} ${Buffer.from(
-      JSON.stringify(request)
-    ).toString("base64")}`
+    `node ${findBuildCLI()} ${Buffer.from(JSON.stringify(request)).toString(
+      "base64"
+    )}`
   );
 
   return new BuildOutput(

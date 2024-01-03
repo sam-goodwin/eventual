@@ -2,10 +2,14 @@
   "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/cjs"
+    "outDir": "lib/cjs",
+    "baseUrl": ".",
+    "paths": {
+      "@find-build-cli": ["src/build-cli.cts"]
+    }
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules", "src/package.json"],
+  "exclude": ["lib", "node_modules", "src/package.json", "src/build-cli.mts"],
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },
     { "path": "../core/tsconfig.cjs.json" },
