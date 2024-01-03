@@ -8,8 +8,10 @@ import {
 import fs from "fs/promises";
 import path from "path";
 import { sampleCDKApp } from "./sample-code.js";
+import { createRequire } from "module";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+const require = createRequire(import.meta.url);
+
 const version: string = require("../package.json").version;
 
 export interface CreateAwsCdkProps {
