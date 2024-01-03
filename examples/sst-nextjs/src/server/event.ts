@@ -6,4 +6,6 @@ export const tick = event<{
 
 export const tock = event<{
   time: number;
-}>("tick");
+}>("tock");
+
+export const onTock = tock.onEvent("onTock", async (event) => {});

@@ -4,13 +4,12 @@
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/esm",
+    "outDir": "lib",
     "declaration": true,
-    "inlineSourceMap": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "inlineSourceMap": true
   },
   "references": [
+    { "path": "../aws-cdk/tsconfig.cjs.json" },
     { "path": "../aws-runtime/tsconfig.json" },
     { "path": "../core/tsconfig.json" },
     { "path": "../compiler/tsconfig.json" },

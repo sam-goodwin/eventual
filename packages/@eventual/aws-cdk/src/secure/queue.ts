@@ -1,7 +1,7 @@
 import { Queue, QueueEncryption, QueueProps } from "aws-cdk-lib/aws-sqs";
 import { Duration } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { Compliance } from "../compliance";
+import type { Compliance } from "../compliance.js";
 
 export interface SecureQueueProps extends QueueProps {
   compliancePolicy: Compliance;

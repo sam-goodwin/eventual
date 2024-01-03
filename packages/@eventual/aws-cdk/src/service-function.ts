@@ -7,10 +7,10 @@ import {
 import { FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Duration, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import type { BuildOutput } from "./build";
-import type { Compliance } from "./compliance";
-import { SecureFunction } from "./secure/function";
-import { baseFnProps } from "./utils";
+import type { BuildOutput } from "./build.js";
+import type { Compliance } from "./compliance.js";
+import { SecureFunction } from "./secure/function.js";
+import { baseFnProps } from "./utils.js";
 
 export interface ServiceFunctionProps {
   overrides?: Omit<Partial<FunctionProps>, "code" | "handler" | "functionName">;

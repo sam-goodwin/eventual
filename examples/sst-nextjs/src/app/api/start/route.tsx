@@ -1,7 +1,7 @@
 import { client } from "@/server/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export default async function handler() {
+export async function POST(req: NextRequest) {
   const executionHandle = await client.tickTock.startExecution();
 
   return new NextResponse(

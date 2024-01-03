@@ -1,4 +1,4 @@
-import type {
+import {
   Command,
   Event,
   Execution,
@@ -13,6 +13,7 @@ import {
   HttpServiceClient,
   HttpServiceClientProps,
 } from "./base-http-client.js";
+import { HttpEventualClient } from "./http-eventual-client.js";
 
 /**
  * A generic client for any Service created with Eventual.
@@ -52,12 +53,14 @@ export const ServiceClient: {
   ): ServiceClient<Service>;
 } = class ServiceClient {
   public httpClient: HttpServiceClient;
+  public httpEventualClient: HttpEventualClient;
   constructor(
     props: HttpServiceClientProps,
     rpcNamespace?: string,
     httpClient?: HttpServiceClient
   ) {
     this.httpClient = httpClient ?? new HttpServiceClient(props);
+    this.httpEventualClient = new HttpEventualClient(props);
 
     return proxyServiceClient.call(this, rpcNamespace);
   }
@@ -73,18 +76,73 @@ export const ServiceClient: {
  * and input/output contract.
  */
 export function proxyServiceClient(
-  this: { httpClient: HttpServiceClient },
+  this: {
+    httpClient: HttpServiceClient;
+    httpEventualClient: HttpEventualClient;
+  },
   namespace?: string
 ) {
   return new Proxy(this, {
-    get: (_, commandName: string) =>
-      ((input: any, options?: { headers?: Record<string, string> }) =>
-        this.httpClient.rpc({
-          command: commandName,
-          payload: input,
-          headers: options?.headers,
-          namespace,
-        })) satisfies ServiceClientMethod<any>,
+    get: (_, commandName: string) => {
+      return new Proxy(
+        {},
+        {
+          get: (_, name: string) => {
+            return {
+              emit: async (payload: any) => {
+                await this.httpEventualClient.emitEvents({
+                  events: [
+                    {
+                      name,
+                      event: payload,
+                    },
+                  ],
+                });
+              },
+              sendSignal: async (executionId: string, payload: any) => {
+                // must be a signal
+                await this.httpEventualClient.sendSignal({
+                  execution: executionId,
+                  signal: name,
+                  payload,
+                });
+              },
+              startExecution: (req: any) => {
+                return this.httpEventualClient.startExecution({
+                  input: req?.input,
+                  workflow: name,
+                  executionName: req?.executionName,
+                  timeout: req?.timeout,
+                });
+              },
+              getStatus: (executionId: string) => {
+                return this.httpEventualClient.getExecution(executionId);
+              },
+              getHandle: (executionId: string) => {
+                return new ExecutionHandle(`${name}/${executionId}`);
+              },
+            };
+          },
+          // a direct call is the command invocation
+          apply: (
+            _self: any,
+            _target: any,
+            [input, options]: [
+              input: any,
+              options?: { headers?: Record<string, string> }
+            ]
+          ) =>
+            this.httpClient.rpc({
+              command: commandName,
+              payload: input,
+              headers: options?.headers,
+              namespace,
+            }),
+        }
+      );
+
+      return;
+    },
   });
 }
 

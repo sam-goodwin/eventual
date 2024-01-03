@@ -50,7 +50,7 @@ export async function infer(
 
   const tmp = os.tmpdir();
 
-  const bundle = await esbuild.build({
+  const params = {
     mainFields: ["module", "main"],
     entryPoints: [scriptName],
     plugins: [inferPlugin],
@@ -58,7 +58,8 @@ export async function infer(
     bundle: true,
     write: false,
     platform: "node",
-  });
+  } satisfies esbuild.BuildOptions;
+  const bundle = await esbuild.build(params);
 
   const script = bundle.outputFiles[0]!.text;
   const hash = crypto.createHash("md5").update(script).digest("hex");
@@ -200,23 +201,28 @@ export const inferPlugin: esbuild.Plugin = {
   name: "eventual",
   setup(build) {
     build.onLoad({ filter: /\.[mc]?[tj]s$/g }, async (args) => {
-      // FYI: SWC erases comments: https://github.com/swc-project/swc/issues/6403
-      const sourceModule = await parseFile(args.path, {
-        syntax: "typescript",
-      });
+      try {
+        // FYI: SWC erases comments: https://github.com/swc-project/swc/issues/6403
+        const sourceModule = await parseFile(args.path, {
+          syntax: "typescript",
+        });
 
-      const inferVisitor = new InferVisitor(args.path);
-      const transformedModule = inferVisitor.visitModule(sourceModule);
+        const inferVisitor = new InferVisitor(args.path);
+        const transformedModule = inferVisitor.visitModule(sourceModule);
 
-      if (inferVisitor.didMutate) {
-        const { code } = await printModule(transformedModule, args.path);
+        if (inferVisitor.didMutate) {
+          const { code } = await printModule(transformedModule, args.path);
 
-        return {
-          contents: code,
-          loader: "js",
-        };
+          return {
+            contents: code,
+            loader: "ts",
+          };
+        }
+        return undefined;
+      } catch (err) {
+        console.error(err);
+        throw err;
       }
-      return undefined;
     });
   },
 };

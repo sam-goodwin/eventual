@@ -1,4 +1,4 @@
-import { KeysOfType } from "./utils";
+import { KeysOfType } from "./utils.js";
 
 /**
  * A function which allows a one way interface to be lazily applied.

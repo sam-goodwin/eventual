@@ -12,7 +12,7 @@
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.102.0-alpha.0",
     "aws-cdk-lib": "2.102.0",
     "cdk-nag": "^2.27.164",
-    "constructs": "10.1.154"
+    "constructs": "10.3.0"
   },
   "devDependencies": {
     "@aws-sdk/client-sts": "3.341.0",

@@ -15,7 +15,7 @@
   "dependencies": {
     "@eventual/aws-cdk": "workspace:^",
     "aws-cdk-lib": "2.102.0",
-    "constructs": "10.1.154"
+    "constructs": "10.3.0"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",

@@ -5,7 +5,7 @@ import {
   Statistic,
 } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
-import { Service } from "./service";
+import { Service } from "./service.js";
 import { Stack } from "aws-cdk-lib/core";
 
 export interface ServiceDashboardProps {

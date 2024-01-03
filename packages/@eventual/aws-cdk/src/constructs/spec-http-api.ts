@@ -6,11 +6,12 @@ import {
   VpcLink,
   VpcLinkProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { ApiBase } from "@aws-cdk/aws-apigatewayv2-alpha/lib/common/base";
+import { ApiBase } from "@aws-cdk/aws-apigatewayv2-alpha/lib/common/base.js";
 import { CfnApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { Metric, MetricOptions } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
-import { ApiDefinition } from "./http-api-definition";
+import { ApiDefinition } from "./http-api-definition.js";
+import { ITaggableV2, TagManager, TagType } from "aws-cdk-lib/core";
 
 /**
  * Taken from (and modified) closed cdk PR:
@@ -22,7 +23,9 @@ abstract class HttpApiBase extends ApiBase implements IHttpApi {
   public abstract readonly apiId: string;
   public abstract readonly httpApiId: string;
   public abstract readonly apiEndpoint: string;
+
   private vpcLinks: Record<string, VpcLink> = {};
+
   public metricClientError(props?: MetricOptions): Metric {
     return this.metric("4xx", { statistic: "Sum", ...props });
   }
@@ -63,11 +66,11 @@ abstract class HttpApiBase extends ApiBase implements IHttpApi {
  * Create a new API Gateway HTTP API endpoint from an OpenAPI Specification file.
  * @resource AWS::ApiGatewayV2::Api
  */
-export class SpecHttpApi extends HttpApiBase {
+export class SpecHttpApi extends HttpApiBase implements ITaggableV2 {
   public readonly apiId: string;
   public readonly httpApiId: string;
   public readonly apiEndpoint: string;
-
+  public readonly cdkTagManager: TagManager;
   /**
    * The default stage of this API
    */
@@ -75,6 +78,15 @@ export class SpecHttpApi extends HttpApiBase {
 
   constructor(scope: Construct, id: string, props: SpecHttpApiProps) {
     super(scope, id);
+
+    // there is a bug in AWS where tags cannot be applied to the API::GatewayV2::Api resource when using OpenAPI spec
+    this.cdkTagManager = new TagManager(
+      TagType.KEY_VALUE,
+      "AWS::ApiGatewayV2::Api",
+      {},
+      {}
+    );
+
     // this.httpApiName = props?.apiName;
     const apiDefConfig = props.apiDefinition.bind(this);
 
@@ -86,6 +98,13 @@ export class SpecHttpApi extends HttpApiBase {
         ? undefined
         : apiDefConfig.s3Location,
     });
+    // @ts-expect-error - see https://github.com/aws/aws-cdk/issues/28552
+    resource.tags = new TagManager(
+      TagType.NOT_TAGGABLE,
+      "AWS::ApiGatewayV2::Api",
+      {},
+      {}
+    );
 
     this.apiId = resource.ref;
     this.httpApiId = resource.ref;

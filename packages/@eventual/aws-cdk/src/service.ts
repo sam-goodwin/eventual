@@ -30,8 +30,8 @@ import {
   BucketService,
   ServiceBucketNotificationHandlers,
   ServiceBuckets,
-} from "./bucket-service";
-import { BuildOutput, buildServiceSync } from "./build";
+} from "./bucket-service.js";
+import { BuildOutput, buildServiceSync } from "./build.js";
 import {
   ApiOverrides,
   CommandProps,
@@ -39,7 +39,7 @@ import {
   Commands,
   CommandsProps,
   CorsOptions,
-} from "./command-service";
+} from "./command-service.js";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import {
   EntityService,
@@ -49,44 +49,50 @@ import {
   ServiceEntities,
   ServiceEntityStreams,
 } from "./entity-service.js";
-import { EventService } from "./event-service";
-import { grant } from "./grant";
-import { lazyInterface } from "./proxy-construct";
+import { EventService } from "./event-service.js";
+import { grant } from "./grant.js";
+import { lazyInterface } from "./proxy-construct.js";
 import {
   IQueue,
   QueueHandler,
   QueueOverrides,
   QueueService,
   ServiceQueues,
-} from "./queue-service";
-import { EventualResource } from "./resource";
-import { SchedulerService } from "./scheduler-service";
-import { SearchService, SearchServiceOverrides } from "./search/search-service";
-import { ServerfulSearchService } from "./search/serverful-search-service";
-import { ServerlessSearchService } from "./search/serverless-search-service";
-import { Compliance, CompliancePolicyProps } from "./compliance";
+} from "./queue-service.js";
+import { EventualResource } from "./resource.js";
+import { SchedulerService } from "./scheduler-service.js";
+import {
+  SearchService,
+  SearchServiceOverrides,
+} from "./search/search-service.js";
+import { ServerfulSearchService } from "./search/serverful-search-service.js";
+import { ServerlessSearchService } from "./search/serverless-search-service.js";
+import { Compliance, CompliancePolicyProps } from "./compliance.js";
 import {
   ServiceConstructProps,
   WorkerServiceConstructProps,
-} from "./service-common";
+} from "./service-common.js";
 import {
   ISocket,
   SocketOverrides,
   SocketService,
   Sockets,
-} from "./socket-service";
+} from "./socket-service.js";
 import {
   Subscription,
   SubscriptionOverrides,
   Subscriptions,
-} from "./subscriptions";
+} from "./subscriptions.js";
 import {
   ServiceTasks,
   Task,
   TaskOverrides,
   TaskService,
 } from "./task-service.js";
-import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
+import {
+  WorkflowService,
+  WorkflowServiceOverrides,
+} from "./workflow-service.js";
 
 /**
  * The properties for subscribing a Service to another Service's events.

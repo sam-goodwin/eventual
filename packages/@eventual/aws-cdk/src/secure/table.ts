@@ -6,7 +6,7 @@ import {
   TableProps,
 } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
-import { type Compliance } from "../compliance";
+import { type Compliance } from "../compliance.js";
 
 export interface SecureTableProps extends TableProps {
   compliancePolicy: Compliance;
