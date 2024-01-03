@@ -13,7 +13,7 @@ test("esbuild for web", async () => {
     external: ["https"],
     nodePaths: [path.join(__dirname, "../../..")],
     stdin: {
-      contents: `const {HttpEventualClient} = require('@eventual/client');
+      contents: `import {HttpEventualClient} from "@eventual/client";
 new HttpEventualClient();`,
       loader: "ts",
       resolveDir: __dirname,
@@ -29,7 +29,7 @@ test("esbuild for node", async () => {
     platform: "node",
     nodePaths: [path.join(__dirname, "../../..")],
     stdin: {
-      contents: `const {HttpEventualClient} = require('@eventual/client');
+      contents: `import {HttpEventualClient} from "@eventual/client";
 new HttpEventualClient();`,
       loader: "ts",
       resolveDir: __dirname,

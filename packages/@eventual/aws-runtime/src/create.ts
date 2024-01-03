@@ -52,7 +52,7 @@ import { AWSTaskStore } from "./stores/task-store.js";
  */
 
 const awsSDKPlugin = process.env.EVENTUAL_AWS_SDK_PLUGIN
-  ? require(process.env.EVENTUAL_AWS_SDK_PLUGIN)
+  ? await import(process.env.EVENTUAL_AWS_SDK_PLUGIN)
   : undefined;
 
 if (

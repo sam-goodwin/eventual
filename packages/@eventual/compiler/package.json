@@ -16,8 +16,9 @@
       "require": "./bin/eventual-infer.mjs"
     }
   },
+  "type": "module",
   "module": "./lib/index.js",
-  "types:": "lib//index.d.ts",
+  "types:": "lib/index.d.ts",
   "files": [
     "bin",
     "lib"

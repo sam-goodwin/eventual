@@ -20,6 +20,7 @@ import fs from "fs";
 import type openapi from "openapi3-ts";
 import path from "path";
 import { createRequire } from "module";
+import { fileURLToPath } from "url";
 
 const _require = createRequire(import.meta.url);
 
@@ -442,5 +443,7 @@ function runtimeHandlersEntrypoint(name: string) {
 }
 
 function runtimeEntrypoint() {
-  return path.join(_require.resolve("@eventual/aws-runtime"), `../../esm`);
+  const moduleURL = import.meta.resolve("@eventual/aws-runtime");
+  const moduleFilePath = fileURLToPath(moduleURL);
+  return path.dirname(moduleFilePath);
 }

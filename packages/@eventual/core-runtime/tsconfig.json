@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]
 }

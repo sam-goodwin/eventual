@@ -1,6 +1,7 @@
 {
   "name": "@eventual/aws-cdk",
   "version": "0.57.0",
+  "type": "module",
   "module": "./lib/index.js",
   "exports": {
     ".": {

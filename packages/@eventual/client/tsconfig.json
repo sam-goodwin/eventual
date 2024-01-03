@@ -7,7 +7,7 @@
     "lib": ["DOM", "ES2022"],
     "types": ["node"]
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]
 }

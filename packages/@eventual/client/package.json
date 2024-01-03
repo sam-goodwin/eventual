@@ -5,6 +5,7 @@
       "import": "./lib/index.js"
     }
   },
+  "type": "module",
   "module": "./lib/index.js",
   "version": "0.57.0",
   "scripts": {

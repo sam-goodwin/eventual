@@ -3,9 +3,9 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "module": "Node16",
+    "module": "NodeNext",
     "target": "ESNext",
-    "moduleResolution": "Node16",
+    "moduleResolution": "NodeNext",
     "allowJs": true
   },
   "include": ["src", "test"],

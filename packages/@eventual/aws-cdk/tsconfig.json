@@ -1,6 +1,6 @@
 {
   "extends": "../../../tsconfig-base",
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules", "src/build-cli.cts"],
   "compilerOptions": {
     "rootDir": "src",

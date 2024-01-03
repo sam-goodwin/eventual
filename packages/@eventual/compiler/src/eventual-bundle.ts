@@ -55,7 +55,6 @@ export async function build(
 
   const esbuildParams = {
     mainFields: ["module", "main"],
-    logLevel: "debug",
     sourcemap: sourcemap ?? true,
     sourcesContent: false,
     plugins: [
@@ -95,7 +94,6 @@ export async function build(
     banner: esmPolyfillRequireBanner(),
     outfile,
   } satisfies esbuild.BuildOptions;
-  await fs.writeFile("esbuild.json", JSON.stringify(esbuildParams, null, 2));
   const bundle = await esbuild.build(esbuildParams);
 
   await writeEsBuildMetafile(

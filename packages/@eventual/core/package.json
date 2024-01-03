@@ -12,6 +12,7 @@
       "import": "./lib/constants.js"
     }
   },
+  "type": "module",
   "module": "./lib/index.js",
   "files": [
     "constants",

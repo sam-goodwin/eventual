@@ -6,8 +6,8 @@
       "import": "./lib/index.js"
     }
   },
-  "main": "lib/cjs/index.js",
-  "module": "lib//index.js",
+  "type": "module",
+  "module": "lib/index.js",
   "publishConfig": {
     "access": "public"
   }

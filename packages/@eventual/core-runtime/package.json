@@ -6,6 +6,7 @@
       "import": "./lib/index.js"
     }
   },
+  "type": "module",
   "module": "./lib/index.js",
   "files": [
     "lib"

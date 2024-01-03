@@ -9,7 +9,7 @@
       "@eventual/injected/spec": ["src/injected/service-spec.ts"]
     }
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "references": [
     { "path": "../aws-client" },
