@@ -7,11 +7,11 @@
     "lib"
   ],
   "bin": {
-    "create-eventual": "./bin/index.js"
+    "create-eventual": "./bin/index.mjs"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline --external:../package.json",
-    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
+    "build": "esbuild src/index.ts --banner:js=\"const require = createRequire(import.meta.url);\" --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline --external:../package.json --format=esm",
+    "watch": "esbuild src/index.ts --banner:js=\"const require = createRequire(import.meta.url);\" --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline --format=esm"
   },
   "dependencies": {
     "aws-cdk": "^2.102.0",

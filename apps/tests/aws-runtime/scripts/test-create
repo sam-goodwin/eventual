@@ -12,17 +12,17 @@ cd ./.eventual
 echo "Testing Create-Eventual with AWS CDK"
 
 PROJECT_NAME="testme"
-EVENTUAL_PACKAGES=("@eventual/core" "@eventual/core-runtime" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/timeline" "@eventual/project")
+EVENTUAL_PACKAGES=("@eventual/core" "@eventual/core-runtime" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/project" "@eventual/sst")
 
 rm -rf $PROJECT_NAME
-../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git --package-manager pnpm
+../../../../packages/create-eventual/bin/index.mjs $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git --package-manager pnpm
 cd $PROJECT_NAME
 
 pnpm link ${EVENTUAL_PACKAGES[@]/"@"/"../../../../../packages/@"}
 
 # CDK doesn't like mis-matched versions...
 cd ./infra
-pnpm install aws-cdk@2.79.1 aws-cdk-lib@2.79.1 constructs@10.1.154
+pnpm install aws-cdk@2.102.0 aws-cdk-lib@2.79.1 constructs@10.3.0
 pnpm link ${EVENTUAL_PACKAGES[@]/"@"/"../../../../../../packages/@"}
 cd ..
 
@@ -42,7 +42,7 @@ cd ../
 echo "Testing Create-Eventual with AWS SST"
 
 rm -rf $PROJECT_NAME
-../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target sst --serviceName test-service
+../../../../packages/create-eventual/bin/index.mjs $PROJECT_NAME --target sst --serviceName test-service
 
 # sst's "build" also bootstraps and needs permissions to get parameters.
 # There seems to be no good way to test the build/synth without network/account access :(.
