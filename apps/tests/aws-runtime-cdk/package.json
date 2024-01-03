@@ -9,8 +9,8 @@
     "nag": "ts-node-esm ./scripts/report-violations.ts"
   },
   "dependencies": {
-    "@aws-cdk/aws-apigatewayv2-alpha": "^2.102.0-alpha.0",
-    "aws-cdk-lib": "2.102.0",
+    "@aws-cdk/aws-apigatewayv2-alpha": "^2.110.1-alpha.0",
+    "aws-cdk-lib": "2.110.1",
     "cdk-nag": "^2.27.164",
     "constructs": "10.3.0"
   },
@@ -19,7 +19,7 @@
     "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^",
-    "aws-cdk": "^2.102.0",
+    "aws-cdk": "^2.110.1",
     "esbuild": "^0.17.4",
     "jest": "^29",
     "tests-runtime": "workspace:^",

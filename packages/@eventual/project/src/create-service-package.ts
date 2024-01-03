@@ -43,7 +43,6 @@ export async function createServicePackage(
           esbuild: "^0.16.14",
           jest: "^29",
           "ts-jest": "^29",
-          "ts-node": "^10.9.1",
           typescript: "^5",
         },
         jest: {
