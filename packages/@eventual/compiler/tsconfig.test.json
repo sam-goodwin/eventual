@@ -1,8 +1,7 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.test.json",
   "compilerOptions": {
     "rootDir": ".",
-    "types": ["@types/node", "@types/jest"],
     "noEmit": true,
     "module": "Node16",
     "target": "ESNext",

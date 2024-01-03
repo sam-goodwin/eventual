@@ -20,7 +20,6 @@
   "devDependencies": {
     "@eventual/project": "workspace:^",
     "@types/inquirer": "^8.2.6",
-    "@types/node": "^18",
     "@types/yargs": "^17.0.24",
     "esbuild": "^0.17.4",
     "inquirer": "^8",

@@ -17,7 +17,6 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
-    "@types/node": "^18",
     "esbuild": "0.19.11",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
