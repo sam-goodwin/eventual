@@ -1,5 +1,4 @@
 import {
-  HttpEventualClient,
   HttpServiceClient,
   HttpServiceClientProps,
   proxyServiceClient,
@@ -20,18 +19,12 @@ export const AWSServiceClient: {
   new <Service>(props: HttpServiceClientProps): ServiceClient<Service>;
 } = class AWSServiceClient {
   public readonly httpClient: HttpServiceClient;
-  // @ts-ignore
-  public readonly httpEventualClient: HttpEventualClient;
   constructor(props: AWSHttpEventualClientProps) {
     const signer = createAwsHttpRequestSigner(props);
     this.httpClient = new HttpServiceClient({
       serviceUrl: props.serviceUrl,
       beforeRequest: signer,
     });
-    // this.httpEventualClient = new HttpEventualClient({
-    //   serviceUrl: props.serviceUrl,
-    //   beforeRequest: signer,
-    // });
 
     return proxyServiceClient.call(this);
   }

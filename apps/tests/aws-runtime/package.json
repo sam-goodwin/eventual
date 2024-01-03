@@ -39,8 +39,7 @@
     "openapi3-ts": "^3.1.2",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "tsx": "^4.7.0"
   },
   "jest": {
     "displayName": "workspace",
@@ -53,6 +52,11 @@
     ],
     "extensionsToTreatAsEsm": [
       ".ts"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/",
+      "node_modules/@eventual/core/lib/",
+      "node_modules/@eventual/client/lib/"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

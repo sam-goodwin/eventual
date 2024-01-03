@@ -95,7 +95,7 @@ export type WorkflowArguments<Input = any> = [Input] extends [undefined]
  */
 export interface Workflow<
   Name extends string = string,
-  in Input = any,
+  Input = any,
   Output = any
 > extends WorkflowSpec<Name> {
   // input?: (i: Input) => any;
@@ -117,7 +117,9 @@ export interface Workflow<
    * Starts a workflow execution
    */
   startExecution(
-    request: StartExecutionRequest<Input>
+    ...args: [undefined] extends [Input]
+      ? [req?: StartExecutionRequest<Input>]
+      : [req: StartExecutionRequest<Input>]
   ): Promise<ExecutionHandle<Output>>;
 }
 
@@ -219,7 +221,7 @@ export function workflow<
 
   Object.defineProperty(workflow, "name", { value: name, writable: false });
 
-  workflow.startExecution = async function (req) {
+  workflow.startExecution = async function (req: any) {
     const serviceClient =
       getEventualHook().getEventualProperty<ServiceClientProperty>(
         createEventualProperty(PropertyKind.ServiceClient, {})

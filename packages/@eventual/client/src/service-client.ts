@@ -1,19 +1,8 @@
-import {
-  Command,
-  Event,
-  Execution,
-  ExecutionHandle,
-  SendSignalProps,
-  Signal,
-  Socket,
-  StartExecutionRequest,
-  Workflow,
-} from "@eventual/core";
+import { Command } from "@eventual/core";
 import {
   HttpServiceClient,
   HttpServiceClientProps,
 } from "./base-http-client.js";
-import { HttpEventualClient } from "./http-eventual-client.js";
 
 /**
  * A generic client for any Service created with Eventual.
@@ -53,14 +42,12 @@ export const ServiceClient: {
   ): ServiceClient<Service>;
 } = class ServiceClient {
   public httpClient: HttpServiceClient;
-  public httpEventualClient: HttpEventualClient;
   constructor(
     props: HttpServiceClientProps,
     rpcNamespace?: string,
     httpClient?: HttpServiceClient
   ) {
     this.httpClient = httpClient ?? new HttpServiceClient(props);
-    this.httpEventualClient = new HttpEventualClient(props);
 
     return proxyServiceClient.call(this, rpcNamespace);
   }
@@ -78,70 +65,25 @@ export const ServiceClient: {
 export function proxyServiceClient(
   this: {
     httpClient: HttpServiceClient;
-    httpEventualClient: HttpEventualClient;
   },
   namespace?: string
 ) {
   return new Proxy(this, {
     get: (_, commandName: string) => {
-      return new Proxy(
-        {},
-        {
-          get: (_, name: string) => {
-            return {
-              emit: async (payload: any) => {
-                await this.httpEventualClient.emitEvents({
-                  events: [
-                    {
-                      name,
-                      event: payload,
-                    },
-                  ],
-                });
-              },
-              sendSignal: async (executionId: string, payload: any) => {
-                // must be a signal
-                await this.httpEventualClient.sendSignal({
-                  execution: executionId,
-                  signal: name,
-                  payload,
-                });
-              },
-              startExecution: (req: any) => {
-                return this.httpEventualClient.startExecution({
-                  input: req?.input,
-                  workflow: name,
-                  executionName: req?.executionName,
-                  timeout: req?.timeout,
-                });
-              },
-              getStatus: (executionId: string) => {
-                return this.httpEventualClient.getExecution(executionId);
-              },
-              getHandle: (executionId: string) => {
-                return new ExecutionHandle(`${name}/${executionId}`);
-              },
-            };
-          },
-          // a direct call is the command invocation
-          apply: (
-            _self: any,
-            _target: any,
-            [input, options]: [
-              input: any,
-              options?: { headers?: Record<string, string> }
-            ]
-          ) =>
-            this.httpClient.rpc({
-              command: commandName,
-              payload: input,
-              headers: options?.headers,
-              namespace,
-            }),
-        }
-      );
-
-      return;
+      return (
+        _self: any,
+        _target: any,
+        [input, options]: [
+          input: any,
+          options?: { headers?: Record<string, string> }
+        ]
+      ) =>
+        this.httpClient.rpc({
+          command: commandName,
+          payload: input,
+          headers: options?.headers,
+          namespace,
+        });
     },
   });
 }
@@ -172,30 +114,14 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
   ? Name
   : never;
 
-type ServiceClientMethod<T> = T extends Workflow<any, infer Input, infer Output>
-  ? {
-      startExecution: [undefined] extends [Input]
-        ? (
-            req?: StartExecutionRequest<Input>
-          ) => Promise<ExecutionHandle<Output>>
-        : (
-            req: StartExecutionRequest<Input>
-          ) => Promise<ExecutionHandle<Output>>;
-      getHandle: (executionId: string) => Promise<ExecutionHandle<Output>>;
-      getStatus(executionId: string): Promise<Execution<Output>>;
-      sendSignal<Payload = any>(
-        executionId: string,
-        signal: string | Signal<Payload>,
-        ...args: SendSignalProps<Payload>
-      ): Promise<void>;
-    }
-  : T extends Event<infer Payload>
-  ? {
-      emit: (payload: Payload) => Promise<void>;
-    }
-  : T extends Socket
-  ? never
-  : T extends Command<any, infer Input, infer Output, any, any, any>
+type ServiceClientMethod<T> = T extends Command<
+  any,
+  infer Input,
+  infer Output,
+  any,
+  any,
+  any
+>
   ? [Input] extends [undefined]
     ? {
         (
@@ -219,7 +145,7 @@ type KeysWhereNameIsSame<Service> = {
   [k in keyof Service]: k extends Extract<Service[k], { name: string }>["name"]
     ? // we only want commands to show up
       Service[k] extends {
-        kind: "Command" | "Workflow" | "Event";
+        kind: "Command";
       }
       ? k
       : never

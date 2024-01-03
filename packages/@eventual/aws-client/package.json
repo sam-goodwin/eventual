@@ -1,13 +1,14 @@
 {
   "name": "@eventual/aws-client",
+  "version": "0.57.0",
+  "type": "module",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
       "import": "./lib/index.js"
     }
   },
-  "type": "module",
-  "module": "./lib/index.js",
-  "version": "0.57.0",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
@@ -24,8 +25,7 @@
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "ts-node": "^10.9.1",
-    "typescript": "^5.3.3"
+    "ts-node": "^10.9.1"
   },
   "publishConfig": {
     "access": "public"
