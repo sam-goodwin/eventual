@@ -14,7 +14,6 @@ import { sendSignal } from "./commands/send-signal.js";
 import { serviceInfo } from "./commands/service-info.js";
 import { services } from "./commands/services.js";
 import { start } from "./commands/start.js";
-import { timeline } from "./commands/timeline.js";
 import { workflows } from "./commands/workflows.js";
 
 const argv = hideBin(process.argv);
@@ -41,8 +40,8 @@ export const listOperation = (yargs: Argv) =>
 export const getOperation = (yargs: Argv) =>
   yargs.command(
     ["get", "show"],
-    "Get or show an execution, service, timeline, history, logs, or the cli configuration.",
-    addSubCommands(execution, history, logs, serviceInfo, configure, timeline),
+    "Get or show an execution, service, history, logs, or the cli configuration.",
+    addSubCommands(execution, history, logs, serviceInfo, configure),
     () => {
       yargs.showHelp();
     }
