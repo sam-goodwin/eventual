@@ -1,10 +1,9 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.test.json",
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "lib": ["DOM", "ES2022"],
-    "types": ["@types/node", "@types/jest"]
+    "lib": ["DOM", "ES2022"]
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

@@ -1,5 +1,6 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
+import { FunctionInput } from "./function-input.js";
 import type {
   FunctionBundleProps,
   FunctionRuntimeProps,
@@ -184,6 +185,10 @@ export interface TaskHandler<Input = any, Output = any> {
     | Promise<AsyncResult<Awaited<Output>>>;
 }
 
+export type TaskHandlerOutput<H extends TaskHandler> = UnwrapAsync<
+  Awaited<ReturnType<H>>
+>;
+
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
@@ -246,15 +251,17 @@ export async function asyncResult<Output = any>(
  * @param taskID a string that uniquely identifies the Task within a single workflow context.
  * @param handler the function that handles the task
  */
-export function task<Name extends string, Input = any, Output = any>(
+export function task<Name extends string, Handler extends TaskHandler>(
   taskID: Name,
-  handler: TaskHandler<Input, Output>
-): Task<Name, Input, Output>;
-export function task<Name extends string, Input = any, Output = any>(
+  handler: Handler
+): Task<Name, FunctionInput<Handler>, TaskHandlerOutput<Handler>>;
+
+export function task<Name extends string, Handler extends TaskHandler>(
   taskID: Name,
   opts: TaskOptions,
-  handler: TaskHandler<Input, Output>
-): Task<Name, Input, Output>;
+  handler: Handler
+): Task<Name, FunctionInput<Handler>, TaskHandlerOutput<Handler>>;
+
 export function task<Name extends string, Input = any, Output = any>(
   ...args:
     | [

@@ -1,7 +1,7 @@
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { DeepCompositePrincipal } from "./deep-composite-principal";
-import { ServiceLocal } from "./service";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import { ServiceLocal } from "./service.js";
 
 export class EventualResource implements IGrantable {
   public grantPrincipal: IPrincipal;

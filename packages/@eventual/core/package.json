@@ -1,25 +1,24 @@
 {
   "name": "@eventual/core",
   "version": "0.57.0",
+  "type": "module",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
     },
     "./internal": {
-      "import": "./lib/esm/internal/index.js",
-      "require": "./lib/cjs/internal/index.js"
+      "import": "./lib/internal/index.js",
+      "types": "./lib/internal/index.d.ts"
     },
     "./constants": {
-      "import": "./lib/esm/constants.js",
-      "require": "./lib/cjs/constants.js"
+      "import": "./lib/constants.js",
+      "types": "./lib/constants.d.ts"
     }
   },
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
   "files": [
-    "constants",
-    "internal",
     "lib"
   ],
   "scripts": {
@@ -36,13 +35,10 @@
   "devDependencies": {
     "@jest/globals": "^29.5.0",
     "@tshttp/status": "^2.0.0",
-    "@types/jest": "^29.5.1",
-    "@types/node": "^18",
     "jest": "^29",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "type-fest": "^3.11.0",
-    "typescript": "^5",
     "ulidx": "^0.3.0"
   },
   "jest": {

@@ -2,4 +2,4 @@
 
 set -ex
 
-npx cdk deploy --app "ts-node --esm ../aws-runtime-cdk/src/app.mts" --hotswap-fallback ${CI:+false} --require-approval never --outputs-file ${OUTPUTS_FILE:-/dev/null}
+npx cdk deploy --app "tsx ../aws-runtime-cdk/src/app.mts" --hotswap-fallback ${CI:+false} --require-approval never --outputs-file ${OUTPUTS_FILE:-/dev/null}

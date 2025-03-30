@@ -10,11 +10,12 @@ import {
   SendTaskHeartbeatRequest,
   SendTaskHeartbeatResponse,
   SendTaskSuccessRequest,
-  StartExecutionRequest,
+  DirectStartExecutionRequest,
   SubscriptionHandler,
   Task,
   TaskOutput,
   Workflow,
+  WorkflowOutput,
 } from "@eventual/core";
 import {
   LocalContainer,
@@ -270,8 +271,8 @@ export class TestEnvironment extends RuntimeServiceClient {
    * progresses time by one second ({@link tick})
    */
   public override async startExecution<W extends Workflow = Workflow>(
-    request: StartExecutionRequest<W>
-  ): Promise<ExecutionHandle<W>> {
+    request: DirectStartExecutionRequest<W>
+  ): Promise<ExecutionHandle<WorkflowOutput<W>>> {
     const execution = await super.startExecution<W>(request);
     // tick forward on explicit user action (triggering the workflow to start running)
     await this.tick();

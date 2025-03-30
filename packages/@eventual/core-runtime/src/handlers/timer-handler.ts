@@ -1,4 +1,4 @@
-import { LogLevel, Schedule } from "@eventual/core";
+import { Schedule } from "@eventual/core";
 import {
   TaskHeartbeatTimedOut,
   WorkflowEventType,
@@ -44,24 +44,12 @@ export function createTimerHandler({
   return async (request) => {
     try {
       if (isTimerScheduleEventRequest(request)) {
-        logAgent.logWithContext(
-          { executionId: request.executionId },
-          LogLevel.DEBUG,
-          [`Forwarding event: ${request.event}.`]
-        );
-
         await executionQueueClient.submitExecutionEvents(
           request.executionId,
           request.event
         );
       } else if (isTaskHeartbeatMonitorRequest(request)) {
         const task = await taskStore.get(request.executionId, request.taskSeq);
-
-        logAgent.logWithContext(
-          { executionId: request.executionId },
-          LogLevel.DEBUG,
-          () => [`Checking task for heartbeat timeout: ${JSON.stringify(task)}`]
-        );
 
         // the task has not sent a heartbeat or the last time was too long ago.
         // Send the timeout event to the workflow.

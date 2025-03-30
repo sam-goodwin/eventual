@@ -13,7 +13,7 @@ api.post("/work", async (request) => {
 });
 
 export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
-  const results = await Promise.all(items.map(doWork));
+  const results = await Promise.all(items.map((item) => doWork(item)));
 
   await workDone.emit({
     outputs: results,
@@ -23,8 +23,6 @@ export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
 });
 
 export const doWork = task("work", async (work: string) => {
-  console.log("Doing Work", work);
-
   return work.length;
 });
 

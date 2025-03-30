@@ -11,8 +11,6 @@ export const workflow1 = workflow("workflow1", async () => {
   while (true) {
     const n = await mySignal.expectSignal();
 
-    console.log(n);
-
     if (n > 10) {
       child.sendSignal(doneSignal);
       break;
@@ -32,7 +30,7 @@ export const workflow1 = workflow("workflow1", async () => {
  */
 export const workflow2 = workflow(
   "workflow2",
-  async (input: { name: string }, { execution: { parentId } }) => {
+  async (_input: { name: string }, { execution: { parentId } }) => {
     let block = false;
     let done = false;
     let last = 0;
@@ -40,8 +38,6 @@ export const workflow2 = workflow(
     if (!parentId) {
       throw new Error("I need an adult");
     }
-
-    console.log(`Hi, I am ${input.name}`);
 
     mySignal.onSignal((n) => {
       last = n;

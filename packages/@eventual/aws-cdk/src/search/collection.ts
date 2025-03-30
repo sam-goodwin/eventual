@@ -2,8 +2,8 @@ import * as aws_kms from "aws-cdk-lib/aws-kms";
 import * as aws_opensearchserverless from "aws-cdk-lib/aws-opensearchserverless";
 import { RemovalPolicy, Resource } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { Access, DataAccessPolicy } from "./data-access-policy";
-import { SearchPrincipal } from "./search-service";
+import { Access, DataAccessPolicy } from "./data-access-policy.js";
+import { SearchPrincipal } from "./search-service.js";
 
 export interface ICollection {
   readonly collectionName: string;

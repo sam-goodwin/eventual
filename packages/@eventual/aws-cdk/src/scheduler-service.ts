@@ -9,17 +9,17 @@ import {
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
-import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
+import { type IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { ArnFormat, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { grant } from "./grant";
-import { LazyInterface } from "./proxy-construct";
-import { SecureQueue } from "./secure/queue";
-import { ServiceConstructProps } from "./service-common";
-import { ServiceFunction } from "./service-function";
+import { grant } from "./grant.js";
+import type { LazyInterface } from "./proxy-construct.js";
+import { SecureQueue } from "./secure/queue.js";
+import type { ServiceConstructProps } from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service.js";
-import { serviceFunctionArn } from "./utils";
-import { WorkflowService } from "./workflow-service";
+import { serviceFunctionArn } from "./utils.js";
+import type { WorkflowService } from "./workflow-service.js";
 
 export interface SchedulerProps extends ServiceConstructProps {
   /**

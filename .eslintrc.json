@@ -46,6 +46,7 @@
         }
       }
     ],
+    "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-ts-comment": "warn",
     "@typescript-eslint/no-this-alias": "warn",
     "@typescript-eslint/explicit-member-accessibility": [

@@ -1,14 +1,14 @@
 import { sanitizeCollectionName } from "@eventual/aws-runtime";
 import type { IRole } from "aws-cdk-lib/aws-iam";
 import { RemovalPolicy } from "aws-cdk-lib/core";
-import { grant } from "../grant";
+import { grant } from "../grant.js";
 import {
   BaseSearchService,
   BaseSearchServiceProps,
-} from "./base-search-service";
-import { Collection, CollectionProps, CollectionType } from "./collection";
-import { SearchPrincipal } from "./search-service";
-import type { ServerfulSearchService } from "./serverful-search-service";
+} from "./base-search-service.js";
+import { Collection, CollectionProps, CollectionType } from "./collection.js";
+import { SearchPrincipal } from "./search-service.js";
+import type { ServerfulSearchService } from "./serverful-search-service.js";
 
 export interface ServerlessSearchServiceProps<Service>
   extends BaseSearchServiceProps<Service>,

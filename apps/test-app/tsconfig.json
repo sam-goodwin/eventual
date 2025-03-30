@@ -1,13 +1,14 @@
 {
-  "extends": "../../tsconfig-base.cjs",
+  "extends": "../../tsconfig-base",
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "outDir": "lib",
-    "rootDir": "src"
+    "rootDir": "src",
+    "esModuleInterop": true
   },
   "references": [
-    { "path": "../../packages/@eventual/aws-cdk" },
+    { "path": "../../packages/@eventual/aws-cdk/tsconfig.json" },
     { "path": "../test-app-runtime" }
   ]
 }

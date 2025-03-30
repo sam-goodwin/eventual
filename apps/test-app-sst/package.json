@@ -16,11 +16,11 @@
     "@serverless-stack/cli": "^1.18.4",
     "@serverless-stack/core": "^1.18.4",
     "@serverless-stack/resources": "^1.18.4",
-    "@tsconfig/node18": "^1.0.1",
-    "aws-cdk-lib": "2.102.0",
+    "@tsconfig/node20": "^1.0.1",
+    "aws-cdk-lib": "2.110.1",
     "chalk": "^5.2.0",
     "fs-extra": "^11.1.0",
-    "typescript": "^5",
+    "typescript": "^5.3.3",
     "vitest": "^0.26.2"
   },
   "dependencies": {

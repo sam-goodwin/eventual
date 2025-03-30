@@ -66,17 +66,15 @@ const context: WorkflowContext = {
 
 const workflow = (() => {
   let n = 0;
-  return <Input = any, Output = any>(
-    handler: WorkflowHandler<Input, Output>
-  ) => {
-    return _workflow<any, Input, Output>(`wf${n++}`, handler);
+  return <H extends WorkflowHandler>(handler: H) => {
+    return _workflow<any, H>(`wf${n++}`, handler);
   };
 })();
 
 const myTask = task("my-task", async () => {});
 const myTask0 = task("my-task-0", async () => {});
 const myTask2 = task("my-task-2", async () => {});
-const handleErrorTask = task("handle-error", async () => {});
+const handleErrorTask = task("handle-error", async (_err?: any) => {});
 const processItemTask = task("processItem", (_item?: string) => {});
 const beforeTask = task("before", (_v: string) => {});
 const insideTask = task("inside", (_v: string) => {
@@ -2016,14 +2014,11 @@ describe("signals", () => {
           mySignalHappened++;
         }
       );
-      const myOtherSignalHandler = onSignal(
-        "MyOtherSignal",
-        async function (payload) {
-          myOtherSignalHappened++;
-          await myTask(payload);
-          myOtherSignalCompleted++;
-        }
-      );
+      const myOtherSignalHandler = onSignal("MyOtherSignal", async function () {
+        myOtherSignalHappened++;
+        await myTask();
+        myOtherSignalCompleted++;
+      });
 
       await time(testTime);
 
@@ -2134,7 +2129,7 @@ describe("signals", () => {
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
           awaitTimerCall(Schedule.time(testTime), 2),
-          taskCall(myTask.name, "hi", 3),
+          taskCall(myTask.name, undefined, 3),
         ],
       });
     });
@@ -2144,16 +2139,16 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
-            signalReceived("MyOtherSignal", "hi2"),
+            signalReceived("MyOtherSignal", undefined),
+            signalReceived("MyOtherSignal", undefined),
           ],
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
           awaitTimerCall(Schedule.time(testTime), 2),
-          taskCall(myTask.name, "hi", 3),
-          taskCall(myTask.name, "hi2", 4),
+          taskCall(myTask.name, undefined, 3),
+          taskCall(myTask.name, undefined, 4),
         ],
       });
     });
@@ -2163,10 +2158,10 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             timerScheduled(6, time(testTime)),
             timerCompleted(6),
           ],
@@ -2187,9 +2182,9 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             taskSucceeded("task1", 3),
             timerCompleted(2),
             timerScheduled(6, time(testTime)),
@@ -2212,10 +2207,10 @@ describe("signals", () => {
         execute(
           wf,
           [
-            signalReceived("MyOtherSignal", "hi"),
+            signalReceived("MyOtherSignal", undefined),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            taskScheduled(myTask.name, 3, "hi"),
+            taskScheduled(myTask.name, 3, undefined),
             taskSucceeded("task1", 3),
             timerScheduled(6, time(testTime)),
             timerCompleted(6),
@@ -3513,6 +3508,7 @@ describe("using then, catch, finally", () => {
                       x++;
                       return myTask0();
                     }),
+                  // @ts-ignore
                   cwf("workflow1", undefined).catch(() => {
                     x++;
                     return myTask0();

@@ -458,17 +458,11 @@ test("socket test", async () => {
 
   const encodedId = encodeURIComponent(executionId);
 
-  console.log("pre-socket");
-
   const ws1 = new WebSocket(`${socketUrl}?id=${encodedId}&n=0`);
   const ws2 = new WebSocket(`${socketUrl}?id=${encodedId}&n=1`);
 
-  console.log("setup-socket");
-
   const running1 = setupWS(executionId, ws1);
   const running2 = setupWS(executionId, ws2);
-
-  console.log("waiting...");
 
   const result = await Promise.all([running1, running2]);
 
@@ -480,7 +474,6 @@ function setupWS(executionId: string, ws: WebSocket) {
   let v: number | undefined;
   return new Promise<number>((resolve, reject) => {
     ws.on("error", (err) => {
-      console.log("error", err);
       reject(err);
     });
     ws.on("message", (data) => {
@@ -493,9 +486,7 @@ function setupWS(executionId: string, ws: WebSocket) {
       );
 
       try {
-        console.log(n, "message");
         const d = (data as Buffer).toString("utf8");
-        console.log(d);
         const event = JSON.parse(d) as StartSocketEvent | DataSocketEvent;
         if (event.type === "start") {
           n = event.n;
@@ -516,8 +507,6 @@ function setupWS(executionId: string, ws: WebSocket) {
     });
     ws.on("close", (code, reason) => {
       try {
-        console.log(code, reason.toString("utf-8"));
-        console.log(n, "close", v);
         if (n === undefined) {
           throw new Error("n was not set");
         }

@@ -271,7 +271,6 @@ export async function waitForWorkflowCompletion<W extends Workflow = Workflow>(
     if (!execution) {
       throw new Error("Cannot find execution id: " + executionId);
     }
-    console.log(JSON.stringify(execution, null, 4));
     if (
       execution.status === ExecutionStatus.IN_PROGRESS &&
       !(cancelCallback?.() ?? false)

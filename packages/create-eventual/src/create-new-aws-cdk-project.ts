@@ -7,9 +7,11 @@ import {
 } from "@eventual/project";
 import fs from "fs/promises";
 import path from "path";
-import { sampleCDKApp } from "./sample-code";
+import { sampleCDKApp } from "./sample-code.js";
+import { createRequire } from "module";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+const require = createRequire(import.meta.url);
+
 const version: string = require("../package.json").version;
 
 export interface CreateAwsCdkProps {
@@ -157,13 +159,12 @@ ${npm("deploy")}
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
-          "@tsconfig/node18": "^1",
+          "@tsconfig/node20": "^1",
           "@types/jest": "^29",
-          "@types/node": "^18",
-          "aws-cdk": "^2.102.0",
+          "@types/node": "^20",
+          "aws-cdk": "^2.110.1",
           esbuild: "^0.16.14",
           typescript: "^5",
-          "ts-node": "^10.9.1",
         },
         ...(pkgManager !== "pnpm"
           ? {
@@ -172,14 +173,14 @@ ${npm("deploy")}
           : {}),
       }),
       writeJsonFile("tsconfig.base.json", {
-        extends: "@tsconfig/node18/tsconfig.json",
+        extends: "@tsconfig/node20/tsconfig.json",
         compilerOptions: {
           composite: true,
           declaration: true,
           declarationMap: true,
           inlineSourceMap: true,
           inlineSources: true,
-          module: "esnext",
+          module: "NodeNext",
           moduleResolution: "NodeNext",
           resolveJsonModule: true,
           lib: ["ES2022", "WebWorker"],
@@ -274,7 +275,7 @@ packages:
         compilerOptions: {
           outDir: "lib",
           rootDir: "src",
-          module: "esnext",
+          module: "NodeNext",
           target: "ESNext",
           moduleResolution: "NodeNext",
         },
@@ -294,25 +295,25 @@ packages:
           test: "echo no-op",
         },
         dependencies: {
-          "@aws-cdk/aws-apigatewayv2-alpha": "^2.102.0-alpha.0",
-          "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.102.0-alpha.0",
-          "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.102.0-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-alpha": "^2.110.1-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.110.1-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.110.1-alpha.0",
           "@eventual/aws-cdk": `^${version}`,
-          "aws-cdk-lib": "^2.102.0",
-          "aws-cdk": "^2.102.0",
+          "aws-cdk-lib": "^2.110.1",
+          "aws-cdk": "^2.110.1",
           constructs: "^10",
           esbuild: "^0.16.14",
           [servicePackageName]: workspaceVersion,
         },
         devDependencies: {
-          "@types/node": "^18",
-          "aws-cdk": "^2.102.0",
-          "ts-node": "^10.9.1",
+          "@types/node": "^20",
+          "aws-cdk": "^2.110.1",
+          tsx: "latest",
           typescript: "^5",
         },
       }),
       writeJsonFile("cdk.json", {
-        app: "ts-node-esm ./src/app.mts",
+        app: "tsx ./src/app.mts",
       }),
 
       fs

@@ -8,10 +8,12 @@
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true,
     "stripInternal": true,
-    "target": "ES2019",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../@eventual/project" }]
 }

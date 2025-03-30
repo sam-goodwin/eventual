@@ -6,19 +6,19 @@ import aws_iam from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import type { BuildOutput } from "./build";
-import { DeepCompositePrincipal } from "./deep-composite-principal";
-import type { EventService } from "./event-service";
-import { EventualResource } from "./resource";
-import type { Compliance } from "./compliance";
-import { SecureQueue } from "./secure/queue";
-import type { ServiceLocal } from "./service";
+import type { BuildOutput } from "./build.js";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import type { EventService } from "./event-service.js";
+import { EventualResource } from "./resource.js";
+import type { Compliance } from "./compliance.js";
+import { SecureQueue } from "./secure/queue.js";
+import type { ServiceLocal } from "./service.js";
 import {
   WorkerServiceConstructProps,
   configureWorkerCalls,
-} from "./service-common";
-import { ServiceFunction } from "./service-function";
-import type { ServiceEntityProps } from "./utils";
+} from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import type { ServiceEntityProps } from "./utils.js";
 
 export type Subscriptions<Service> = ServiceEntityProps<
   Service,

@@ -1,4 +1,4 @@
-import { buildService, BuildAWSRuntimeProps } from "./build";
+import { buildService, BuildAWSRuntimeProps } from "./build.js";
 
 export async function main() {
   try {

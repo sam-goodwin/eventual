@@ -1,6 +1,6 @@
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
-import { SecureKey } from "./secure/key";
+import { SecureKey } from "./secure/key.js";
 import { aws_iam } from "aws-cdk-lib";
 
 export enum ComplianceStandard {

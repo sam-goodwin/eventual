@@ -47,7 +47,6 @@ const worker = createEntityStreamWorker({
 
 export default (async (event) => {
   const records = event.Records;
-  console.log("records", JSON.stringify(records, undefined, 4));
 
   const items = records.flatMap((record) => {
     const operation = record.eventName?.toLowerCase() as

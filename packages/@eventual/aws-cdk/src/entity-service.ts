@@ -33,13 +33,13 @@ import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { EventService } from "./event-service.js";
-import { LazyInterface } from "./proxy-construct";
+import { LazyInterface } from "./proxy-construct.js";
 import {
   configureWorkerCalls,
   WorkerServiceConstructProps,
-} from "./service-common";
-import { ServiceFunction } from "./service-function";
-import { ServiceEntityProps, serviceTableArn } from "./utils";
+} from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import { ServiceEntityProps, serviceTableArn } from "./utils.js";
 import { WorkflowService } from "./workflow-service.js";
 import { EventualResource } from "./resource.js";
 import { SecureTable } from "./secure/table.js";

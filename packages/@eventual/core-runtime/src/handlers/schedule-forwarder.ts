@@ -1,10 +1,9 @@
-import { LogLevel } from "@eventual/core";
 import type { MetricsClient } from "../clients/metrics-client.js";
 import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
+import type { LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
@@ -35,22 +34,8 @@ export function createScheduleForwarder({
       try {
         metrics.setNamespace(MetricsCommon.EventualNamespace);
 
-        // log on behalf of the execution.
-        const executionLogContext: ExecutionLogContext = {
-          executionId: event.timerRequest.executionId,
-        };
-
-        logAgent.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
-          "Forwarding request to the timer queue: ",
-          JSON.stringify(event.timerRequest),
-        ]);
-
         const schedulerTimeDelay =
           new Date().getTime() - new Date(event.forwardTime).getTime();
-
-        logAgent.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
-          `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`,
-        ]);
 
         metrics.setProperty(
           SchedulerForwarderMetrics.SchedulerTimeDelay,
@@ -67,9 +52,6 @@ export function createScheduleForwarder({
         );
 
         if (event.clearSchedule) {
-          logAgent.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
-            "Deleting the schedule: " + event.scheduleName,
-          ]);
           await timerClient.clearSchedule(event.scheduleName);
         }
       } finally {

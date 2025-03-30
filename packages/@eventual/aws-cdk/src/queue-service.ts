@@ -12,14 +12,18 @@ import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import { Duration, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { EventualResource } from "./resource";
+import { EventualResource } from "./resource.js";
 import {
   WorkerServiceConstructProps,
   configureWorkerCalls,
-} from "./service-common";
-import { ServiceFunction } from "./service-function";
-import { ServiceEntityProps, formatQueueArn, serviceQueueArn } from "./utils";
-import { SecureQueue } from "./secure/queue";
+} from "./service-common.js";
+import { ServiceFunction } from "./service-function.js";
+import {
+  ServiceEntityProps,
+  formatQueueArn,
+  serviceQueueArn,
+} from "./utils.js";
+import { SecureQueue } from "./secure/queue.js";
 
 export type QueueHandlerFunctionProps = Omit<
   Partial<FunctionProps>,

@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig-base",
+  "include": ["src"],
+  "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "declaration": true,
+    "inlineSourceMap": true
+  },
+  "references": [
+    { "path": "../aws-cdk/tsconfig.json" },
+    { "path": "../aws-runtime/tsconfig.json" },
+    { "path": "../core/tsconfig.json" },
+    { "path": "../compiler/tsconfig.json" },
+    { "path": "../core-runtime/tsconfig.json" },
+    { "path": "../project/tsconfig.json" }
+  ]
+}

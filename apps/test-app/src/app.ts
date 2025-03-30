@@ -5,6 +5,9 @@ import { App, CfnOutput, Duration, Stack } from "aws-cdk-lib/core";
 
 import * as eventual from "@eventual/aws-cdk";
 import { ServiceDashboard } from "@eventual/aws-cdk";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
 
 const app = new App();
 

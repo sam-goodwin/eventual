@@ -9,7 +9,6 @@ import { isOrchestratorWorker } from "./internal/service-type.js";
 import { SignalTargetType } from "./internal/signal.js";
 import { EventualServiceClient } from "./service-client.js";
 import type { SendSignalProps, Signal } from "./signals.js";
-import type { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
@@ -86,7 +85,7 @@ export function isSucceededExecution(
  * Note: This object should be usable within a workflow. It should only contain deterministic logic
  * {@link EventualCall}s or {@link EventualProperty}s via the {@link EventualHook}.
  */
-export class ExecutionHandle<W extends Workflow> {
+export class ExecutionHandle<Output> {
   constructor(
     public executionId: ExecutionID,
     private serviceClient?: EventualServiceClient
@@ -95,7 +94,7 @@ export class ExecutionHandle<W extends Workflow> {
   /**
    * @return the {@link Execution} with the status, result, error, and other data based on the current status.
    */
-  public async getStatus(): Promise<Execution<WorkflowOutput<W>>> {
+  public async getStatus(): Promise<Execution<Output>> {
     const hook = tryGetEventualHook();
     if (hook) {
       return hook.executeEventualCall(
@@ -106,7 +105,7 @@ export class ExecutionHandle<W extends Workflow> {
     } else if (this.serviceClient && !isOrchestratorWorker()) {
       return (await this.serviceClient.getExecution(
         this.executionId
-      )) as Execution<WorkflowOutput<W>>;
+      )) as Execution<Output>;
     } else {
       throw new Error(
         "No EventualHook or EventualServiceClient available to get execution status."

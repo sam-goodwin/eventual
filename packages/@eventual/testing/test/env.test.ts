@@ -59,21 +59,19 @@ const {
 
 const task = (() => {
   let n = 0;
-  return <Input = any, Output = any>(handler: TaskHandler<Input, Output>) => {
+  return <H extends TaskHandler>(handler: H) => {
     // eslint-disable-next-line no-empty
     while (getEventualResource("Task", `task${++n}`)) {}
-    return _task<string, Input, Output>(`task${n}`, handler);
+    return _task<string, H>(`task${n}`, handler);
   };
 })();
 
 const workflow = (() => {
   let n = 0;
-  return <Input = any, Output = any>(
-    handler: WorkflowHandler<Input, Output>
-  ) => {
+  return <H extends WorkflowHandler>(handler: H) => {
     // eslint-disable-next-line no-empty
     while (getEventualResource("Workflow", `wf${++n}`)) {}
-    return _workflow<any, Input, Output>(`wf${n}`, handler);
+    return _workflow<any, H>(`wf${n}`, handler);
   };
 })();
 
@@ -382,8 +380,6 @@ describe("sleep", () => {
     // progress time, the sleep is for 10 seconds and should not be done
     await env.tick();
 
-    console.log(env.time);
-
     // the workflow still not be done, have 9 more seconds left on the sleep
     const r2 = await result.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
@@ -417,8 +413,6 @@ describe("sleep", () => {
 
     // progress time, the sleep is for 10 seconds and should not be done
     await env.tick();
-
-    console.log(env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
     const r2 = await result.getStatus();
@@ -457,8 +451,6 @@ describe("sleep", () => {
     await env.tick();
     await execution.sendSignal("anySignal");
 
-    console.log(env.time);
-
     // the workflow still not be done, have 9 more seconds left on the sleep
     const r2 = await execution.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
@@ -493,8 +485,6 @@ describe("sleep", () => {
 
     // progress time,
     await env.tick();
-
-    console.log("time", env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
     const r2 = await result.getStatus();

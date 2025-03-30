@@ -16,11 +16,11 @@ import { DependencyGroup, IDependable } from "constructs";
  * policy.
  */
 export class DeepCompositePrincipal extends CompositePrincipal {
-  private _principals: IPrincipal[];
+  private __principals: IPrincipal[];
   constructor(..._principals: IPrincipal[]) {
     super(..._principals);
     // @ts-ignore
-    this._principals = this._principals ?? [];
+    this.__principals = this.__principals ?? [];
   }
 
   /**
@@ -29,10 +29,10 @@ export class DeepCompositePrincipal extends CompositePrincipal {
   public override addPrincipals(...principals: IPrincipal[]): this {
     super.addPrincipals(...principals);
     // this may be called before we _principals is initialized
-    if (!this._principals) {
-      this._principals = [];
+    if (!this.__principals) {
+      this.__principals = [];
     }
-    this._principals.push(...principals);
+    this.__principals.push(...principals);
     return this;
   }
 
@@ -42,7 +42,7 @@ export class DeepCompositePrincipal extends CompositePrincipal {
   public override addToPrincipalPolicy(
     statement: PolicyStatement
   ): AddToPrincipalPolicyResult {
-    const res = this._principals.map((p) => p.addToPrincipalPolicy(statement));
+    const res = this.__principals.map((p) => p.addToPrincipalPolicy(statement));
     const added = res.every((s) => s.statementAdded);
     if (added) {
       const dependables = res

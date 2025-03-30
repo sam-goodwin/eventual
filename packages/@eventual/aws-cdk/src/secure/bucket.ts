@@ -5,7 +5,7 @@ import {
   BucketProps,
 } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
-import type { Compliance } from "../compliance";
+import type { Compliance } from "../compliance.js";
 
 export interface SecureBucketProps extends BucketProps {
   compliancePolicy: Compliance;

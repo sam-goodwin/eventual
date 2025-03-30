@@ -5,7 +5,6 @@ import { DefaultLogFormatter } from "../src/log-agent.js";
 describe("formatter", () => {
   test("object", () => {
     const obj = { obj: {} };
-    console.log(obj);
     expect(
       new DefaultLogFormatter().format({
         context: { executionId: "" },
@@ -18,7 +17,6 @@ describe("formatter", () => {
 
   test("string", () => {
     const val = "some string";
-    console.log(val);
     expect(
       new DefaultLogFormatter().format({
         context: { executionId: "" },
@@ -31,7 +29,6 @@ describe("formatter", () => {
 
   test("multiple", () => {
     const vals = [{ a: "a", B: { c: "c" } }, "some string"];
-    console.log(...vals);
     expect(
       new DefaultLogFormatter().format({
         context: { executionId: "" },
@@ -44,7 +41,6 @@ describe("formatter", () => {
 
   test("task", () => {
     const obj = { obj: {} };
-    console.log(obj);
     expect(
       new DefaultLogFormatter().format({
         context: {

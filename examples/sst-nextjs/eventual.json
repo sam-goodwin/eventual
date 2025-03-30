@@ -1,0 +1,5 @@
+{
+  "projectType": "aws-cdk",
+  "synth": "pnpm synth",
+  "deploy": "pnpm run deploy"
+}

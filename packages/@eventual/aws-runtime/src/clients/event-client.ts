@@ -24,8 +24,6 @@ export class AWSEventClient implements EventClient {
   ): Promise<void> {
     const self = this;
 
-    console.debug("emit", events);
-
     const eventBatches = chunkArray(
       10,
       events.map((event, i) => {
@@ -106,7 +104,6 @@ export class AWSEventClient implements EventClient {
 
       async function retry(events: EventTuple[] | readonly EventTuple[]) {
         const delayTime = Math.min(retryConfig.maxDelay, retryConfig.delayMs);
-        console.debug(`Retrying after waiting ${delayTime}ms`);
 
         await new Promise((resolve) => setTimeout(resolve, delayTime));
 

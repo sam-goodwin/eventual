@@ -1,14 +1,11 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.test.json",
   "compilerOptions": {
     "rootDir": ".",
-    "types": ["@types/node", "@types/jest"],
     "noEmit": true,
-    "module": "Node16",
-    "target": "ESNext",
-    "moduleResolution": "Node16"
+    "allowJs": true
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../core/tsconfig.json" }]
 }

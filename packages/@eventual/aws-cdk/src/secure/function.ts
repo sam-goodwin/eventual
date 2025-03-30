@@ -1,7 +1,7 @@
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import type { Construct } from "constructs";
-import type { Compliance } from "../compliance";
-import { SecureLogGroup } from "./log-group";
+import type { Compliance } from "../compliance.js";
+import { SecureLogGroup } from "./log-group.js";
 
 export interface SecureFunctionProps extends FunctionProps {
   compliancePolicy: Compliance;

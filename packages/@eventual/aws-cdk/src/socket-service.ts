@@ -7,7 +7,7 @@ import {
 import { WebSocketLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES, socketServiceSocketName } from "@eventual/aws-runtime";
 import { SocketFunction } from "@eventual/core-runtime";
-import { SocketUrls } from "@eventual/core/internal/index.js";
+import { SocketUrls } from "@eventual/core/internal";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Duration } from "aws-cdk-lib/core";

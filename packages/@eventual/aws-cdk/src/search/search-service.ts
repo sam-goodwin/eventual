@@ -1,12 +1,12 @@
 import type aws_iam from "aws-cdk-lib/aws-iam";
 import type aws_lambda from "aws-cdk-lib/aws-lambda";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import type { ServiceConstructProps } from "../service-common";
-import type { ServiceEntityProps } from "../utils";
-import type { AccessOptions } from "./data-access-policy";
-import type { SearchIndex } from "./search-index";
-import type { ServerfulSearchServiceProps } from "./serverful-search-service";
-import type { ServerlessSearchServiceProps } from "./serverless-search-service";
+import type { ServiceConstructProps } from "../service-common.js";
+import type { ServiceEntityProps } from "../utils.js";
+import type { AccessOptions } from "./data-access-policy.js";
+import type { SearchIndex } from "./search-index.js";
+import type { ServerfulSearchServiceProps } from "./serverful-search-service.js";
+import type { ServerlessSearchServiceProps } from "./serverless-search-service.js";
 
 /**
  * Properties that override the configuration of the {@link SearchService} within

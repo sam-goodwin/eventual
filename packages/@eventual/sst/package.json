@@ -1,0 +1,38 @@
+{
+  "name": "@eventual/sst",
+  "version": "0.57.0",
+  "type": "module",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@eventual/aws-cdk": "workspace:^"
+  },
+  "peerDependencies": {
+    "constructs": "10.3.0",
+    "sst": "^2.39.2"
+  },
+  "devDependencies": {
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "constructs": "10.3.0",
+    "sst": "2.39.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "transform": {
+      "^.+\\.(t|j)sx?$": "ts-jest"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

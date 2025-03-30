@@ -3,12 +3,11 @@
   "version": "0.57.0",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "import": "./lib/index.js"
     }
   },
-  "main": "lib/cjs/index.js",
-  "module": "lib/esm/index.js",
+  "type": "module",
+  "module": "lib/index.js",
   "publishConfig": {
     "access": "public"
   }

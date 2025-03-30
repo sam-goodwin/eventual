@@ -10,7 +10,7 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "lib": ["ES2022", "WebWorker"],
-    "module": "esnext",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,

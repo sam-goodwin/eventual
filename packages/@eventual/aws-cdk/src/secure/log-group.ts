@@ -1,6 +1,6 @@
 import { LogGroup, LogGroupProps } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
-import { Compliance } from "../compliance";
+import { Compliance } from "../compliance.js";
 
 export interface SecureLogGroupProps extends LogGroupProps {
   compliancePolicy: Compliance;

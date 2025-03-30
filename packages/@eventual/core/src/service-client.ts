@@ -23,6 +23,7 @@ import type {
   Workflow,
   WorkflowExecutionOptions,
   WorkflowInput,
+  WorkflowOutput,
 } from "./workflow.js";
 
 /**
@@ -37,8 +38,8 @@ export interface EventualServiceClient {
    * @param input Workflow parameters
    */
   startExecution<W extends Workflow>(
-    request: StartExecutionRequest<W>
-  ): Promise<ExecutionHandle<W>>;
+    request: DirectStartExecutionRequest<W>
+  ): Promise<ExecutionHandle<WorkflowOutput<W>>>;
 
   /**
    * Retrieves one or more workflow execution.
@@ -117,7 +118,7 @@ export interface EventualServiceClient {
 
 export type EmitEventsRequest = CommandInput<EventualService["emitEvents"]>;
 
-export interface StartExecutionRequest<W extends Workflow = Workflow>
+export interface DirectStartExecutionRequest<W extends Workflow>
   extends WorkflowExecutionOptions {
   /**
    * Name of the workflow execution.
@@ -136,6 +137,13 @@ export interface StartExecutionRequest<W extends Workflow = Workflow>
    * Input payload for the workflow function.
    */
   input: WorkflowInput<W>;
+}
+
+export interface StartExecutionRequest<Input> extends WorkflowExecutionOptions {
+  /**
+   * Input payload for the workflow function.
+   */
+  input: Input;
 }
 
 export interface SucceedExecutionRequest<Result = any> {

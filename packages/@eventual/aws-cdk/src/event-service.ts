@@ -7,8 +7,8 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { Lazy, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
-import { grant } from "./grant";
-import { ServiceConstructProps } from "./service-common";
+import { grant } from "./grant.js";
+import { ServiceConstructProps } from "./service-common.js";
 
 export type EventsProps = ServiceConstructProps;
 

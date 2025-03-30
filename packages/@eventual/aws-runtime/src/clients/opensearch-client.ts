@@ -17,7 +17,6 @@ export class AWSOpenSearchClient implements OpenSearchClient {
     credentials: any;
     region: string;
   }) {
-    console.log("Open Search endpoint: ", node);
     this.client = new Client({
       node,
       Connection: class extends Connection {
