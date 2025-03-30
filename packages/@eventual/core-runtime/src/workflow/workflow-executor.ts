@@ -50,6 +50,7 @@ import {
   type UnresolvedEventualDefinition,
 } from "./eventual-definition.js";
 import { formatExecutionId } from "./execution.js";
+import { deepClone } from "../deep-clone.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -206,6 +207,9 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
     ) => void;
   } = {};
 
+  // clone the history so it cannot be modified by the user
+  public historyCloned: HistoryStateEvent[];
+
   constructor(
     private workflow: Workflow<any, Input, Output>,
     public history: HistoryStateEvent[],
@@ -213,6 +217,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
     private propertyRetriever: PropertyRetriever,
     private eventualFactory: EventualFactory = createDefaultEventualFactory()
   ) {
+    this.historyCloned = deepClone(history);
     this.nextSeq = 0;
     this.expected = iterator(history, isCallEvent);
     this.events = iterator(history, isCompletionEvent);

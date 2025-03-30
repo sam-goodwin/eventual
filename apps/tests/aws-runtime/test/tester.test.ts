@@ -21,6 +21,7 @@ import {
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
+  mutateEvents,
   parentWorkflow,
   queueWorkflow,
   SocketMessage,
@@ -52,6 +53,8 @@ eventualRuntimeTestHarness(
     );
 
     testCompletion("sleep", workflow3, "done!");
+
+    testCompletion("mutate events", mutateEvents, "v2");
 
     testCompletion("parallel", workflow4, [
       { status: "fulfilled", value: ["hello sam", "hello chris", "hello sam"] },
